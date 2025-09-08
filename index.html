@@ -1,16 +1,29 @@
-
-
-<!-- index.html -->
-<!DOCTYPE html>
-<html lang="nl">
 <head>
   <meta charset="UTF-8" />
-  <title>Chiro Uitgavenbeheer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chiro Kattenbos – Uitgavenbeheer</title>
   <link rel="stylesheet" href="style.css" />
-</head>
-<body>
-  <h1>Uitgavenbeheer Chiro Kattenbos</h1>
 
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-database-compat.js"></script>
+
+  <!-- Jouw nieuwe Firebase-config -->
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyA2--5vxLThr-jq5WHHboSakHgbjyBSFm0",
+      authDomain: "leidingskas.firebaseapp.com",
+      databaseURL: "https://leidingskas-default-rtdb.firebaseio.com",
+      projectId: "leidingskas",
+      storageBucket: "leidingskas.firebasestorage.app",
+      messagingSenderId: "4767553066",
+      appId: "1:4767553066:web:6018139d9ac3e044bc1553",
+      measurementId: "G-XRD72XNPCR"
+    };
+    firebase.initializeApp(firebaseConfig);
+  </script>
+</head>
+  
   <form id="uitgaveForm">
     <label>Groep:</label>
     <select id="groep">
@@ -57,4 +70,5 @@
   <script src="script.js"></script>
 </body>
 </html>
+
 
