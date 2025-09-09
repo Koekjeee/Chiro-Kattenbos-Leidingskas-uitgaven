@@ -225,3 +225,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
     let bewijsUrl = "";
     if (file)
+
+        // Filters
+  document.getElementById("filterGroep")
+    .addEventListener("change", e =>
+      renderTabel(e.target.value, document.getElementById("filterBetaald").value)
+    );
+
+  document.getElementById("filterBetaald")
+    .addEventListener("change", e =>
+      renderTabel(document.getElementById("filterGroep").value, e.target.value)
+    );
+});
+
