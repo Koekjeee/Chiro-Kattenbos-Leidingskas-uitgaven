@@ -8,6 +8,7 @@
 
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-database-compat.js"></script>
   <script>
     const firebaseConfig = {
@@ -23,8 +24,8 @@
     firebase.initializeApp(firebaseConfig);
   </script>
 </head>
-  
-    <!-- 🔐 Login -->
+<body>
+  <!-- 🔐 Login -->
   <div id="loginScherm">
     <h2>Inloggen</h2>
     <p>Voer het wachtwoord in om toegang te krijgen:</p>
@@ -37,14 +38,12 @@
   <div id="appInhoud" style="display: none;">
     <h1>Chiro Kattenbos – Uitgavenbeheer</h1>
 
-    <!-- PDF-export knop (rechtsboven) -->
+    <!-- PDF-export knop -->
     <button id="exportPdfBtn" class="pdf-export-btn" title="Exporteer uitgaven als PDF">📄</button>
 
     <!-- 📈 Samenvatting per groep -->
     <div id="summaryPanel">
-      <button id="toggleSummary" class="highlight-btn">
-        ▸ Toon uitgaven per groep
-      </button>
+      <button id="toggleSummary" class="highlight-btn">▸ Toon uitgaven per groep</button>
       <div id="summaryContent">
         <ul id="groepSamenvatting"></ul>
       </div>
@@ -66,7 +65,7 @@
       </select>
 
       <label for="bedrag">Bedrag (€):</label>
-      <input type="text" id="bedrag" required />
+      <input type="number" id="bedrag" step="0.01" required />
 
       <label for="activiteit">Activiteit/Omschrijving:</label>
       <input type="text" id="activiteit" required />
@@ -74,8 +73,11 @@
       <label for="datum">Datum:</label>
       <input type="date" id="datum" required />
 
-      
       <label><input type="checkbox" id="betaald" /> Betaald</label>
+
+      <label for="bewijsUpload">Upload bewijsstuk (optioneel):</label>
+      <input type="file" id="bewijsUpload" accept="image/*,application/pdf" />
+
       <button type="submit">Toevoegen</button>
     </form>
 
@@ -114,6 +116,7 @@
           <th>Activiteit</th>
           <th>Datum</th>
           <th>Betaald</th>
+          <th>Bewijs</th>
           <th>Actie</th>
           <th>Betaald aanvinken</th>
         </tr>
@@ -124,13 +127,6 @@
 
   <!-- jsPDF voor PDF-export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-storage-compat.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
-
-
-
-
-
-
