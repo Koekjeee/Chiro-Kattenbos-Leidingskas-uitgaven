@@ -5,13 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Chiro Kattenbos – Uitgavenbeheer</title>
   <link rel="stylesheet" href="style.css" />
-  <!-- Firebase SDK’s blijven zoals voorheen -->
+
+  <!-- Firebase SDK’s (compat) -->
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-database-compat.js"></script>
+
+  <!-- jsPDF voor PDF-export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
-  <!-- Je bestaande login scherm -->
+  <!-- 🔐 Login (ongewijzigd) -->
   <div id="loginScherm">
     <h2>Inloggen</h2>
     <p>Voer het wachtwoord in om toegang te krijgen:</p>
@@ -20,12 +23,108 @@
     <p id="loginFout" style="color: red;" aria-live="assertive"></p>
   </div>
 
-  <!-- Je bestaande appInhoud -->
+  <!-- 📋 App-inhoud -->
   <div id="appInhoud" hidden>
-    <!-- … alle secties, form, filters, tabel … -->
+    <h1>Chiro Kattenbos – Uitgavenbeheer</h1>
+
+    <!-- PDF-export knop -->
+    <button id="exportPdfBtn" class="pdf-export-btn" title="Exporteer uitgaven als PDF">📄</button>
+
+    <!-- Samenvatting per groep -->
+    <section id="summaryPanel">
+      <button id="toggleSummary" class="highlight-btn">
+        ▸ Toon uitgaven per groep
+      </button>
+      <div id="summaryContent" hidden>
+        <ul id="groepSamenvatting"></ul>
+      </div>
+    </section>
+
+    <!-- Uitgaveformulier -->
+    <section>
+      <form id="uitgaveForm">
+        <label for="groep">Groep:</label>
+        <select id="groep" required>
+          <option value="">-- Kies een groep --</option>
+          <option>Ribbels</option>
+          <option>Speelclubs</option>
+          <option>Rakkers</option>
+          <option>Kwiks</option>
+          <option>Tippers</option>
+          <option>Toppers</option>
+          <option>Aspi</option>
+          <option>LEIDING</option>
+        </select>
+
+        <label for="bedrag">Bedrag (€):</label>
+        <input type="text" id="bedrag" required />
+
+        <label for="activiteit">Activiteit/Omschrijving:</label>
+        <input type="text" id="activiteit" required />
+
+        <label for="datum">Datum:</label>
+        <input type="date" id="datum" required />
+
+        <label>
+          <input type="checkbox" id="betaald" />
+          Betaald
+        </label>
+
+        <button type="submit">Toevoegen</button>
+      </form>
+    </section>
+
+    <!-- Filters -->
+    <section class="filters">
+      <div class="filter">
+        <label for="filterGroep">Filter op groep:</label>
+        <select id="filterGroep">
+          <option value="">Alle groepen</option>
+          <option>Ribbels</option>
+          <option>Speelclubs</option>
+          <option>Rakkers</option>
+          <option>Kwiks</option>
+          <option>Tippers</option>
+          <option>Toppers</option>
+          <option>Aspi</option>
+          <option>LEIDING</option>
+        </select>
+      </div>
+      <div class="filter">
+        <label for="filterBetaald">Filter op betaald:</label>
+        <select id="filterBetaald">
+          <option value="">Alles</option>
+          <option value="true">Betaald</option>
+          <option value="false">Niet betaald</option>
+        </select>
+      </div>
+    </section>
+
+    <!-- Uitgaventabel -->
+    <section>
+      <table id="overzicht">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Groep</th>
+            <th>Bedrag</th>
+            <th>Activiteit</th>
+            <th>Datum</th>
+            <th>Betaald</th>
+            <th>Actie</th>
+            <th>Betaald aanvinken</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
   </div>
 
-  <!-- Nu enkel nog main.js als module -->
+  <footer>
+    <p>© Chiro Kattenbos</p>
+  </footer>
+
+  <!-- Entry point: main.js als ES Module -->
   <script type="module" src="src/main.js"></script>
 </body>
 </html>
