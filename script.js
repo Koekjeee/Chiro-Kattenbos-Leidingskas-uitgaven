@@ -17,7 +17,6 @@ document.addEventListener("DOMContentLoaded", function () {
     LEIDING: "#dddddd"
   };
 
-  // 🔧 Cloudinary-configuratie
   const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/<jouw-cloud-name>/upload";
   const CLOUDINARY_PRESET = "chiro_upload_fotos";
 
@@ -220,4 +219,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const p = document.getElementById("betaald").checked;
     const file = document.getElementById("bewijsUpload").files[0];
 
-    if (!g || isNaN
+    if (!g || isNaN(b) || !a || !d) {
+      return alert("Gelieve alle velden correct in te vullen.");
+    }
+
+    let bewijsUrl = "";
+    if (file)
