@@ -163,7 +163,6 @@ document.addEventListener("DOMContentLoaded", function () {
           rij.insertCell(4).textContent = u.datum;
           rij.insertCell(5).textContent = u.betaald ? "✅" : "❌";
 
-          // 📸 Bewijsstuk met klikbare vergroting
           const bewijsCel = rij.insertCell(6);
           if (u.bewijsUrl) {
             const img = document.createElement("img");
@@ -178,7 +177,6 @@ document.addEventListener("DOMContentLoaded", function () {
             bewijsCel.appendChild(img);
           }
 
-          // ❌ Verwijder-knop
           const c7 = rij.insertCell(7);
           const btn = document.createElement("button");
           btn.textContent = "Verwijder";
@@ -192,7 +190,6 @@ document.addEventListener("DOMContentLoaded", function () {
           };
           c7.appendChild(btn);
 
-          // ✅ Betaald-toggle
           const c8 = rij.insertCell(8);
           c8.className = "betaald-toggle";
           const cb = document.createElement("input");
@@ -223,4 +220,4 @@ document.addEventListener("DOMContentLoaded", function () {
     const p = document.getElementById("betaald").checked;
     const file = document.getElementById("bewijsUpload").files[0];
 
-    if (!g || isNaN(b) || !
+    if (!g || isNaN
