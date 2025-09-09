@@ -1,9 +1,11 @@
 document.addEventListener("DOMContentLoaded", function () {
   const correctWachtwoord = "chiro2025";
+
   const alleGroepen = [
     "Ribbels", "Speelclubs", "Rakkers", "Kwiks",
     "Tippers", "Toppers", "Aspi", "LEIDING"
   ];
+
   const groepKleuren = {
     Ribbels: "#cce5ff",
     Speelclubs: "#ffe5cc",
@@ -14,9 +16,27 @@ document.addEventListener("DOMContentLoaded", function () {
     Aspi: "#ffd5cc",
     LEIDING: "#dddddd"
   };
-  const storage = firebase.storage();
 
-  // Toggle paneel en laad samenvatting
+  // Cloudinary-configuratie
+  const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/<jouw-cloud-name>/upload";
+  const CLOUDINARY_PRESET = "chiro_uploads";
+
+  // Functie om een bestand naar Cloudinary te uploaden
+  async function uploadBewijs(file) {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", CLOUDINARY_PRESET);
+
+    const res = await fetch(CLOUDINARY_URL, {
+      method: "POST",
+      body: formData
+    });
+
+    const data = await res.json();
+    return data.secure_url;
+  }
+
+  // Toggle summary paneel
   function setupSummaryToggle() {
     const btn = document.getElementById("toggleSummary");
     const content = document.getElementById("summaryContent");
@@ -28,7 +48,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // Render per-groep overzicht met kleur
+  // Render samenvatting per groep
   function renderSamenvatting() {
     const lijst = document.getElementById("groepSamenvatting");
     lijst.innerHTML = "";
@@ -54,14 +74,13 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // PDF-export setup
+  // PDF-export
   function setupPdfExport() {
     const btn = document.getElementById("exportPdfBtn");
     btn.addEventListener("click", async () => {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
 
-      // datum/tijd stempel
       const now = new Date();
       const timestamp = now.toLocaleString("nl-NL", {
         day: "2-digit", month: "2-digit", year: "numeric",
@@ -76,7 +95,6 @@ document.addEventListener("DOMContentLoaded", function () {
       doc.text("Uitgaven activiteitenkas per groep", 20, y);
       y += 10;
 
-      // groepen vullen
       const perGroep = {};
       alleGroepen.forEach(g => perGroep[g] = []);
 
@@ -111,7 +129,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // Login logic
+  // Login/check wachtwoord
   function controleerWachtwoord() {
     const invoer = document.getElementById("wachtwoord").value;
     const fout = document.getElementById("loginFout");
@@ -128,7 +146,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
   document.getElementById("loginKnop").addEventListener("click", controleerWachtwoord);
 
-  // Uitgaven in overzichtstabel
+  // Render overzichtstabel
   function renderTabel(filterGroep = "", filterBetaald = "") {
     const tbody = document.querySelector("#overzicht tbody");
     tbody.innerHTML = "";
@@ -143,6 +161,7 @@ document.addEventListener("DOMContentLoaded", function () {
         .forEach(u => {
           const rij = tbody.insertRow();
           rij.style.backgroundColor = groepKleuren[u.groep] || "#fff";
+
           rij.insertCell(0).textContent = u.nummer;
           rij.insertCell(1).textContent = u.groep;
           rij.insertCell(2).textContent = `€${u.bedrag}`;
@@ -150,7 +169,18 @@ document.addEventListener("DOMContentLoaded", function () {
           rij.insertCell(4).textContent = u.datum;
           rij.insertCell(5).textContent = u.betaald ? "✅" : "❌";
 
-          const c6 = rij.insertCell(6);
+          // Bewijsstuk
+          const bewijsCel = rij.insertCell(6);
+          if (u.bewijsUrl) {
+            const img = document.createElement("img");
+            img.src = u.bewijsUrl;
+            img.alt = "Bewijsstuk";
+            img.style.maxWidth = "100px";
+            bewijsCel.appendChild(img);
+          }
+
+          // Verwijder-knop
+          const c7 = rij.insertCell(7);
           const btn = document.createElement("button");
           btn.textContent = "Verwijder";
           btn.className = "verwijder";
@@ -161,10 +191,11 @@ document.addEventListener("DOMContentLoaded", function () {
               document.getElementById("filterBetaald").value
             );
           };
-          c6.appendChild(btn);
+          c7.appendChild(btn);
 
-          const c7 = rij.insertCell(7);
-          c7.className = "betaald-toggle";
+          // Betaald-toggle
+          const c8 = rij.insertCell(8);
+          c8.className = "betaald-toggle";
           const cb = document.createElement("input");
           cb.type = "checkbox";
           cb.checked = u.betaald;
@@ -179,22 +210,35 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
               });
           };
-          c7.appendChild(cb);
+          c8.appendChild(cb);
         });
     });
   }
 
-  // Nieuw uitgave toevoegen
-  document.getElementById("uitgaveForm").addEventListener("submit", e => {
+  // Nieuw uitgave toevoegen + bewijs upload
+  document.getElementById("uitgaveForm").addEventListener("submit", async e => {
     e.preventDefault();
     const g = document.getElementById("groep").value;
-    const b = parseFloat(document.getElementById("bedrag").value.replace(",", ".")) || 0;
+    const b = parseFloat(document.getElementById("bedrag").value) || 0;
     const a = document.getElementById("activiteit").value;
     const d = document.getElementById("datum").value;
     const p = document.getElementById("betaald").checked;
+    const file = document.getElementById("bewijsUpload").files[0];
+
     if (!g || isNaN(b) || !a || !d) {
       return alert("Gelieve alle velden correct in te vullen.");
     }
+
+    let bewijsUrl = "";
+    if (file) {
+      try {
+        bewijsUrl = await uploadBewijs(file);
+      } catch (err) {
+        console.error("Upload mislukt:", err);
+        return alert("Upload van bewijsstuk is mislukt.");
+      }
+    }
+
     const id = Date.now();
     const obj = {
       nummer: id,
@@ -202,8 +246,11 @@ document.addEventListener("DOMContentLoaded", function () {
       bedrag: b.toFixed(2),
       activiteit: a,
       datum: d,
-      betaald: p
+      betaald: p,
+      bewijsUrl: bewijsUrl,
+      status: "in_behandeling"
     };
+
     firebase.database().ref("uitgaven/" + id).set(obj, err => {
       if (!err) {
         document.getElementById("uitgaveForm").reset();
@@ -213,7 +260,7 @@ document.addEventListener("DOMContentLoaded", function () {
         );
       }
     });
-  });  // ← Méér dan hier niks missen!
+  });
 
   // Filters
   document.getElementById("filterGroep")
@@ -225,5 +272,4 @@ document.addEventListener("DOMContentLoaded", function () {
     .addEventListener("change", e =>
       renderTabel(document.getElementById("filterGroep").value, e.target.value)
     );
-
-});  // sluit DOMContentLoaded af
+});
