@@ -17,11 +17,10 @@ document.addEventListener("DOMContentLoaded", function () {
     LEIDING: "#dddddd"
   };
 
-  // Cloudinary-configuratie
-const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dxizebpwn/upload";
+  // 🔧 Cloudinary-configuratie
+  const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/<jouw-cloud-name>/upload";
   const CLOUDINARY_PRESET = "chiro_upload_fotos";
 
-  // Functie om een bestand naar Cloudinary te uploaden
   async function uploadBewijs(file) {
     const formData = new FormData();
     formData.append("file", file);
@@ -36,7 +35,6 @@ const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dxizebpwn/upload";
     return data.secure_url;
   }
 
-  // Toggle summary paneel
   function setupSummaryToggle() {
     const btn = document.getElementById("toggleSummary");
     const content = document.getElementById("summaryContent");
@@ -48,7 +46,6 @@ const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dxizebpwn/upload";
     });
   }
 
-  // Render samenvatting per groep
   function renderSamenvatting() {
     const lijst = document.getElementById("groepSamenvatting");
     lijst.innerHTML = "";
@@ -74,7 +71,6 @@ const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dxizebpwn/upload";
     });
   }
 
-  // PDF-export
   function setupPdfExport() {
     const btn = document.getElementById("exportPdfBtn");
     btn.addEventListener("click", async () => {
@@ -129,7 +125,6 @@ const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dxizebpwn/upload";
     });
   }
 
-  // Login/check wachtwoord
   function controleerWachtwoord() {
     const invoer = document.getElementById("wachtwoord").value;
     const fout = document.getElementById("loginFout");
@@ -146,7 +141,6 @@ const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dxizebpwn/upload";
   }
   document.getElementById("loginKnop").addEventListener("click", controleerWachtwoord);
 
-  // Render overzichtstabel
   function renderTabel(filterGroep = "", filterBetaald = "") {
     const tbody = document.querySelector("#overzicht tbody");
     tbody.innerHTML = "";
@@ -169,17 +163,22 @@ const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dxizebpwn/upload";
           rij.insertCell(4).textContent = u.datum;
           rij.insertCell(5).textContent = u.betaald ? "✅" : "❌";
 
-          // Bewijsstuk
+          // 📸 Bewijsstuk met klikbare vergroting
           const bewijsCel = rij.insertCell(6);
           if (u.bewijsUrl) {
             const img = document.createElement("img");
             img.src = u.bewijsUrl;
             img.alt = "Bewijsstuk";
             img.style.maxWidth = "100px";
+            img.style.cursor = "pointer";
+            img.onclick = () => {
+              document.getElementById("overlayImage").src = u.bewijsUrl;
+              document.getElementById("imageOverlay").style.display = "flex";
+            };
             bewijsCel.appendChild(img);
           }
 
-          // Verwijder-knop
+          // ❌ Verwijder-knop
           const c7 = rij.insertCell(7);
           const btn = document.createElement("button");
           btn.textContent = "Verwijder";
@@ -193,7 +192,7 @@ const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dxizebpwn/upload";
           };
           c7.appendChild(btn);
 
-          // Betaald-toggle
+          // ✅ Betaald-toggle
           const c8 = rij.insertCell(8);
           c8.className = "betaald-toggle";
           const cb = document.createElement("input");
@@ -215,7 +214,6 @@ const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dxizebpwn/upload";
     });
   }
 
-  // Nieuw uitgave toevoegen + bewijs upload
   document.getElementById("uitgaveForm").addEventListener("submit", async e => {
     e.preventDefault();
     const g = document.getElementById("groep").value;
@@ -225,55 +223,4 @@ const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dxizebpwn/upload";
     const p = document.getElementById("betaald").checked;
     const file = document.getElementById("bewijsUpload").files[0];
 
-    if (!g || isNaN(b) || !a || !d) {
-      return alert("Gelieve alle velden correct in te vullen.");
-    }
-
-    let bewijsUrl = "";
-    if (file) {
-      try {
-        bewijsUrl = await uploadBewijs(file);
-      } catch (err) {
-        console.error("Upload mislukt:", err);
-        return alert("Upload van bewijsstuk is mislukt.");
-      }
-    }
-
-    const id = Date.now();
-    const obj = {
-      nummer: id,
-      groep: g,
-      bedrag: b.toFixed(2),
-      activiteit: a,
-      datum: d,
-      betaald: p,
-      bewijsUrl: bewijsUrl,
-      status: "in_behandeling"
-    };
-
-    firebase.database().ref("uitgaven/" + id).set(obj, err => {
-      if (!err) {
-        document.getElementById("uitgaveForm").reset();
-        renderTabel(
-          document.getElementById("filterGroep").value,
-          document.getElementById("filterBetaald").value
-        );
-      }
-    });
-  });
-
-  // Filters
-  document.getElementById("filterGroep")
-    .addEventListener("change", e =>
-      renderTabel(e.target.value, document.getElementById("filterBetaald").value)
-    );
-
-  document.getElementById("filterBetaald")
-    .addEventListener("change", e =>
-      renderTabel(document.getElementById("filterGroep").value, e.target.value)
-    );
-});
-
-
-
-
+    if (!g || isNaN(b) || !
