@@ -55,7 +55,7 @@ export function setupFilters(onChange) {
 
 function getFilters() {
   return {
-    groep: document.getElementById("filterGroep").value,
+    groep:   document.getElementById("filterGroep").value,
     betaald: document.getElementById("filterBetaald").value
   };
 }
