@@ -19,7 +19,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Cloudinary-configuratie
 const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dxizebpwn/upload";
-  const CLOUDINARY_PRESET = "chiro_upload_foto's";
+  const CLOUDINARY_PRESET = "chiro_upload_fotos";
 
   // Functie om een bestand naar Cloudinary te uploaden
   async function uploadBewijs(file) {
@@ -273,6 +273,7 @@ const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dxizebpwn/upload";
       renderTabel(document.getElementById("filterGroep").value, e.target.value)
     );
 });
+
 
 
 
