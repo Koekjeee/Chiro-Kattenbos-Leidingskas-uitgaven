@@ -11,22 +11,18 @@ export const firebaseConfig = {
 };
 
 export const alleGroepen = [
-  "Ribbels", "Speelclubs", "Rakkers", "Kwiks",
-  "Tippers", "Toppers", "Aspi", "LEIDING"
+  "Ribbels","Speelclubs","Rakkers","Kwiks",
+  "Tippers","Toppers","Aspi","LEIDING"
 ];
 
 export const groepKleuren = {
-  Ribbels: "#cce5ff",
-  Speelclubs: "#ffe5cc",
-  Rakkers: "#e5ffcc",
-  Kwiks: "#ffccf2",
-  Tippers: "#d5ccff",
-  Toppers: "#ccffd5",
-  Aspi: "#ffd5cc",
-  LEIDING: "#dddddd"
+  Ribbels: "#cce5ff", Speelclubs: "#ffe5cc",
+  Rakkers: "#e5ffcc", Kwiks: "#ffccf2",
+  Tippers: "#d5ccff", Toppers: "#ccffd5",
+  Aspi: "#ffd5cc", LEIDING: "#dddddd"
 };
 
-// Firebase initialisatie (compat)
+// compat initialisatie
 firebase.initializeApp(firebaseConfig);
-export const db = firebase.database();
+export const db      = firebase.database();
 export const storage = firebase.storage();
