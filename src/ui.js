@@ -1,4 +1,3 @@
-// ui.js
 import { alleGroepen, groepKleuren } from "./config.js";
 import { fetchUitgaven, deleteUitgave, updateUitgave } from "./db.js";
 
@@ -9,7 +8,7 @@ export async function renderTabel(filters = {}) {
 
   data
     .filter(u =>
-      (!filters.groep  || u.groep === filters.groep) &&
+      (!filters.groep || u.groep === filters.groep) &&
       (filters.betaald === "" || String(u.betaald) === filters.betaald)
     )
     .sort((a, b) => b.nummer - a.nummer)
@@ -55,7 +54,42 @@ export function setupFilters(onChange) {
 
 function getFilters() {
   return {
-    groep:   document.getElementById("filterGroep").value,
+    groep: document.getElementById("filterGroep").value,
     betaald: document.getElementById("filterBetaald").value
   };
+}
+
+export function setupSummaryToggle() {
+  const btn = document.getElementById("toggleSummary");
+  const content = document.getElementById("summaryContent");
+
+  btn.addEventListener("click", async () => {
+    const open = !content.hidden;
+    content.hidden = open;
+    btn.textContent = (open ? "▸" : "▾") + " Toon uitgaven per groep";
+    if (!open) await renderSamenvatting();
+  });
+}
+
+export async function renderSamenvatting() {
+  const lijst = document.getElementById("groepSamenvatting");
+  lijst.innerHTML = "";
+  const totals = {};
+  alleGroepen.forEach(g => totals[g] = 0);
+
+  const data = Object.values(await fetchUitgaven());
+  data.forEach(u => {
+    totals[u.groep] += parseFloat(u.bedrag);
+  });
+
+  alleGroepen.forEach(groep => {
+    const bedrag = totals[groep].toFixed(2);
+    const li = document.createElement("li");
+    li.style.backgroundColor = groepKleuren[groep] || "#fff";
+    li.textContent = groep;
+    const span = document.createElement("span");
+    span.textContent = `€${bedrag}`;
+    li.appendChild(span);
+    lijst.appendChild(li);
+  });
 }
