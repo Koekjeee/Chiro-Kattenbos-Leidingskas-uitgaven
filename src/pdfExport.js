@@ -6,15 +6,14 @@ export async function exportPdf() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
-  // Datum/tijd stempel
   const now = new Date();
-  const timestamp = now.toLocaleString("nl-NL", {
+  const ts  = now.toLocaleString("nl-NL", {
     day: "2-digit", month: "2-digit", year: "numeric",
     hour: "2-digit", minute: "2-digit", second: "2-digit"
   });
-  const pageWidth = doc.internal.pageSize.getWidth();
+  const pw = doc.internal.pageSize.getWidth();
   doc.setFontSize(10);
-  doc.text(timestamp, pageWidth - 20, 10, { align: "right" });
+  doc.text(ts, pw - 20, 10, { align: "right" });
 
   let y = 20;
   doc.setFontSize(16);
