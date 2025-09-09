@@ -1,11 +1,10 @@
-// main.js
-import { renderTabel, setupFilters } from "./ui.js";
-import { exportPdf }                from "./pdfExport.js";
-import { addUitgave }               from "./db.js";
+import { renderTabel, setupFilters, setupSummaryToggle } from "./ui.js";
+import { exportPdf } from "./pdfExport.js";
+import { addUitgave } from "./db.js";
 
 document.addEventListener("DOMContentLoaded", () => {
   const correctWachtwoord = "chiro2025";
-  const loginBtn  = document.getElementById("loginKnop");
+  const loginBtn = document.getElementById("loginKnop");
   const exportBtn = document.getElementById("exportPdfBtn");
   const loginFout = document.getElementById("loginFout");
 
@@ -13,9 +12,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const invoer = document.getElementById("wachtwoord").value;
     if (invoer === correctWachtwoord) {
       document.getElementById("loginScherm").hidden = true;
-      document.getElementById("appInhoud").hidden   = false;
+      document.getElementById("appInhoud").hidden = false;
       renderTabel();
       setupFilters(renderTabel);
+      setupSummaryToggle(); // ✅ samenvatting werkt nu
     } else {
       loginFout.textContent = "Wachtwoord is onjuist.";
     }
@@ -35,7 +35,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return alert("Gelieve alle velden correct in te vullen.");
     }
 
-    const id  = Date.now();
+    const id = Date.now();
     const obj = {
       nummer: id,
       groep: g,
@@ -47,6 +47,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     await addUitgave(id, obj);
     e.target.reset();
-    renderTabel();
+    renderTabel(); // ✅ direct opnieuw laden
   });
 });
