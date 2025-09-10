@@ -46,6 +46,12 @@ document.addEventListener("DOMContentLoaded", () => {
     return gebruikersData && gebruikersData.rol === "financieel";
   }
 
+  function toonBeheerPaneel() {
+    document.getElementById("beheerPaneel").style.display = magBeheren()
+      ? "block"
+      : "none";
+  }
+
   // → Vul groep-selectie op basis van rol
   function vulGroepSelectie() {
     const select = document.getElementById("groep");
@@ -59,17 +65,11 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // → Toon of verberg beheerpaneel
-  function toonBeheerPaneel() {
-    document.getElementById("beheerPaneel").style.display = magBeheren()
-      ? "block"
-      : "none";
-  }
-
   // → Samenvatting toggler
   function setupSummaryToggle() {
     const btn = document.getElementById("toggleSummary");
     const content = document.getElementById("summaryContent");
+    if (!btn || !content) return; // Voorkom error als element niet bestaat
     btn.addEventListener("click", () => {
       const open = content.style.display === "block";
       content.style.display = open ? "none" : "block";
@@ -115,13 +115,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const tbody = document.querySelector("#overzicht tbody");
     tbody.innerHTML = "";
 
-    // Bouw de query: leiding alleen eigen groep, financieel alles
     let query = firebase.database().ref("uitgaven");
     if (gebruikersData && gebruikersData.rol === "leiding") {
       query = query.orderByChild("groep").equalTo(gebruikersData.groep);
     }
 
-    // Haal de data één keer op
     query
       .once("value")
       .then(snap => {
@@ -311,6 +309,7 @@ document.addEventListener("DOMContentLoaded", () => {
       setupPdfExport();
       renderTabel();
       toonBeheerPaneel();
+      toonFinancieelFeatures();
     } else {
       document.getElementById("appInhoud").style.display = "none";
       document.getElementById("loginScherm").style.display = "block";
@@ -385,4 +384,17 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("filterBetaald").addEventListener("change", e => {
     renderTabel(document.getElementById("filterGroep").value, e.target.value);
   });
+
+  function toonFinancieelFeatures() {
+    const summaryBtn = document.getElementById("toggleSummary");
+    const exportBtn = document.getElementById("exportPdfBtn");
+    if (magBeheren()) {
+      summaryBtn.style.display = "inline-block";
+      exportBtn.style.display = "inline-block";
+    } else {
+      summaryBtn.style.display = "none";
+      exportBtn.style.display = "none";
+      document.getElementById("summaryContent").style.display = "none";
+    }
+  }
 });
