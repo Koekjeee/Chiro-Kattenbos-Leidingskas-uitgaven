@@ -157,34 +157,45 @@ function renderTabel(filterGroep = "", filterBetaald = "") {
             };
             c7.appendChild(btn);
 
-            // Checkbox betaald
-            const c8 = rij.insertCell(8);
-            c8.className = "betaald-toggle";
-            const cb = document.createElement("input");
-            cb.type = "checkbox";
-            cb.checked = u.betaald;
-            cb.disabled = !magBeheren();
-            cb.onchange = () => {
-              if (magBeheren()) {
-                firebase
-                  .database()
-                  .ref("uitgaven/" + u.nummer)
-                  .update({ betaald: cb.checked }, err => {
-                    if (!err) {
-                      renderTabel(
-                        document.getElementById("filterGroep").value,
-                        document.getElementById("filterBetaald").value
-                      );
-                    }
-                  });
-              } else {
-                cb.checked = !cb.checked;
-              }
-            };
-            c8.appendChild(cb);
-          });
+// … binnen je forEach(u => { … }) …
+
+// Checkbox betaald
+const c8 = rij.insertCell(8);
+c8.className = "betaald-toggle";
+
+const cb = document.createElement("input");
+cb.type = "checkbox";
+cb.checked = u.betaald;
+cb.disabled = !magBeheren();
+
+cb.onchange = () => {
+  if (magBeheren()) {
+    firebase
+      .database()
+      .ref("uitgaven/" + u.nummer)
+      .update({ betaald: cb.checked }, err => {
+        if (!err) {
+          // her-renderen met dezelfde filters
+          renderTabel(
+            document.getElementById("filterGroep").value,
+            document.getElementById("filterBetaald").value
+          );
+        }
       });
+  } else {
+    cb.checked = !cb.checked;
   }
+};  // sluit cb.onchange af
+
+c8.appendChild(cb);
+
+// … dan sluit je de forEach correct af …
+});  // ← .forEach(u => { … }) sluit
+
+// én sluit je de .once callback correct af …
+});  // ← .once("value", snap => { … }) sluit
+
+}    // ← sluit function renderTabel af
 
   // → PDF-export setup
   function setupPdfExport() {
@@ -366,5 +377,6 @@ function renderTabel(filterGroep = "", filterBetaald = "") {
     renderTabel(document.getElementById("filterGroep").value, e.target.value);
   });
 });
+
 
 
