@@ -193,7 +193,7 @@ c8.appendChild(cb);
 });  // ← .forEach(u => { … }) sluit
 
 // én sluit je de .once callback correct af …
-});  // ← .once("value", snap => { … }) sluit
+})  // ← .once("value", snap => { … }) sluit
 
 }    // ← sluit function renderTabel af
 
@@ -377,6 +377,7 @@ c8.appendChild(cb);
     renderTabel(document.getElementById("filterGroep").value, e.target.value);
   });
 });
+
 
 
 
