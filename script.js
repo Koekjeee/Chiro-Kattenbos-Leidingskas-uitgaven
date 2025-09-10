@@ -110,11 +110,10 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // → Render uitgaven-tabel
- function renderTabel(filterGroep = "", filterBetaald = "") {
+function renderTabel(filterGroep = "", filterBetaald = "") {
   const tbody = document.querySelector("#overzicht tbody");
   tbody.innerHTML = "";
 
-  // Bouw de juiste query: leiding alleen eigen groep; financieel alles
   let query = firebase.database().ref("uitgaven");
   if (currentUser.rol === "leiding") {
     query = query.orderByChild("groep").equalTo(currentUser.groep);
@@ -125,7 +124,6 @@ document.addEventListener("DOMContentLoaded", () => {
     .then(snap => {
       const data = snap.val() || {};
       Object.values(data)
-        // nu alleen nog filters op betaalstatus en extra groep
         .filter(u =>
           (!filterGroep || u.groep === filterGroep) &&
           (filterBetaald === "" || String(u.betaald) === filterBetaald)
@@ -133,19 +131,14 @@ document.addEventListener("DOMContentLoaded", () => {
         .sort((a, b) => b.nummer - a.nummer)
         .forEach(u => {
           const rij = tbody.insertRow();
-          rij.style.backgroundColor = groepKleuren[u.groep] || "#fff";
-
-          rij.insertCell(0).textContent = u.nummer;
-          rij.insertCell(1).textContent = u.groep;
-          rij.insertCell(2).textContent = `€${u.bedrag}`;
-          rij.insertCell(3).textContent = u.activiteit;
-          rij.insertCell(4).textContent = u.datum;
-          rij.insertCell(5).textContent = u.betaald ? "✅" : "❌";
-          // … vul de rest van je kolommen hier aan …
+          // … vul hier je cells …
         });
     })
     .catch(err => console.error("Lezen uitgaven mislukt:", err));
-}
+}   // ← sluit renderTabel
+
+// … én onderaan je bestand …
+})(); // ← sluit de IIFE
 
             // Verwijder-knop
             const c7 = rij.insertCell(7);
@@ -373,4 +366,5 @@ document.addEventListener("DOMContentLoaded", () => {
     renderTabel(document.getElementById("filterGroep").value, e.target.value);
   });
 });
+
 
