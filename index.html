@@ -28,8 +28,9 @@
   <!-- 🔐 Login -->
   <div id="loginScherm">
     <h2>Inloggen</h2>
-    <p>Voer het wachtwoord in om toegang te krijgen:</p>
-    <input type="password" id="wachtwoord" placeholder="Wachtwoord" />
+    <p>Log in met je e-mailadres en wachtwoord:</p>
+    <input type="email" id="loginEmail" placeholder="E-mailadres" required />
+    <input type="password" id="loginWachtwoord" placeholder="Wachtwoord" required />
     <button id="loginKnop">Inloggen</button>
     <p id="loginFout" style="color: red;"></p>
   </div>
@@ -37,6 +38,9 @@
   <!-- 📋 App -->
   <div id="appInhoud" style="display: none;">
     <h1>Chiro Kattenbos – Uitgavenbeheer</h1>
+
+    <!-- 🔓 Uitloggen -->
+    <button id="logoutKnop" style="float: right;">Uitloggen</button>
 
     <!-- PDF-export knop -->
     <button id="exportPdfBtn" class="pdf-export-btn" title="Exporteer uitgaven als PDF">📄</button>
@@ -132,6 +136,43 @@
 
   <!-- jsPDF voor PDF-export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <!-- 🔐 Firebase login script -->
+  <script>
+    document.getElementById("loginKnop").addEventListener("click", function () {
+      const email = document.getElementById("loginEmail").value;
+      const wachtwoord = document.getElementById("loginWachtwoord").value;
+      const fout = document.getElementById("loginFout");
+
+      firebase.auth().signInWithEmailAndPassword(email, wachtwoord)
+        .then(() => {
+          document.getElementById("loginScherm").style.display = "none";
+          document.getElementById("appInhoud").style.display = "block";
+          fout.textContent = "";
+        })
+        .catch(error => {
+          fout.textContent = "Login mislukt: " + error.message;
+        });
+    });
+
+    document.getElementById("logoutKnop").addEventListener("click", function () {
+      firebase.auth().signOut().then(() => {
+        document.getElementById("appInhoud").style.display = "none";
+        document.getElementById("loginScherm").style.display = "block";
+      });
+    });
+
+    firebase.auth().onAuthStateChanged(user => {
+      if (user) {
+        document.getElementById("loginScherm").style.display = "none";
+        document.getElementById("appInhoud").style.display = "block";
+      } else {
+        document.getElementById("appInhoud").style.display = "none";
+        document.getElementById("loginScherm").style.display = "block";
+      }
+    });
+  </script>
+
   <script src="script.js"></script>
 </body>
 </html>
