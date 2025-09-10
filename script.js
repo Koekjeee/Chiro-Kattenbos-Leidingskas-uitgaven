@@ -358,7 +358,11 @@ document.addEventListener("DOMContentLoaded", () => {
     uitgavenRef.once("value").then(snap => {
       const data = snap.val() || {};
       const nummers = Object.values(data).map(u => u.nummer || 0);
-      const nieuwNummer = (nummers.length ? Math.max(...nummers) : 1000) + 1;
+      // Random 4-cijferig nummer, check op uniekheid
+      let nieuwNummer;
+      do {
+        nieuwNummer = Math.floor(1000 + Math.random() * 9000);
+      } while (nummers.includes(nieuwNummer));
 
       uitgavenRef.child(nieuwNummer).set({
         nummer: nieuwNummer,
