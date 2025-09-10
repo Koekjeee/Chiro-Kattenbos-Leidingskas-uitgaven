@@ -229,4 +229,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
     firebase.database().ref("uitgaven/" + id).set(obj, err => {
       if (!err) {
-        document.getElementById("uit
+        document.getElementById("uitgaveForm").reset();
+        renderTabel(
+          document
