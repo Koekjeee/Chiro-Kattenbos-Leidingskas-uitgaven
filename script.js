@@ -114,11 +114,13 @@ function renderTabel(filterGroep = "", filterBetaald = "") {
   const tbody = document.querySelector("#overzicht tbody");
   tbody.innerHTML = "";
 
+  // Bouw de query: leiding alleen eigen groep, financieel alles
   let query = firebase.database().ref("uitgaven");
   if (currentUser.rol === "leiding") {
     query = query.orderByChild("groep").equalTo(currentUser.groep);
   }
 
+  // Haal de data één keer op
   query
     .once("value")
     .then(snap => {
@@ -131,11 +133,39 @@ function renderTabel(filterGroep = "", filterBetaald = "") {
         .sort((a, b) => b.nummer - a.nummer)
         .forEach(u => {
           const rij = tbody.insertRow();
-          // … vul hier je cells …
-        });
-    })
-    .catch(err => console.error("Lezen uitgaven mislukt:", err));
-}   // ← sluit renderTabel
+
+          // … je cellen bouwen …
+          // Voorbeeld checkbox:
+          const c8 = rij.insertCell(7);
+          c8.className = "betaald-toggle";
+          const cb = document.createElement("input");
+          cb.type = "checkbox";
+          cb.checked = u.betaald;
+          cb.disabled = !magBeheren();
+          cb.onchange = () => {
+            if (magBeheren()) {
+              firebase
+                .database()
+                .ref("uitgaven/" + u.nummer)
+                .update({ betaald: cb.checked }, err => {
+                  if (!err) {
+                    renderTabel(filterGroep, filterBetaald);
+                  }
+                });
+            } else {
+              cb.checked = !cb.checked;
+            }
+          };
+          c8.appendChild(cb);
+        });  // ← sluit .forEach(u => { … })
+
+    })          // ← sluit .then(snap => { … })
+    .catch(err => {
+      console.error("Lezen uitgaven mislukt:", err);
+    });         // ← sluit .catch
+
+}             // ← sluit function renderTabel
+  
 
 // … én onderaan je bestand …
 })(); // ← sluit de IIFE
@@ -377,6 +407,7 @@ c8.appendChild(cb);
     renderTabel(document.getElementById("filterGroep").value, e.target.value);
   });
 });
+
 
 
 
