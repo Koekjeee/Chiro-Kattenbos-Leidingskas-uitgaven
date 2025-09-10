@@ -190,7 +190,7 @@ cb.onchange = () => {
 c8.appendChild(cb);
 
 // … dan sluit je de forEach correct af …
-});  // ← .forEach(u => { … }) sluit
+})  // ← .forEach(u => { … }) sluit
 
 // én sluit je de .once callback correct af …
 })  // ← .once("value", snap => { … }) sluit
@@ -377,6 +377,7 @@ c8.appendChild(cb);
     renderTabel(document.getElementById("filterGroep").value, e.target.value);
   });
 });
+
 
 
 
