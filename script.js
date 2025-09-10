@@ -133,62 +133,61 @@ document.addEventListener("DOMContentLoaded", () => {
           .forEach(u => {
             const rij = tbody.insertRow();
 
-            // # (nummer)
             rij.insertCell(0).textContent = u.nummer || "-";
-            // Groep
             rij.insertCell(1).textContent = u.groep || "-";
-            // Bedrag
             rij.insertCell(2).textContent = u.bedrag ? `€${u.bedrag}` : "-";
-            // Activiteit
             rij.insertCell(3).textContent = u.activiteit || "-";
-            // Datum
             rij.insertCell(4).textContent = u.datum || "-";
-            // Betaald status (X of ✓)
             const betaaldStatusCell = rij.insertCell(5);
             betaaldStatusCell.className = "betaald-status";
             betaaldStatusCell.textContent = u.betaald ? "✓" : "✗";
             betaaldStatusCell.style.color = u.betaald ? "#27ae60" : "#e74c3c";
-            // Actie (verwijder-knop)
-            const actieCell = rij.insertCell(6);
-            const btn = document.createElement("button");
-            btn.textContent = "Verwijder";
-            btn.className = "verwijder";
-            btn.disabled = !magBeheren();
-            btn.onclick = () => {
-              if (magBeheren()) {
-                firebase.database().ref("uitgaven/" + u.nummer).remove();
-                renderTabel(
-                  document.getElementById("filterGroep").value,
-                  document.getElementById("filterBetaald").value
-                );
-              }
-            };
-            actieCell.appendChild(btn);
-            // Betaald aanvinken (checkbox)
-            const betaaldCell = rij.insertCell(7);
-            betaaldCell.className = "betaald-toggle";
-            const cb = document.createElement("input");
-            cb.type = "checkbox";
-            cb.checked = u.betaald;
-            cb.disabled = !magBeheren();
-            cb.onchange = () => {
-              if (magBeheren()) {
-                firebase
-                  .database()
-                  .ref("uitgaven/" + u.nummer)
-                  .update({ betaald: cb.checked }, err => {
-                    if (!err) {
-                      renderTabel(
-                        document.getElementById("filterGroep").value,
-                        document.getElementById("filterBetaald").value
-                      );
-                    }
-                  });
-              } else {
-                cb.checked = !cb.checked;
-              }
-            };
-            betaaldCell.appendChild(cb);
+
+            // Alleen voor financieel:
+            if (gebruikersData && gebruikersData.rol === "financieel") {
+              // Actie (verwijder-knop)
+              const actieCell = rij.insertCell(6);
+              const btn = document.createElement("button");
+              btn.textContent = "Verwijder";
+              btn.className = "verwijder";
+              btn.disabled = !magBeheren();
+              btn.onclick = () => {
+                if (magBeheren()) {
+                  firebase.database().ref("uitgaven/" + u.nummer).remove();
+                  renderTabel(
+                    document.getElementById("filterGroep").value,
+                    document.getElementById("filterBetaald").value
+                  );
+                }
+              };
+              actieCell.appendChild(btn);
+
+              // Betaald aanvinken (checkbox)
+              const betaaldCell = rij.insertCell(7);
+              betaaldCell.className = "betaald-toggle";
+              const cb = document.createElement("input");
+              cb.type = "checkbox";
+              cb.checked = u.betaald;
+              cb.disabled = !magBeheren();
+              cb.onchange = () => {
+                if (magBeheren()) {
+                  firebase
+                    .database()
+                    .ref("uitgaven/" + u.nummer)
+                    .update({ betaald: cb.checked }, err => {
+                      if (!err) {
+                        renderTabel(
+                          document.getElementById("filterGroep").value,
+                          document.getElementById("filterBetaald").value
+                        );
+                      }
+                    });
+                } else {
+                  cb.checked = !cb.checked;
+                }
+              };
+              betaaldCell.appendChild(cb);
+            }
           });
       })
       .catch(err => {
@@ -302,6 +301,7 @@ document.addEventListener("DOMContentLoaded", () => {
       renderTabel();
       toonBeheerPaneel();
       toonFinancieelFeatures();
+      toonFinancieelKolommen();
     } else {
       document.getElementById("appInhoud").style.display = "none";
       document.getElementById("loginScherm").style.display = "block";
@@ -389,13 +389,17 @@ function toonFinancieelFeatures() {
   }
 }
 
-  // Init
-  firebase
-    .database()
-    .ref("instellingen/")
-    .once("value")
-    .then(snap => {
-      const data = snap.val() || {};
-      document.getElementById("appTitel").textContent = data.titel || "Chiro Uitgaven";
-    });
+function toonFinancieelKolommen() {
+  const betaaldKolom = document.querySelector("#overzicht th:nth-child(6), #overzicht td:nth-child(6)");
+  const actieKolom = document.querySelector("#overzicht th:nth-child(7), #overzicht td:nth-child(7)");
+  const toggle = gebruikersData && gebruikersData.rol === "financieel";
+
+  if (betaaldKolom) betaaldKolom.style.display = toggle ? "table-cell" : "none";
+  if (actieKolom) actieKolom.style.display = toggle ? "table-cell" : "none";
+}
+
+// Initieel: verberg beheer-paneel en financieel functies
+toonBeheerPaneel();
+toonFinancieelFeatures();
+toonFinancieelKolommen();
 });
