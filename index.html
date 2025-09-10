@@ -16,7 +16,7 @@
       authDomain: "leidingskas.firebaseapp.com",
       databaseURL: "https://leidingskas-default-rtdb.europe-west1.firebasedatabase.app",
       projectId: "leidingskas",
-      storageBucket: "https://leidingskas-default-rtdb.firebaseio.com",
+      storageBucket: "leidingskas.appspot.com",
       messagingSenderId: "4767553066",
       appId: "1:4767553066:web:6018139d9ac3e044bc1553",
       measurementId: "G-XRD72XNPCR"
@@ -38,14 +38,43 @@
   <!-- 📋 App -->
   <div id="appInhoud" style="display: none;">
     <h1>Chiro Kattenbos – Uitgavenbeheer</h1>
-
-    <!-- 🔓 Uitloggen -->
+    <p id="gebruikerInfo"></p>
     <button id="logoutKnop" style="float: right;">Uitloggen</button>
 
-    <!-- PDF-export knop -->
+    <!-- 👤 Beheerpaneel -->
+    <div id="beheerPaneel" style="display: none;">
+      <h3>Gebruikersbeheer</h3>
+      <form id="rolForm">
+        <label for="userUid">Gebruiker UID:</label>
+        <input type="text" id="userUid" required />
+
+        <label for="userGroep">Groep:</label>
+        <select id="userGroep">
+          <option>Ribbels</option>
+          <option>Speelclubs</option>
+          <option>Rakkers</option>
+          <option>Kwiks</option>
+          <option>Tippers</option>
+          <option>Toppers</option>
+          <option>Aspi</option>
+          <option>LEIDING</option>
+          <option value="ALL">ALL</option>
+        </select>
+
+        <label for="userRol">Rol:</label>
+        <select id="userRol">
+          <option value="leiding">Leiding</option>
+          <option value="financieel">Financieel</option>
+        </select>
+
+        <button type="submit">Opslaan</button>
+      </form>
+    </div>
+
+    <!-- 📄 PDF-export -->
     <button id="exportPdfBtn" class="pdf-export-btn" title="Exporteer uitgaven als PDF">📄</button>
 
-    <!-- 📈 Samenvatting per groep -->
+    <!-- 📈 Samenvatting -->
     <div id="summaryPanel">
       <button id="toggleSummary" class="highlight-btn">▸ Toon uitgaven per groep</button>
       <div id="summaryContent">
@@ -56,17 +85,7 @@
     <!-- ✅ Uitgaveformulier -->
     <form id="uitgaveForm">
       <label for="groep">Groep:</label>
-      <select id="groep" required>
-        <option value="">-- Kies een groep --</option>
-        <option>Ribbels</option>
-        <option>Speelclubs</option>
-        <option>Rakkers</option>
-        <option>Kwiks</option>
-        <option>Tippers</option>
-        <option>Toppers</option>
-        <option>Aspi</option>
-        <option>LEIDING</option>
-      </select>
+      <select id="groep" required></select>
 
       <label for="bedrag">Bedrag (€):</label>
       <input type="number" id="bedrag" step="0.01" required />
@@ -134,45 +153,8 @@
     <img id="overlayImage" src="" alt="Vergrote afbeelding" />
   </div>
 
-  <!-- jsPDF voor PDF-export -->
+  <!-- jsPDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
-  <!-- 🔐 Firebase login script -->
-  <script>
-    document.getElementById("loginKnop").addEventListener("click", function () {
-      const email = document.getElementById("loginEmail").value;
-      const wachtwoord = document.getElementById("loginWachtwoord").value;
-      const fout = document.getElementById("loginFout");
-
-      firebase.auth().signInWithEmailAndPassword(email, wachtwoord)
-        .then(() => {
-          document.getElementById("loginScherm").style.display = "none";
-          document.getElementById("appInhoud").style.display = "block";
-          fout.textContent = "";
-        })
-        .catch(error => {
-          fout.textContent = "Login mislukt: " + error.message;
-        });
-    });
-
-    document.getElementById("logoutKnop").addEventListener("click", function () {
-      firebase.auth().signOut().then(() => {
-        document.getElementById("appInhoud").style.display = "none";
-        document.getElementById("loginScherm").style.display = "block";
-      });
-    });
-
-    firebase.auth().onAuthStateChanged(user => {
-      if (user) {
-        document.getElementById("loginScherm").style.display = "none";
-        document.getElementById("appInhoud").style.display = "block";
-      } else {
-        document.getElementById("appInhoud").style.display = "none";
-        document.getElementById("loginScherm").style.display = "block";
-      }
-    });
-  </script>
-
   <script src="script.js"></script>
 </body>
 </html>
