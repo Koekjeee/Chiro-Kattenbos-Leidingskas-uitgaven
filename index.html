@@ -50,15 +50,14 @@
 
         <label for="userGroep">Groep:</label>
         <select id="userGroep">
-          <option>Ribbels</option>
-          <option>Speelclubs</option>
-          <option>Rakkers</option>
-          <option>Kwiks</option>
-          <option>Tippers</option>
-          <option>Toppers</option>
-          <option>Aspi</option>
-          <option>LEIDING</option>
-          <option value="ALL">ALL</option>
+          <option value="ribbels">Ribbels</option>
+          <option value="speelclubs">Speelclubs</option>
+          <option value="rakkers">Rakkers</option>
+          <option value="kwiks">Kwiks</option>
+          <option value="tippers">Tippers</option>
+          <option value="toppers">Toppers</option>
+          <option value="aspi">Aspi</option>
+          <option value="all">ALL</option>
         </select>
 
         <label for="userRol">Rol:</label>
@@ -69,17 +68,6 @@
 
         <button type="submit">Opslaan</button>
       </form>
-    </div>
-
-    <!-- 📄 PDF-export -->
-    <button id="exportPdfBtn" class="pdf-export-btn" title="Exporteer uitgaven als PDF">📄</button>
-
-    <!-- 📈 Samenvatting -->
-    <div id="summaryPanel">
-      <button id="toggleSummary" class="highlight-btn">▸ Toon uitgaven per groep</button>
-      <div id="summaryContent">
-        <ul id="groepSamenvatting"></ul>
-      </div>
     </div>
 
     <!-- ✅ Uitgaveformulier -->
@@ -96,7 +84,10 @@
       <label for="datum">Datum:</label>
       <input type="date" id="datum" required />
 
-      <label><input type="checkbox" id="betaald" /> Betaald</label>
+      <label>
+        <input type="checkbox" id="betaald" />
+        Betaald
+      </label>
 
       <label for="bewijsUpload">Upload bewijsstuk (optioneel):</label>
       <input type="file" id="bewijsUpload" accept="image/*,application/pdf" />
@@ -109,14 +100,13 @@
       <label for="filterGroep">Filter op groep:</label>
       <select id="filterGroep">
         <option value="">Alle groepen</option>
-        <option>Ribbels</option>
-        <option>Speelclubs</option>
-        <option>Rakkers</option>
-        <option>Kwiks</option>
-        <option>Tippers</option>
-        <option>Toppers</option>
-        <option>Aspi</option>
-        <option>LEIDING</option>
+        <option value="ribbels">Ribbels</option>
+        <option value="speelclubs">Speelclubs</option>
+        <option value="rakkers">Rakkers</option>
+        <option value="kwiks">Kwiks</option>
+        <option value="tippers">Tippers</option>
+        <option value="toppers">Toppers</option>
+        <option value="aspi">Aspi</option>
       </select>
     </div>
 
@@ -141,20 +131,12 @@
           <th>Betaald</th>
           <th>Bewijs</th>
           <th>Actie</th>
-          <th>Betaald aanvinken</th>
         </tr>
       </thead>
       <tbody></tbody>
     </table>
   </div>
 
-  <!-- 🖼️ Vergrote afbeelding overlay -->
-  <div id="imageOverlay" onclick="this.style.display='none'">
-    <img id="overlayImage" src="" alt="Vergrote afbeelding" />
-  </div>
-
-  <!-- jsPDF -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
