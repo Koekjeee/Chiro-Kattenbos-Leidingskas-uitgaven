@@ -86,13 +86,11 @@
       <label for="datum">Datum:</label>
       <input type="date" id="datum" required />
 
-      <label>
-        <input type="checkbox" id="betaald" />
-        Betaald
-      </label>
+<label for="rekeningNummer">Rekeningnummer:</label>
+<input type="text" id="rekeningNummer" required placeholder="BE00 0000 0000 0000" />
 
-      <label for="bewijsUpload">Upload bewijsstuk (optioneel):</label>
-      <input type="file" id="bewijsUpload" accept="image/*,application/pdf" />
+<label for="bewijsUpload">Upload bewijsstuk (verplicht):</label>
+<input type="file" id="bewijsUpload" accept="image/*,application/pdf" required />
 
       <button type="submit">Toevoegen</button>
     </form>
