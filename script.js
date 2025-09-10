@@ -330,7 +330,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const b = parseFloat(document.getElementById("bedrag").value) || 0;
     const a = document.getElementById("activiteit").value;
     const d = document.getElementById("datum").value;
-    const p = document.getElementById("betaald").checked;
     const rekeningNummer = document.getElementById("rekeningNummer").value.trim();
     if (!rekeningNummer) {
       return alert("Vul je rekeningnummer in.");
@@ -419,3 +418,4 @@ toonBeheerPaneel();
 toonFinancieelFeatures();
 toonFinancieelKolommen();
 });
+
