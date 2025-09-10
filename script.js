@@ -224,9 +224,39 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     let bewijsUrl = "";
-    if (file)
+    if (file) {
+      try {
+        bewijsUrl = await uploadBewijs(file);
+      } catch (err) {
+        console.error("Upload mislukt:", err);
+        return alert("Upload van bewijsstuk is mislukt.");
+      }
+    }
 
-        // Filters
+    const id = Date.now();
+    const obj = {
+      nummer: id,
+      groep: g,
+      bedrag: b.toFixed(2),
+      activiteit: a,
+      datum: d,
+      betaald: p,
+      bewijsUrl: bewijsUrl,
+      status: "in_behandeling"
+    };
+
+    firebase.database().ref("uitgaven/" + id).set(obj, err => {
+      if (!err) {
+        document.getElementById("uitgaveForm").reset();
+        renderTabel(
+          document.getElementById("filterGroep").value,
+          document.getElementById("filterBetaald").value
+        );
+      }
+    });
+  });
+
+  // Filters
   document.getElementById("filterGroep")
     .addEventListener("change", e =>
       renderTabel(e.target.value, document.getElementById("filterBetaald").value)
@@ -237,4 +267,3 @@ document.addEventListener("DOMContentLoaded", function () {
       renderTabel(document.getElementById("filterGroep").value, e.target.value)
     );
 });
-
