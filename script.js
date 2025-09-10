@@ -133,30 +133,23 @@ document.addEventListener("DOMContentLoaded", () => {
           .forEach(u => {
             const rij = tbody.insertRow();
 
+            // # (nummer)
+            rij.insertCell(0).textContent = u.nummer || "-";
             // Groep
-            rij.insertCell(0).textContent = u.groep;
+            rij.insertCell(1).textContent = u.groep || "-";
             // Bedrag
-            rij.insertCell(1).textContent = `€${u.bedrag}`;
+            rij.insertCell(2).textContent = u.bedrag ? `€${u.bedrag}` : "-";
             // Activiteit
-            rij.insertCell(2).textContent = u.activiteit;
+            rij.insertCell(3).textContent = u.activiteit || "-";
             // Datum
-            rij.insertCell(3).textContent = u.datum;
-            // Bewijs
-            const bewijsCell = rij.insertCell(4);
-            if (u.bewijsUrl) {
-              const link = document.createElement("a");
-              link.href = u.bewijsUrl;
-              link.textContent = "Bekijk";
-              link.target = "_blank";
-              bewijsCell.appendChild(link);
-            } else {
-              bewijsCell.textContent = "-";
-            }
-            // Status
-            rij.insertCell(5).textContent = u.status || "";
-
-            // Verwijder-knop
-            const c6 = rij.insertCell(6);
+            rij.insertCell(4).textContent = u.datum || "-";
+            // Betaald status (X of ✓)
+            const betaaldStatusCell = rij.insertCell(5);
+            betaaldStatusCell.className = "betaald-status";
+            betaaldStatusCell.textContent = u.betaald ? "✓" : "✗";
+            betaaldStatusCell.style.color = u.betaald ? "#27ae60" : "#e74c3c";
+            // Actie (verwijder-knop)
+            const actieCell = rij.insertCell(6);
             const btn = document.createElement("button");
             btn.textContent = "Verwijder";
             btn.className = "verwijder";
@@ -170,11 +163,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 );
               }
             };
-            c6.appendChild(btn);
-
-            // Checkbox betaald
-            const c7 = rij.insertCell(7);
-            c7.className = "betaald-toggle";
+            actieCell.appendChild(btn);
+            // Betaald aanvinken (checkbox)
+            const betaaldCell = rij.insertCell(7);
+            betaaldCell.className = "betaald-toggle";
             const cb = document.createElement("input");
             cb.type = "checkbox";
             cb.checked = u.betaald;
@@ -196,7 +188,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 cb.checked = !cb.checked;
               }
             };
-            c7.appendChild(cb);
+            betaaldCell.appendChild(cb);
           });
       })
       .catch(err => {
@@ -385,16 +377,25 @@ document.addEventListener("DOMContentLoaded", () => {
     renderTabel(document.getElementById("filterGroep").value, e.target.value);
   });
 
-  function toonFinancieelFeatures() {
-    const summaryBtn = document.getElementById("toggleSummary");
-    const exportBtn = document.getElementById("exportPdfBtn");
-    if (magBeheren()) {
-      summaryBtn.style.display = "inline-block";
-      exportBtn.style.display = "inline-block";
-    } else {
-      summaryBtn.style.display = "none";
-      exportBtn.style.display = "none";
-      document.getElementById("summaryContent").style.display = "none";
-    }
+function toonFinancieelFeatures() {
+  const summaryBtn = document.getElementById("toggleSummary");
+  const exportBtn = document.getElementById("exportPdfBtn");
+  if (gebruikersData && gebruikersData.rol === "financieel") {
+    if (summaryBtn) summaryBtn.style.display = "block";
+    if (exportBtn) exportBtn.style.display = "block";
+  } else {
+    if (summaryBtn) summaryBtn.style.display = "none";
+    if (exportBtn) exportBtn.style.display = "none";
   }
+}
+
+  // Init
+  firebase
+    .database()
+    .ref("instellingen/")
+    .once("value")
+    .then(snap => {
+      const data = snap.val() || {};
+      document.getElementById("appTitel").textContent = data.titel || "Chiro Uitgaven";
+    });
 });
