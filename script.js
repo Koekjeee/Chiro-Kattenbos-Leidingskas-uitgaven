@@ -331,7 +331,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const a = document.getElementById("activiteit").value;
     const d = document.getElementById("datum").value;
     const p = document.getElementById("betaald").checked;
+    const rekeningNummer = document.getElementById("rekeningNummer").value.trim();
+    if (!rekeningNummer) {
+      return alert("Vul je rekeningnummer in.");
+    }
     const file = document.getElementById("bewijsUpload").files[0];
+    if (!file) {
+      return alert("Upload een bewijsstuk.");
+    }
 
     if (!g || isNaN(b) || !a || !d) {
       return alert("Gelieve alle velden correct in te vullen.");
