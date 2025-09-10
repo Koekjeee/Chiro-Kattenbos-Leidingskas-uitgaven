@@ -5,15 +5,13 @@ document.addEventListener("DOMContentLoaded", function () {
   ];
 
   const groepKleuren = {
-    Ribbels: "#cce5ff",
-    Speelclubs: "#ffe5cc",
-    Rakkers: "#e5ffcc",
-    Kwiks: "#ffccf2",
-    Tippers: "#d5ccff",
-    Toppers: "#ccffd5",
-    Aspi: "#ffd5cc",
-    LEIDING: "#dddddd"
+    Ribbels: "#cce5ff", Speelclubs: "#ffe5cc", Rakkers: "#e5ffcc",
+    Kwiks: "#ffccf2", Tippers: "#d5ccff", Toppers: "#ccffd5",
+    Aspi: "#ffd5cc", LEIDING: "#dddddd"
   };
+
+  let huidigeGebruiker = null;
+  let gebruikersData = null;
 
   const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/<jouw-cloud-name>/upload";
   const CLOUDINARY_PRESET = "chiro_upload_fotos";
@@ -22,12 +20,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("upload_preset", CLOUDINARY_PRESET);
-
-    const res = await fetch(CLOUDINARY_URL, {
-      method: "POST",
-      body: formData
-    });
-
+    const res = await fetch(CLOUDINARY_URL, { method: "POST", body: formData });
     const data = await res.json();
     return data.secure_url;
   }
@@ -52,7 +45,9 @@ document.addEventListener("DOMContentLoaded", function () {
     firebase.database().ref("uitgaven").once("value", snapshot => {
       const data = snapshot.val() || {};
       Object.values(data).forEach(u => {
-        totals[u.groep] += parseFloat(u.bedrag);
+        if (magZien(u.groep)) {
+          totals[u.groep] += parseFloat(u.bedrag);
+        }
       });
 
       alleGroepen.forEach(groep => {
@@ -68,60 +63,6 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  function setupPdfExport() {
-    const btn = document.getElementById("exportPdfBtn");
-    btn.addEventListener("click", async () => {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
-
-      const now = new Date();
-      const timestamp = now.toLocaleString("nl-NL", {
-        day: "2-digit", month: "2-digit", year: "numeric",
-        hour: "2-digit", minute: "2-digit", second: "2-digit"
-      });
-      const pageWidth = doc.internal.pageSize.getWidth();
-      doc.setFontSize(10);
-      doc.text(timestamp, pageWidth - 20, 10, { align: "right" });
-
-      let y = 20;
-      doc.setFontSize(16);
-      doc.text("Uitgaven activiteitenkas per groep", 20, y);
-      y += 10;
-
-      const perGroep = {};
-      alleGroepen.forEach(g => perGroep[g] = []);
-
-      const snap = await firebase.database().ref("uitgaven").once("value");
-      const data = snap.val() || {};
-      Object.values(data).forEach(u => perGroep[u.groep].push(u));
-
-      alleGroepen.forEach(groep => {
-        const items = perGroep[groep];
-        if (!items.length) return;
-
-        doc.setFontSize(14);
-        doc.text(groep, 20, y);
-        y += 8;
-        doc.setFontSize(11);
-
-        items.forEach(u => {
-          const regel = `${u.datum} – €${u.bedrag} – ${u.activiteit} ` +
-                        (u.betaald ? "(Betaald)" : "(Niet betaald)");
-          doc.text(regel, 25, y);
-          y += 6;
-          if (y > 280) {
-            doc.addPage();
-            y = 20;
-          }
-        });
-
-        y += 8;
-      });
-
-      doc.save("uitgaven_activiteitenkas_per_groep.pdf");
-    });
-  }
-
   function renderTabel(filterGroep = "", filterBetaald = "") {
     const tbody = document.querySelector("#overzicht tbody");
     tbody.innerHTML = "";
@@ -129,6 +70,7 @@ document.addEventListener("DOMContentLoaded", function () {
       const data = snap.val() || {};
       Object.values(data)
         .filter(u =>
+          magZien(u.groep) &&
           (!filterGroep || u.groep === filterGroep) &&
           (filterBetaald === "" || String(u.betaald) === filterBetaald)
         )
@@ -163,11 +105,15 @@ document.addEventListener("DOMContentLoaded", function () {
           btn.textContent = "Verwijder";
           btn.className = "verwijder";
           btn.onclick = () => {
-            firebase.database().ref("uitgaven/" + u.nummer).remove();
-            renderTabel(
-              document.getElementById("filterGroep").value,
-              document.getElementById("filterBetaald").value
-            );
+            if (magBeheren(u.groep)) {
+              firebase.database().ref("uitgaven/" + u.nummer).remove();
+              renderTabel(
+                document.getElementById("filterGroep").value,
+                document.getElementById("filterBetaald").value
+              );
+            } else {
+              alert("Je hebt geen rechten om deze uitgave te verwijderen.");
+            }
           };
           c7.appendChild(btn);
 
@@ -177,15 +123,20 @@ document.addEventListener("DOMContentLoaded", function () {
           cb.type = "checkbox";
           cb.checked = u.betaald;
           cb.onchange = () => {
-            firebase.database().ref("uitgaven/" + u.nummer)
-              .update({ betaald: cb.checked }, err => {
-                if (!err) {
-                  renderTabel(
-                    document.getElementById("filterGroep").value,
-                    document.getElementById("filterBetaald").value
-                  );
-                }
-              });
+            if (magBeheren(u.groep)) {
+              firebase.database().ref("uitgaven/" + u.nummer)
+                .update({ betaald: cb.checked }, err => {
+                  if (!err) {
+                    renderTabel(
+                      document.getElementById("filterGroep").value,
+                      document.getElementById("filterBetaald").value
+                    );
+                  }
+                });
+            } else {
+              alert("Je hebt geen rechten om dit aan te passen.");
+              cb.checked = !cb.checked;
+            }
           };
           c8.appendChild(cb);
         });
@@ -203,6 +154,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (!g || isNaN(b) || !a || !d) {
       return alert("Gelieve alle velden correct in te vullen.");
+    }
+
+    if (!magIndienen(g)) {
+      return alert("Je mag geen uitgave indienen voor deze groep.");
     }
 
     let bewijsUrl = "";
@@ -231,4 +186,27 @@ document.addEventListener("DOMContentLoaded", function () {
       if (!err) {
         document.getElementById("uitgaveForm").reset();
         renderTabel(
-          document
+          document.getElementById("filterGroep").value,
+          document.getElementById("filterBetaald").value
+        );
+      }
+    });
+  });
+
+  document.getElementById("filterGroep").addEventListener("change", e =>
+    renderTabel(e.target.value, document.getElementById("filterBetaald").value)
+  );
+
+  document.getElementById("filterBetaald").addEventListener("change", e =>
+    renderTabel(document.getElementById("filterGroep").value, e.target.value)
+  );
+
+  // 🔐 Rechtencontrole
+  function magZien(groep) {
+    if (!gebruikersData) return false;
+    return gebruikersData.rol === "financieel" || gebruikersData.groep === groep;
+  }
+
+  function magIndienen(groep) {
+    if (!gebruikersData) return false;
+    return gebruikersData.rol === "financieel
