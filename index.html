@@ -23,6 +23,8 @@
     };
     firebase.initializeApp(firebaseConfig);
   </script>
+  <!-- jsPDF voor PDF-export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
   <!-- 🔐 Login -->
@@ -50,14 +52,14 @@
 
         <label for="userGroep">Groep:</label>
         <select id="userGroep">
-          <option value="ribbels">Ribbels</option>
-          <option value="speelclubs">Speelclubs</option>
-          <option value="rakkers">Rakkers</option>
-          <option value="kwiks">Kwiks</option>
-          <option value="tippers">Tippers</option>
-          <option value="toppers">Toppers</option>
-          <option value="aspi">Aspi</option>
-          <option value="all">ALL</option>
+          <option value="Ribbels">Ribbels</option>
+          <option value="Speelclubs">Speelclubs</option>
+          <option value="Rakkers">Rakkers</option>
+          <option value="Kwiks">Kwiks</option>
+          <option value="Tippers">Tippers</option>
+          <option value="Toppers">Toppers</option>
+          <option value="Aspi">Aspi</option>
+          <option value="LEIDING">LEIDING</option>
         </select>
 
         <label for="userRol">Rol:</label>
@@ -100,13 +102,14 @@
       <label for="filterGroep">Filter op groep:</label>
       <select id="filterGroep">
         <option value="">Alle groepen</option>
-        <option value="ribbels">Ribbels</option>
-        <option value="speelclubs">Speelclubs</option>
-        <option value="rakkers">Rakkers</option>
-        <option value="kwiks">Kwiks</option>
-        <option value="tippers">Tippers</option>
-        <option value="toppers">Toppers</option>
-        <option value="aspi">Aspi</option>
+        <option value="Ribbels">Ribbels</option>
+        <option value="Speelclubs">Speelclubs</option>
+        <option value="Rakkers">Rakkers</option>
+        <option value="Kwiks">Kwiks</option>
+        <option value="Tippers">Tippers</option>
+        <option value="Toppers">Toppers</option>
+        <option value="Aspi">Aspi</option>
+        <option value="LEIDING">LEIDING</option>
       </select>
     </div>
 
@@ -128,13 +131,23 @@
           <th>Bedrag</th>
           <th>Activiteit</th>
           <th>Datum</th>
-          <th>Betaald</th>
+          <th>Status</th>
           <th>Bewijs</th>
           <th>Actie</th>
+          <th>Betaald</th>
         </tr>
       </thead>
       <tbody></tbody>
     </table>
+
+    <!-- Samenvatting per groep -->
+    <button id="toggleSummary">▸ Toon uitgaven per groep</button>
+    <div id="summaryContent" style="display:none;">
+      <ul id="groepSamenvatting"></ul>
+    </div>
+
+    <!-- PDF-export knop -->
+    <button id="exportPdfBtn">Exporteer naar PDF</button>
   </div>
 
   <script src="script.js"></script>
