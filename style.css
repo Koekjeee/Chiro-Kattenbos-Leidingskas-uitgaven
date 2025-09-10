@@ -80,4 +80,79 @@ table {
   width: 100%;
   border-collapse: collapse;
   background: #fff;
-  border-radius:
+  border-radius: 8px;
+  overflow: hidden;
+  margin-top: 20px;
+}
+
+th {
+  background-color: #007bff;
+  color: white;
+  padding: 12px;
+  text-align: left;
+}
+
+td {
+  padding: 12px;
+  border-top: 1px solid #eee;
+  text-align: left;
+}
+
+/* Tabel */
+#overzicht {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-top: 20px;
+  font-family: inherit;
+}
+
+#overzicht th {
+  background: #0084ff;
+  color: #fff;
+  font-weight: bold;
+  padding: 12px 8px;
+  text-align: center;
+  border-radius: 8px 8px 0 0;
+}
+
+#overzicht td {
+  padding: 10px 8px;
+  text-align: center;
+  background: #ffd5f2;
+  font-size: 1rem;
+}
+
+#overzicht tr {
+  border-radius: 0 0 8px 8px;
+}
+
+/* Betaald status */
+.betaald-status {
+  font-size: 1.5em;
+  color: #e74c3c;
+  font-weight: bold;
+}
+
+/* Betaald vinkje */
+.betaald-toggle input[type="checkbox"] {
+  transform: scale(1.2);
+}
+
+/* Verwijder knop */
+.verwijder {
+  background: #e74c3c;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 24px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.verwijder:disabled {
+  background: #aaa;
+  cursor: not-allowed;
+}
+
