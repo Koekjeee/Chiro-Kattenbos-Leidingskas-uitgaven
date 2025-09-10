@@ -1,6 +1,4 @@
 document.addEventListener("DOMContentLoaded", function () {
-  const correctWachtwoord = "chiro2025";
-
   const alleGroepen = [
     "Ribbels", "Speelclubs", "Rakkers", "Kwiks",
     "Tippers", "Toppers", "Aspi", "LEIDING"
@@ -124,22 +122,6 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  function controleerWachtwoord() {
-    const invoer = document.getElementById("wachtwoord").value;
-    const fout = document.getElementById("loginFout");
-    if (invoer === correctWachtwoord) {
-      document.getElementById("loginScherm").style.display = "none";
-      document.getElementById("appInhoud").style.display = "block";
-      fout.textContent = "";
-      setupSummaryToggle();
-      setupPdfExport();
-      renderTabel();
-    } else {
-      fout.textContent = "Wachtwoord is onjuist.";
-    }
-  }
-  document.getElementById("loginKnop").addEventListener("click", controleerWachtwoord);
-
   function renderTabel(filterGroep = "", filterBetaald = "") {
     const tbody = document.querySelector("#overzicht tbody");
     tbody.innerHTML = "";
@@ -247,23 +229,4 @@ document.addEventListener("DOMContentLoaded", function () {
 
     firebase.database().ref("uitgaven/" + id).set(obj, err => {
       if (!err) {
-        document.getElementById("uitgaveForm").reset();
-        renderTabel(
-          document.getElementById("filterGroep").value,
-          document.getElementById("filterBetaald").value
-        );
-      }
-    });
-  });
-
-  // Filters
-  document.getElementById("filterGroep")
-    .addEventListener("change", e =>
-      renderTabel(e.target.value, document.getElementById("filterBetaald").value)
-    );
-
-  document.getElementById("filterBetaald")
-    .addEventListener("change", e =>
-      renderTabel(document.getElementById("filterGroep").value, e.target.value)
-    );
-});
+        document.getElementById("uit
