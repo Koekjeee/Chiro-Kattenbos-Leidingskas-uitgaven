@@ -88,7 +88,8 @@ document.addEventListener("DOMContentLoaded", () => {
     firebase
       .database()
       .ref("uitgaven")
-      .once("value", snap => {
+      .once("value")
+      .then(snap => {
         const data = snap.val() || {};
         Object.values(data).forEach(u => {
           if (magZien(u.groep)) {
@@ -110,68 +111,54 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // → Render uitgaven-tabel
-function renderTabel(filterGroep = "", filterBetaald = "") {
-  const tbody = document.querySelector("#overzicht tbody");
-  tbody.innerHTML = "";
+  function renderTabel(filterGroep = "", filterBetaald = "") {
+    const tbody = document.querySelector("#overzicht tbody");
+    tbody.innerHTML = "";
 
-  // Bouw de query: leiding alleen eigen groep, financieel alles
-  let query = firebase.database().ref("uitgaven");
-  if (currentUser.rol === "leiding") {
-    query = query.orderByChild("groep").equalTo(currentUser.groep);
-  }
+    // Bouw de query: leiding alleen eigen groep, financieel alles
+    let query = firebase.database().ref("uitgaven");
+    if (gebruikersData && gebruikersData.rol === "leiding") {
+      query = query.orderByChild("groep").equalTo(gebruikersData.groep);
+    }
 
-  // Haal de data één keer op
-  query
-    .once("value")
-    .then(snap => {
-      const data = snap.val() || {};
-      Object.values(data)
-        .filter(u =>
-          (!filterGroep || u.groep === filterGroep) &&
-          (filterBetaald === "" || String(u.betaald) === filterBetaald)
-        )
-        .sort((a, b) => b.nummer - a.nummer)
-        .forEach(u => {
-          const rij = tbody.insertRow();
+    // Haal de data één keer op
+    query
+      .once("value")
+      .then(snap => {
+        const data = snap.val() || {};
+        Object.values(data)
+          .filter(u =>
+            (!filterGroep || u.groep === filterGroep) &&
+            (filterBetaald === "" || String(u.betaald) === filterBetaald)
+          )
+          .sort((a, b) => b.nummer - a.nummer)
+          .forEach(u => {
+            const rij = tbody.insertRow();
 
-          // … je cellen bouwen …
-          // Voorbeeld checkbox:
-          const c8 = rij.insertCell(7);
-          c8.className = "betaald-toggle";
-          const cb = document.createElement("input");
-          cb.type = "checkbox";
-          cb.checked = u.betaald;
-          cb.disabled = !magBeheren();
-          cb.onchange = () => {
-            if (magBeheren()) {
-              firebase
-                .database()
-                .ref("uitgaven/" + u.nummer)
-                .update({ betaald: cb.checked }, err => {
-                  if (!err) {
-                    renderTabel(filterGroep, filterBetaald);
-                  }
-                });
+            // Groep
+            rij.insertCell(0).textContent = u.groep;
+            // Bedrag
+            rij.insertCell(1).textContent = `€${u.bedrag}`;
+            // Activiteit
+            rij.insertCell(2).textContent = u.activiteit;
+            // Datum
+            rij.insertCell(3).textContent = u.datum;
+            // Bewijs
+            const bewijsCell = rij.insertCell(4);
+            if (u.bewijsUrl) {
+              const link = document.createElement("a");
+              link.href = u.bewijsUrl;
+              link.textContent = "Bekijk";
+              link.target = "_blank";
+              bewijsCell.appendChild(link);
             } else {
-              cb.checked = !cb.checked;
+              bewijsCell.textContent = "-";
             }
-          };
-          c8.appendChild(cb);
-        });  // ← sluit .forEach(u => { … })
-
-    })          // ← sluit .then(snap => { … })
-    .catch(err => {
-      console.error("Lezen uitgaven mislukt:", err);
-    });         // ← sluit .catch
-
-}             // ← sluit function renderTabel
-  
-
-// … én onderaan je bestand …
-})(); // ← sluit de IIFE
+            // Status
+            rij.insertCell(5).textContent = u.status || "";
 
             // Verwijder-knop
-            const c7 = rij.insertCell(7);
+            const c6 = rij.insertCell(6);
             const btn = document.createElement("button");
             btn.textContent = "Verwijder";
             btn.className = "verwijder";
@@ -185,47 +172,39 @@ function renderTabel(filterGroep = "", filterBetaald = "") {
                 );
               }
             };
-            c7.appendChild(btn);
+            c6.appendChild(btn);
 
-// … binnen je forEach(u => { … }) …
-
-// Checkbox betaald
-const c8 = rij.insertCell(8);
-c8.className = "betaald-toggle";
-
-const cb = document.createElement("input");
-cb.type = "checkbox";
-cb.checked = u.betaald;
-cb.disabled = !magBeheren();
-
-cb.onchange = () => {
-  if (magBeheren()) {
-    firebase
-      .database()
-      .ref("uitgaven/" + u.nummer)
-      .update({ betaald: cb.checked }, err => {
-        if (!err) {
-          // her-renderen met dezelfde filters
-          renderTabel(
-            document.getElementById("filterGroep").value,
-            document.getElementById("filterBetaald").value
-          );
-        }
+            // Checkbox betaald
+            const c7 = rij.insertCell(7);
+            c7.className = "betaald-toggle";
+            const cb = document.createElement("input");
+            cb.type = "checkbox";
+            cb.checked = u.betaald;
+            cb.disabled = !magBeheren();
+            cb.onchange = () => {
+              if (magBeheren()) {
+                firebase
+                  .database()
+                  .ref("uitgaven/" + u.nummer)
+                  .update({ betaald: cb.checked }, err => {
+                    if (!err) {
+                      renderTabel(
+                        document.getElementById("filterGroep").value,
+                        document.getElementById("filterBetaald").value
+                      );
+                    }
+                  });
+              } else {
+                cb.checked = !cb.checked;
+              }
+            };
+            c7.appendChild(cb);
+          });
+      })
+      .catch(err => {
+        console.error("Lezen uitgaven mislukt:", err);
       });
-  } else {
-    cb.checked = !cb.checked;
   }
-};  // sluit cb.onchange af
-
-c8.appendChild(cb);
-
-// … dan sluit je de forEach correct af …
-); // ← .forEach(u => { … }) sluit
-
-// én sluit je de .once callback correct af …
-})  // ← .once("value", snap => { … }) sluit
-
-}    // ← sluit function renderTabel af
 
   // → PDF-export setup
   function setupPdfExport() {
@@ -407,10 +386,3 @@ c8.appendChild(cb);
     renderTabel(document.getElementById("filterGroep").value, e.target.value);
   });
 });
-
-
-
-
-
-
-
