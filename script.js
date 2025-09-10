@@ -10,11 +10,11 @@ document.addEventListener("DOMContentLoaded", function () {
     Aspi: "#ffd5cc", LEIDING: "#dddddd"
   };
 
-  let huidigeGebruiker = null;
-  let gebruikersData = null;
-
   const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/<jouw-cloud-name>/upload";
   const CLOUDINARY_PRESET = "chiro_upload_fotos";
+
+  let huidigeGebruiker = null;
+  let gebruikersData = null;
 
   async function uploadBewijs(file) {
     const formData = new FormData();
@@ -104,6 +104,7 @@ document.addEventListener("DOMContentLoaded", function () {
           const btn = document.createElement("button");
           btn.textContent = "Verwijder";
           btn.className = "verwijder";
+          btn.disabled = !magBeheren(u.groep);
           btn.onclick = () => {
             if (magBeheren(u.groep)) {
               firebase.database().ref("uitgaven/" + u.nummer).remove();
@@ -111,8 +112,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 document.getElementById("filterGroep").value,
                 document.getElementById("filterBetaald").value
               );
-            } else {
-              alert("Je hebt geen rechten om deze uitgave te verwijderen.");
             }
           };
           c7.appendChild(btn);
@@ -122,6 +121,7 @@ document.addEventListener("DOMContentLoaded", function () {
           const cb = document.createElement("input");
           cb.type = "checkbox";
           cb.checked = u.betaald;
+          cb.disabled = !magBeheren(u.groep);
           cb.onchange = () => {
             if (magBeheren(u.groep)) {
               firebase.database().ref("uitgaven/" + u.nummer)
@@ -134,7 +134,6 @@ document.addEventListener("DOMContentLoaded", function () {
                   }
                 });
             } else {
-              alert("Je hebt geen rechten om dit aan te passen.");
               cb.checked = !cb.checked;
             }
           };
@@ -209,4 +208,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function magIndienen(groep) {
     if (!gebruikersData) return false;
-    return gebruikersData.rol === "financieel
+    return gebruikersData.rol === "financieel" || gebruikersData.groep === groep;
+  }
+
+  function magBeheren(groep) {
+    if (!gebruikersData) return false;
+    return gebruikersData.rol === "financieel";
+  }
+
+  function vulGroepSelectie() {
+    const select = document.getElementById("groep");
+    select.innerHTML = "";
+    const toegestaneGroepen = gebruikersData.rol
