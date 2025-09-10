@@ -129,9 +129,10 @@ document.addEventListener("DOMContentLoaded", () => {
             (!filterGroep || u.groep === filterGroep) &&
             (filterBetaald === "" || String(u.betaald) === filterBetaald)
           )
-          .sort((a, b) => b.nummer - a.nummer)
+          .sort((a, b) => a.nummer - b.nummer)
           .forEach(u => {
             const rij = tbody.insertRow();
+            rij.style.backgroundColor = groepKleuren[u.groep] || "#ffd5f2";
 
             rij.insertCell(0).textContent = u.nummer || "-";
             rij.insertCell(1).textContent = u.groep || "-";
@@ -143,9 +144,7 @@ document.addEventListener("DOMContentLoaded", () => {
             betaaldStatusCell.textContent = u.betaald ? "✓" : "✗";
             betaaldStatusCell.style.color = u.betaald ? "#27ae60" : "#e74c3c";
 
-            // Alleen voor financieel:
             if (gebruikersData && gebruikersData.rol === "financieel") {
-              // Actie (verwijder-knop)
               const actieCell = rij.insertCell(6);
               const btn = document.createElement("button");
               btn.textContent = "Verwijder";
@@ -162,7 +161,6 @@ document.addEventListener("DOMContentLoaded", () => {
               };
               actieCell.appendChild(btn);
 
-              // Betaald aanvinken (checkbox)
               const betaaldCell = rij.insertCell(7);
               betaaldCell.className = "betaald-toggle";
               const cb = document.createElement("input");
@@ -237,7 +235,7 @@ document.addEventListener("DOMContentLoaded", () => {
         doc.setFontSize(11);
 
         items.forEach(u => {
-          const regel = `${u.datum} – €${u.bedrag} – ${u.activiteit} ` +
+          const regel = `#${u.nummer} – ${u.datum} – €${u.bedrag} – ${u.activiteit} ` +
                         (u.betaald ? "(Betaald)" : "(Niet betaald)");
           doc.text(regel, 25, y);
           y += 6;
@@ -348,25 +346,32 @@ document.addEventListener("DOMContentLoaded", () => {
       catch { return alert("Upload bewijsstuk mislukt."); }
     }
 
-    const id = Date.now();
-    firebase.database().ref("uitgaven/" + id).set({
-      nummer: id,
-      groep: g,
-      bedrag: b.toFixed(2),
-      activiteit: a,
-      datum: d,
-      betaald: p,
-      bewijsUrl,
-      status: "in_behandeling"
-    })
-    .then(() => {
-      document.getElementById("uitgaveForm").reset();
-      renderTabel(
-        document.getElementById("filterGroep").value,
-        document.getElementById("filterBetaald").value
-      );
-    })
-    .catch(err => alert("Opslaan mislukt: " + err.message));
+    // Haal alle uitgaven op en bepaal het hoogste nummer
+    const uitgavenRef = firebase.database().ref("uitgaven");
+    uitgavenRef.once("value").then(snap => {
+      const data = snap.val() || {};
+      const nummers = Object.values(data).map(u => u.nummer || 0);
+      const nieuwNummer = (nummers.length ? Math.max(...nummers) : 1000) + 1;
+
+      uitgavenRef.child(nieuwNummer).set({
+        nummer: nieuwNummer,
+        groep: g,
+        bedrag: b.toFixed(2),
+        activiteit: a,
+        datum: d,
+        betaald: p,
+        bewijsUrl,
+        status: "in_behandeling"
+      })
+      .then(() => {
+        document.getElementById("uitgaveForm").reset();
+        renderTabel(
+          document.getElementById("filterGroep").value,
+          document.getElementById("filterBetaald").value
+        );
+      })
+      .catch(err => alert("Opslaan mislukt: " + err.message));
+    });
   });
 
   // → Filters
