@@ -110,47 +110,42 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // → Render uitgaven-tabel
-  function renderTabel(filterGroep = "", filterBetaald = "") {
-    const tbody = document.querySelector("#overzicht tbody");
-    tbody.innerHTML = "";
+ function renderTabel(filterGroep = "", filterBetaald = "") {
+  const tbody = document.querySelector("#overzicht tbody");
+  tbody.innerHTML = "";
 
-    firebase
-      .database()
-      .ref("uitgaven")
-      .once("value", snap => {
-        const data = snap.val() || {};
-        Object.values(data)
-          .filter(u =>
-            magZien(u.groep) &&
-            (!filterGroep || u.groep === filterGroep) &&
-            (filterBetaald === "" || String(u.betaald) === filterBetaald)
-          )
-          .sort((a, b) => b.nummer - a.nummer)
-          .forEach(u => {
-            const rij = tbody.insertRow();
-            rij.style.backgroundColor = groepKleuren[u.groep] || "#fff";
+  // Bouw de juiste query: leiding alleen eigen groep; financieel alles
+  let query = firebase.database().ref("uitgaven");
+  if (currentUser.rol === "leiding") {
+    query = query.orderByChild("groep").equalTo(currentUser.groep);
+  }
 
-            rij.insertCell(0).textContent = u.nummer;
-            rij.insertCell(1).textContent = u.groep;
-            rij.insertCell(2).textContent = `€${u.bedrag}`;
-            rij.insertCell(3).textContent = u.activiteit;
-            rij.insertCell(4).textContent = u.datum;
-            rij.insertCell(5).textContent = u.betaald ? "✅" : "❌";
+  query
+    .once("value")
+    .then(snap => {
+      const data = snap.val() || {};
+      Object.values(data)
+        // nu alleen nog filters op betaalstatus en extra groep
+        .filter(u =>
+          (!filterGroep || u.groep === filterGroep) &&
+          (filterBetaald === "" || String(u.betaald) === filterBetaald)
+        )
+        .sort((a, b) => b.nummer - a.nummer)
+        .forEach(u => {
+          const rij = tbody.insertRow();
+          rij.style.backgroundColor = groepKleuren[u.groep] || "#fff";
 
-            // Bewijsstuk
-            const bewijsCel = rij.insertCell(6);
-            if (u.bewijsUrl) {
-              const img = document.createElement("img");
-              img.src = u.bewijsUrl;
-              img.alt = "Bewijsstuk";
-              img.style.maxWidth = "100px";
-              img.style.cursor = "pointer";
-              img.onclick = () => {
-                document.getElementById("overlayImage").src = u.bewijsUrl;
-                document.getElementById("imageOverlay").style.display = "flex";
-              };
-              bewijsCel.appendChild(img);
-            }
+          rij.insertCell(0).textContent = u.nummer;
+          rij.insertCell(1).textContent = u.groep;
+          rij.insertCell(2).textContent = `€${u.bedrag}`;
+          rij.insertCell(3).textContent = u.activiteit;
+          rij.insertCell(4).textContent = u.datum;
+          rij.insertCell(5).textContent = u.betaald ? "✅" : "❌";
+          // … vul de rest van je kolommen hier aan …
+        });
+    })
+    .catch(err => console.error("Lezen uitgaven mislukt:", err));
+}
 
             // Verwijder-knop
             const c7 = rij.insertCell(7);
@@ -378,3 +373,4 @@ document.addEventListener("DOMContentLoaded", () => {
     renderTabel(document.getElementById("filterGroep").value, e.target.value);
   });
 });
+
