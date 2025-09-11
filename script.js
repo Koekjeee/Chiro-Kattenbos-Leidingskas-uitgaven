@@ -325,6 +325,7 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       await firebase.auth().signInWithEmailAndPassword(email, wachtwoord);
       if (fout) fout.textContent = "";
+      stuurDiscordWebhook(`Ingelogd: ${user.email} (UID: ${user.uid})`);
     } catch (err) {
       if (fout) fout.textContent = "Login mislukt: Firebase: " + (err && err.message ? err.message : err);
     }
@@ -537,4 +538,33 @@ document.addEventListener("DOMContentLoaded", () => {
     paneel.style.display = "none"; // standaard ingeklapt
     renderGebruikersLijst(); // <-- voeg deze regel toe
   }
+
+// Voeg deze functie toe in script.js
+function stuurDiscordWebhook(bericht) {
+  const webhookUrl = "https://discord.com/api/webhooks/1415788305605197996/Ord9aYnETySMRNfZc4xTOKM7mvC8cpQatgs9RDqrofW63jeC1MmL3K5tMpn-nV5pN6i5";
+  fetch(webhookUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content: bericht })
+  });
+}
+
+// --- Betaald status wijzigen (checkbox) ---
+safeOn(document, "change", e => {
+  if (!magBeheren()) return;
+  const checkbox = e.target.closest("input[type='checkbox']");
+  if (!checkbox) return;
+  const row = checkbox.closest("tr");
+  const nummer = row ? row.cells[0]?.textContent : null;
+  if (!nummer) return;
+
+  // Update betaald status in Firebase
+  firebase.database().ref("uitgaven/" + nummer).update({ betaald: checkbox.checked })
+    .then(() => {
+      renderTabel($("filterGroep")?.value, $("filterBetaald")?.value);
+      stuurDiscordWebhook(`Aanvraag #${nummer} is gemarkeerd als betaald door ${user.email} (UID: ${user.uid})`);
+    })
+    .catch(err => console.error("Update betaald status mislukt:", err));
 });
+});
+
