@@ -139,8 +139,7 @@ document.addEventListener("DOMContentLoaded", () => {
         datum: d,
         betaald: false,
         bewijsUrl: bewijsUrl || "",
-        status: "in_behandeling",
-        rekeningNummer: rekeningNummer // <-- deze regel toevoegen!
+        status: "in_behandeling"
       };
 
       // Voorkom undefined velden - Firebase weigert undefined in object
@@ -339,6 +338,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const show = magBeheren();
     toggleBtn.style.display = show ? "block" : "none";
     paneel.style.display = "none"; // standaard ingeklapt
+    renderGebruikersLijst(); // <-- voeg deze regel toe
   }
 
   function toonFinancieelFeatures() {
@@ -455,5 +455,81 @@ document.addEventListener("DOMContentLoaded", () => {
   function toonLogoutKnop() {
     const logoutBtn = $("logoutKnop");
     if (logoutBtn) logoutBtn.style.display = "block";
+  }
+
+  // Toon gebruikerslijst met statusbolletjes
+  async function renderGebruikersLijst() {
+    const paneel = document.getElementById("gebruikersLijstPaneel");
+    const tbody = document.getElementById("gebruikersLijstBody");
+    if (!paneel || !tbody) return;
+    if (!magBeheren()) {
+      paneel.style.display = "none";
+      return;
+    }
+    paneel.style.display = "block";
+    tbody.innerHTML = "";
+
+    // Haal alle gebruikers uit Firebase
+    const snap = await firebase.database().ref("gebruikers").once("value");
+    const gebruikers = snap.val() || {};
+
+    // Haal alle actieve sessions uit Firebase Auth
+    const allUsers = [];
+    for (const uid in gebruikers) {
+      allUsers.push({ uid, ...gebruikers[uid] });
+    }
+
+    // Haal online status op via presence (of alleen huidige user als je geen presence gebruikt)
+    // Simpel: alleen huidige gebruiker is online
+    const currentUid = firebase.auth().currentUser?.uid;
+
+    allUsers.forEach(user => {
+      const tr = document.createElement("tr");
+
+      // Statusbolletje
+      const statusTd = document.createElement("td");
+      const bol = document.createElement("span");
+      bol.style.display = "inline-block";
+      bol.style.width = "14px";
+      bol.style.height = "14px";
+      bol.style.borderRadius = "50%";
+      bol.style.background = user.uid === currentUid ? "#27ae60" : "#e74c3c";
+      bol.title = user.uid === currentUid ? "Online" : "Offline";
+      statusTd.appendChild(bol);
+      tr.appendChild(statusTd);
+
+      // E-mail
+      const emailTd = document.createElement("td");
+      emailTd.textContent = user.email || "-";
+      tr.appendChild(emailTd);
+
+      // UID
+      const uidTd = document.createElement("td");
+      uidTd.textContent = user.uid;
+      tr.appendChild(uidTd);
+
+      // Rol
+      const rolTd = document.createElement("td");
+      rolTd.textContent = user.rol || "-";
+      tr.appendChild(rolTd);
+
+      // Groep
+      const groepTd = document.createElement("td");
+      groepTd.textContent = user.groep || "-";
+      tr.appendChild(groepTd);
+
+      tbody.appendChild(tr);
+    });
+  }
+
+  // Roep deze functie aan na het tonen van het beheerpaneel:
+  function toonBeheerPaneel() {
+    const paneel = $("beheerPaneel");
+    const toggleBtn = $("toggleBeheerPaneel");
+    if (!paneel || !toggleBtn) return;
+    const show = magBeheren();
+    toggleBtn.style.display = show ? "block" : "none";
+    paneel.style.display = "none"; // standaard ingeklapt
+    renderGebruikersLijst(); // <-- voeg deze regel toe
   }
 });
