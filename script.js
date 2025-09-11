@@ -48,7 +48,12 @@ document.addEventListener("DOMContentLoaded", () => {
     return gebruikersData && (gebruikersData.rol === "financieel" || gebruikersData.groep === groep);
   }
   function magBeheren() {
-    return gebruikersData && gebruikersData.rol === "financieel";
+    // Voor ALLE admin-achtige acties (behalve gebruikersbeheer)
+    return gebruikersData && (gebruikersData.rol === "admin" || gebruikersData.rol === "financieel");
+  }
+  function magGebruikersBeheren() {
+    // Alleen admin mag gebruikers beheren
+    return gebruikersData && gebruikersData.rol === "admin";
   }
 
   // --- UI helpers (kort gehouden) ---
