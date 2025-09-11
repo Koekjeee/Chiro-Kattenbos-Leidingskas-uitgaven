@@ -71,14 +71,6 @@
         <button type="submit">Opslaan</button>
       </form>
 
-      <!-- Leden per groep aanpassen -->
-      <form id="ledenForm">
-        <h3>Leden per groep aanpassen</h3>
-        <div id="ledenInputs"></div>
-        <button type="submit">Opslaan</button>
-      </form>
-    </div>
-
     <!-- ✅ Uitgaveformulier -->
 <!-- In index.html -->
 <form id="uitgaveForm">
@@ -148,7 +140,20 @@
     <!-- Samenvatting per groep -->
     <button id="toggleSummary">▸ Toon uitgaven per groep</button>
     <div id="summaryContent" style="display:none;">
-      <ul id="groepSamenvatting"></ul>
+      <form id="ledenSamenvattingForm">
+        <table id="groepSamenvattingTabel">
+          <thead>
+            <tr>
+              <th>Groep</th>
+              <th>Leden</th>
+              <th>Totaal (€)</th>
+              <th>€ per kind</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <button type="submit" id="ledenOpslaanBtn" style="display:none;">Leden opslaan</button>
+      </form>
     </div>
 
     <!-- PDF-export knop -->
