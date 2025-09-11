@@ -359,4 +359,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
     doc.save("uitgaven_per_groep.pdf");
   });
+  safeOn($("rolForm"), "submit", async e => {
+    e.preventDefault();
+    const uid = $("userUid")?.value.trim();
+    const groep = $("userGroep")?.value;
+    const rol = $("userRol")?.value;
+    if (!uid || !groep || !rol) return alert("Vul alle velden in.");
+
+    try {
+      await firebase.database().ref("gebruikers/" + uid).update({ groep, rol });
+      alert("Gebruiker succesvol aangepast!");
+      $("rolForm").reset();
+    } catch (err) {
+      alert("Opslaan mislukt: " + (err && err.message ? err.message : err));
+    }
+  });
 });
