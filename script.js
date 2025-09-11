@@ -175,28 +175,47 @@ document.addEventListener("DOMContentLoaded", () => {
         .sort((a, b) => (a.nummer || 0) - (b.nummer || 0))
         .forEach(u => {
           const rij = tbody.insertRow();
-          rij.style.backgroundColor = groepKleuren[u.groep] || "#ffd5f2";
-          const td0 = rij.insertCell(0);
-          td0.textContent = u.nummer || "-";
-          td0.setAttribute("data-label", "#");
 
-          const td1 = rij.insertCell(1);
-          td1.textContent = u.naam || "-";
-          td1.setAttribute("data-label", "Naam");
+          // # (nummer)
+          const tdNummer = rij.insertCell(0);
+          tdNummer.textContent = u.nummer || "-";
+          tdNummer.setAttribute("data-label", "#");
 
-          rij.insertCell(2).textContent = u.groep || "-";
-          rij.insertCell(3).textContent = u.bedrag ? `€${u.bedrag}` : "-";
-          rij.insertCell(4).textContent = u.activiteit || "-";
-          rij.insertCell(5).textContent = u.datum || "-";
+          // Naam
+          const tdNaam = rij.insertCell(1);
+          tdNaam.textContent = u.naam || "-";
+          tdNaam.setAttribute("data-label", "Naam");
+
+          // Groep
+          const tdGroep = rij.insertCell(2);
+          tdGroep.textContent = u.groep || "-";
+          tdGroep.setAttribute("data-label", "Groep");
+
+          // Bedrag
+          const tdBedrag = rij.insertCell(3);
+          tdBedrag.textContent = u.bedrag ? `€${u.bedrag}` : "-";
+          tdBedrag.setAttribute("data-label", "Bedrag");
+
+          // Activiteit
+          const tdActiviteit = rij.insertCell(4);
+          tdActiviteit.textContent = u.activiteit || "-";
+          tdActiviteit.setAttribute("data-label", "Activiteit");
+
+          // Datum
+          const tdDatum = rij.insertCell(5);
+          tdDatum.textContent = u.datum || "-";
+          tdDatum.setAttribute("data-label", "Datum");
 
           // Betaald status (vinkje/kruisje)
-          const betaaldStatusCell = rij.insertCell(6);
-          betaaldStatusCell.className = "betaald-status";
-          betaaldStatusCell.textContent = u.betaald ? "✓" : "✗";
-          betaaldStatusCell.style.color = u.betaald ? "#27ae60" : "#e74c3c";
+          const tdBetaald = rij.insertCell(6);
+          tdBetaald.className = "betaald-status";
+          tdBetaald.textContent = u.betaald ? "✓" : "✗";
+          tdBetaald.style.color = u.betaald ? "#27ae60" : "#e74c3c";
+          tdBetaald.setAttribute("data-label", "Betaald");
 
           // Actie: Verwijder-knop
-          const actieCell = rij.insertCell(7);
+          const tdActie = rij.insertCell(7);
+          tdActie.setAttribute("data-label", "Actie");
           if (magBeheren()) {
             const verwijderBtn = document.createElement("button");
             verwijderBtn.textContent = "🗑️";
@@ -208,11 +227,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 renderTabel(filterGroep, filterBetaald);
               }
             };
-            actieCell.appendChild(verwijderBtn);
+            tdActie.appendChild(verwijderBtn);
           }
 
-          // Betaald aanvinken (checkbox)
-          const betaaldCell = rij.insertCell(8);
+          // Terug betaald? (checkbox)
+          const tdTerugBetaald = rij.insertCell(8);
+          tdTerugBetaald.setAttribute("data-label", "Terug betaald?");
           if (magBeheren()) {
             const checkbox = document.createElement("input");
             checkbox.type = "checkbox";
@@ -222,14 +242,17 @@ document.addEventListener("DOMContentLoaded", () => {
               await firebase.database().ref("uitgaven/" + u.nummer).update({ betaald: checkbox.checked });
               renderTabel(filterGroep, filterBetaald);
             };
-            betaaldCell.appendChild(checkbox);
+            tdTerugBetaald.appendChild(checkbox);
           }
 
           // Rekeningnummer
-          rij.insertCell(9).textContent = u.rekeningNummer || "-";
+          const tdRekening = rij.insertCell(9);
+          tdRekening.textContent = u.rekeningNummer || "-";
+          tdRekening.setAttribute("data-label", "Rekeningnummer");
 
           // Bewijsstuk afbeelding/document
           const bewijsCell = rij.insertCell(10);
+          bewijsCell.setAttribute("data-label", "Bewijs");
           if (u.bewijsUrl) {
             const link = document.createElement("a");
             link.href = u.bewijsUrl;
