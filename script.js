@@ -25,6 +25,9 @@ document.addEventListener("DOMContentLoaded", () => {
   function haalLedenPerGroep() {
     return firebase.database().ref("ledenPerGroep").once("value").then(snap => snap.val() || {});
   }
+  function haalLedenPerGroep() {
+  return firebase.database().ref("ledenPerGroep").once("value").then(snap => snap.val() || {});
+}
 
   // Permissies
   function magZien(groep) {
