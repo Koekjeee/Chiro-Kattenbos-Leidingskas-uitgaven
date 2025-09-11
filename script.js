@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // >>> VERVANG HIER je cloud name en preset door jouw waarden <<<
   // Bijvoorbeeld: https://api.cloudinary.com/v1_1/voorbeeldcloud/upload
-  const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/<jouw-cloud-name>/upload";
+  const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dxizebpwn/upload";
   const CLOUDINARY_PRESET = "chiro_upload_fotos";
 
   // --- State ---
