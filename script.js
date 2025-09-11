@@ -42,20 +42,32 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --- Permissions ---
   function magZien(groep) {
-    return gebruikersData && (gebruikersData.rol === "financieel" || gebruikersData.groep === groep);
+    // Admin en financieel mogen alles zien, leiding alleen eigen groep
+    return gebruikersData && (
+      gebruikersData.rol === "admin" ||
+      gebruikersData.rol === "financieel" ||
+      gebruikersData.groep === groep
+    );
   }
-  function magIndienen(groep) {
-    return gebruikersData && (gebruikersData.rol === "financieel" || gebruikersData.groep === groep);
-  }
-function magBeheren() {
-  // Admin en financieel verantwoordelijke mogen alles behalve gebruikersbeheer
-  return gebruikersData && (gebruikersData.rol === "admin" || gebruikersData.rol === "financieel");
-}
 
-function magGebruikersBeheren() {
-  // Alleen admin mag gebruikers beheren
-  return gebruikersData && gebruikersData.rol === "admin";
-}
+  function magIndienen(groep) {
+    // Admin en financieel mogen alles indienen, leiding alleen eigen groep
+    return gebruikersData && (
+      gebruikersData.rol === "admin" ||
+      gebruikersData.rol === "financieel" ||
+      gebruikersData.groep === groep
+    );
+  }
+
+  function magBeheren() {
+    // Admin en financieel mogen alles behalve gebruikersbeheer
+    return gebruikersData && (gebruikersData.rol === "admin" || gebruikersData.rol === "financieel");
+  }
+
+  function magGebruikersBeheren() {
+    // Alleen admin mag gebruikers beheren
+    return gebruikersData && gebruikersData.rol === "admin";
+  }
 
   // --- UI helpers (kort gehouden) ---
   function vulGroepSelectie() {
@@ -347,7 +359,7 @@ function magGebruikersBeheren() {
     const paneel = $("beheerPaneel");
     const toggleBtn = $("toggleBeheerPaneel");
     if (!paneel || !toggleBtn) return;
-    const show = magGebruikersBeheren(); // <-- Alleen admin!
+    const show = magGebruikersBeheren(); // Alleen admin!
     toggleBtn.style.display = show ? "block" : "none";
     paneel.style.display = "none"; // standaard ingeklapt
   }
