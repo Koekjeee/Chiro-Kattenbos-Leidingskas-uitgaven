@@ -327,8 +327,11 @@ document.addEventListener("DOMContentLoaded", () => {
   // toon/verberg beheerpaneel en financieel features/kolommen
   function toonBeheerPaneel() {
     const paneel = $("beheerPaneel");
-    if (!paneel) return;
-    paneel.style.display = magBeheren() ? "block" : "none";
+    const toggleBtn = $("toggleBeheerPaneel");
+    if (!paneel || !toggleBtn) return;
+    const show = magBeheren();
+    toggleBtn.style.display = show ? "block" : "none";
+    paneel.style.display = "none"; // standaard ingeklapt
   }
 
   function toonFinancieelFeatures() {
@@ -422,4 +425,23 @@ document.addEventListener("DOMContentLoaded", () => {
       alert("Opslaan mislukt: " + (err && err.message ? err.message : err));
     }
   });
+  safeOn($("toggleBeheerPaneel"), "click", () => {
+    const paneel = $("beheerPaneel");
+    if (!paneel) return;
+    if (paneel.style.display === "none" || paneel.style.display === "") {
+      paneel.style.display = "block";
+    } else {
+      paneel.style.display = "none";
+    }
+  });
+
+  // Zorg dat de knop zichtbaar is voor financieel
+  function toonBeheerPaneel() {
+    const paneel = $("beheerPaneel");
+    const toggleBtn = $("toggleBeheerPaneel");
+    if (!paneel || !toggleBtn) return;
+    const show = magBeheren();
+    toggleBtn.style.display = show ? "block" : "none";
+    paneel.style.display = "none"; // standaard ingeklapt
+  }
 });
