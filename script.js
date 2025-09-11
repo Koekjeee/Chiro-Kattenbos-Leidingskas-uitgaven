@@ -47,14 +47,15 @@ document.addEventListener("DOMContentLoaded", () => {
   function magIndienen(groep) {
     return gebruikersData && (gebruikersData.rol === "financieel" || gebruikersData.groep === groep);
   }
-  function magBeheren() {
-    // Admin en financieel verantwoordelijke mogen alles behalve gebruikersbeheer
-    return gebruikersData && (gebruikersData.rol === "admin" || gebruikersData.rol === "financieel");
-  }
-  function magGebruikersBeheren() {
-    // Alleen admin mag gebruikers beheren
-    return gebruikersData && gebruikersData.rol === "admin";
-  }
+function magBeheren() {
+  // Admin en financieel verantwoordelijke mogen alles behalve gebruikersbeheer
+  return gebruikersData && (gebruikersData.rol === "admin" || gebruikersData.rol === "financieel");
+}
+
+function magGebruikersBeheren() {
+  // Alleen admin mag gebruikers beheren
+  return gebruikersData && gebruikersData.rol === "admin";
+}
 
   // --- UI helpers (kort gehouden) ---
   function vulGroepSelectie() {
@@ -346,10 +347,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const paneel = $("beheerPaneel");
     const toggleBtn = $("toggleBeheerPaneel");
     if (!paneel || !toggleBtn) return;
-    const show = magBeheren();
+    const show = magGebruikersBeheren(); // <-- Alleen admin!
     toggleBtn.style.display = show ? "block" : "none";
     paneel.style.display = "none"; // standaard ingeklapt
-    renderGebruikersLijst(); // <-- voeg deze regel toe
   }
 
   function toonFinancieelFeatures() {
@@ -430,6 +430,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   safeOn($("rolForm"), "submit", async e => {
     e.preventDefault();
+    if (!magGebruikersBeheren()) return alert("Je hebt geen rechten om gebruikers te beheren.");
     const uid = $("userUid")?.value.trim();
     const groep = $("userGroep")?.value;
     const rol = $("userRol")?.value;
@@ -458,7 +459,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const paneel = $("beheerPaneel");
     const toggleBtn = $("toggleBeheerPaneel");
     if (!paneel || !toggleBtn) return;
-    const show = magBeheren();
+    const show = magGebruikersBeheren(); // <-- Alleen admin!
     toggleBtn.style.display = show ? "block" : "none";
     paneel.style.display = "none"; // standaard ingeklapt
   }
@@ -538,7 +539,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const paneel = $("beheerPaneel");
     const toggleBtn = $("toggleBeheerPaneel");
     if (!paneel || !toggleBtn) return;
-    const show = magBeheren();
+    const show = magGebruikersBeheren(); // <-- Alleen admin!
     toggleBtn.style.display = show ? "block" : "none";
     paneel.style.display = "none"; // standaard ingeklapt
     renderGebruikersLijst(); // <-- voeg deze regel toe
