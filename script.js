@@ -312,7 +312,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // vul selects / render tabelen
       vulGroepSelectie();
 
-      // herstel zichtbaarheidsregels voor financieel
+      // herstel zichtbaarheidsregels voor admin en financieel
       toonBeheerPaneel();
       toonFinancieelFeatures();
       toonFinancieelKolommen();
@@ -325,6 +325,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
       renderTabel();
       toonLogoutKnop();
+
+      // --- ZORG DAT ADMIN ALLES ZIET ---
+      if (gebruikersData.rol === "admin") {
+        // Toon beheerpaneel en gebruikerslijst direct
+        $("beheerPaneel") && ($("beheerPaneel").style.display = "block");
+        $("toggleBeheerPaneel") && ($("toggleBeheerPaneel").style.display = "block");
+        renderGebruikersLijst();
+      }
     } else {
       // logged out
       $("appInhoud") && ($("appInhoud").style.display = "none");
@@ -486,7 +494,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const paneel = document.getElementById("gebruikersLijstPaneel");
     const tbody = document.getElementById("gebruikersLijstBody");
     if (!paneel || !tbody) return;
-    if (!magBeheren()) {
+    if (!magGebruikersBeheren()) { // <-- Alleen admin!
       paneel.style.display = "none";
       return;
     }
