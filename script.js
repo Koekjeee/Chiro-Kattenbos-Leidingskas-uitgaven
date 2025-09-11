@@ -199,6 +199,8 @@ document.addEventListener("DOMContentLoaded", () => {
               }
             };
             actieCell.appendChild(verwijderBtn);
+          } else {
+            actieCell.textContent = ""; // lege cel voor leiding
           }
 
           // Betaald aanvinken (checkbox)
@@ -213,6 +215,8 @@ document.addEventListener("DOMContentLoaded", () => {
               renderTabel(filterGroep, filterBetaald);
             };
             betaaldCell.appendChild(checkbox);
+          } else {
+            betaaldCell.textContent = ""; // lege cel voor leiding
           }
 
           // Rekeningnummer
@@ -534,4 +538,3 @@ document.addEventListener("DOMContentLoaded", () => {
     renderGebruikersLijst(); // <-- voeg deze regel toe
   }
 });
-
