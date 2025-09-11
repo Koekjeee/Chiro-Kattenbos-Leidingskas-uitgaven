@@ -178,12 +178,11 @@ document.addEventListener("DOMContentLoaded", () => {
           rij.insertCell(2).textContent = u.activiteit || "-";
           rij.insertCell(3).textContent = u.datum || "-";
 
-          // Betaald status (vinkje/kruisje)
+          // Betaald status (vinkje/kruisje) - altijd zichtbaar
           const betaaldStatusCell = rij.insertCell(4);
           betaaldStatusCell.className = "betaald-status";
           betaaldStatusCell.textContent = u.betaald ? "✓" : "✗";
           betaaldStatusCell.style.color = u.betaald ? "#27ae60" : "#e74c3c";
-          if (!magBeheren()) betaaldStatusCell.style.display = "none";
 
           // Actie: Verwijder-knop
           const actieCell = rij.insertCell(5);
@@ -202,7 +201,7 @@ document.addEventListener("DOMContentLoaded", () => {
           }
           if (!magBeheren()) actieCell.style.display = "none";
 
-          // Betaald aanvinken (checkbox)
+          // Terug betaald? (checkbox)
           const terugBetaaldCell = rij.insertCell(6);
           if (magBeheren()) {
             const checkbox = document.createElement("input");
