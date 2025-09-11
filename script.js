@@ -172,20 +172,21 @@ document.addEventListener("DOMContentLoaded", () => {
         .sort((a, b) => (a.nummer || 0) - (b.nummer || 0))
         .forEach(u => {
           const rij = tbody.insertRow();
-
-          // Betaald status (vinkje/kruisje) - altijd als eerste kolom
-          const betaaldStatusCell = rij.insertCell(0);
-          betaaldStatusCell.className = "betaald-status";
-          betaaldStatusCell.textContent = u.betaald ? "✓" : "✗";
-          betaaldStatusCell.style.color = u.betaald ? "#27ae60" : "#e74c3c";
-
+          rij.style.backgroundColor = groepKleuren[u.groep] || "#ffd5f2";
+          rij.insertCell(0).textContent = u.nummer || "-";
           rij.insertCell(1).textContent = u.groep || "-";
           rij.insertCell(2).textContent = u.bedrag ? `€${u.bedrag}` : "-";
           rij.insertCell(3).textContent = u.activiteit || "-";
           rij.insertCell(4).textContent = u.datum || "-";
 
+          // Betaald status (vinkje/kruisje)
+          const betaaldStatusCell = rij.insertCell(5);
+          betaaldStatusCell.className = "betaald-status";
+          betaaldStatusCell.textContent = u.betaald ? "✓" : "✗";
+          betaaldStatusCell.style.color = u.betaald ? "#27ae60" : "#e74c3c";
+
           // Actie: Verwijder-knop
-          const actieCell = rij.insertCell(5);
+          const actieCell = rij.insertCell(6);
           if (magBeheren()) {
             const verwijderBtn = document.createElement("button");
             verwijderBtn.textContent = "🗑️";
@@ -199,10 +200,9 @@ document.addEventListener("DOMContentLoaded", () => {
             };
             actieCell.appendChild(verwijderBtn);
           }
-          if (!magBeheren()) actieCell.style.display = "none";
 
-          // Terug betaald? (checkbox)
-          const terugBetaaldCell = rij.insertCell(6);
+          // Betaald aanvinken (checkbox)
+          const betaaldCell = rij.insertCell(7);
           if (magBeheren()) {
             const checkbox = document.createElement("input");
             checkbox.type = "checkbox";
@@ -212,14 +212,14 @@ document.addEventListener("DOMContentLoaded", () => {
               await firebase.database().ref("uitgaven/" + u.nummer).update({ betaald: checkbox.checked });
               renderTabel(filterGroep, filterBetaald);
             };
-            terugBetaaldCell.appendChild(checkbox);
+            betaaldCell.appendChild(checkbox);
           }
-          if (!magBeheren()) terugBetaaldCell.style.display = "none";
 
-          rij.insertCell(7).textContent = u.rekeningNummer || "-";
+          // Rekeningnummer
+          rij.insertCell(8).textContent = u.rekeningNummer || "-";
 
-          // Bewijsstuk
-          const bewijsCell = rij.insertCell(8);
+          // Bewijsstuk afbeelding/document
+          const bewijsCell = rij.insertCell(9);
           if (u.bewijsUrl) {
             const link = document.createElement("a");
             link.href = u.bewijsUrl;
