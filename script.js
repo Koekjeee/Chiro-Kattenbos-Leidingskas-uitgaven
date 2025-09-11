@@ -17,6 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let huidigeGebruiker = null;
   let gebruikersData = null;
+  let ledenPerGroep = {};
 
   // → Haal gebruikersprofiel (rol + groep)
   function haalGebruikersData(uid) {
@@ -99,12 +100,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
         alleGroepen.forEach(g => {
           const bedrag = totals[g].toFixed(2);
+          const leden = ledenPerGroep[g] || 0;
+          const euroPerKind = leden > 0 ? (totals[g] / leden).toFixed(2) : "0.00";
           const li = document.createElement("li");
           li.style.backgroundColor = groepKleuren[g] || "#fff";
-          li.textContent = g;
-          const span = document.createElement("span");
-          span.textContent = `€${bedrag}`;
-          li.appendChild(span);
+          li.innerHTML = `<b>${g}</b> (${leden} leden): €${bedrag} &mdash; <span style="color:#27ae60">€${euroPerKind} per kind</span>`;
           lijst.appendChild(li);
         });
       });
@@ -293,6 +293,8 @@ document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("gebruikerInfo").textContent =
         `Ingelogd als ${gebruikersData.rol} (${gebruikersData.groep})`;
 
+      ledenPerGroep = await haalLedenPerGroep();
+
       vulGroepSelectie();
       setupSummaryToggle();
       setupPdfExport();
@@ -330,6 +332,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const b = parseFloat(document.getElementById("bedrag").value) || 0;
     const a = document.getElementById("activiteit").value;
     const d = document.getElementById("datum").value;
+    const p = document.getElementById("betaald").checked;
     const rekeningNummer = document.getElementById("rekeningNummer").value.trim();
     if (!rekeningNummer) {
       return alert("Vul je rekeningnummer in.");
@@ -417,5 +420,35 @@ function toonFinancieelKolommen() {
 toonBeheerPaneel();
 toonFinancieelFeatures();
 toonFinancieelKolommen();
-});
 
+function vulLedenInputs(ledenData = {}) {
+  const container = document.getElementById("ledenInputs");
+  container.innerHTML = "";
+  alleGroepen.forEach(groep => {
+    const waarde = ledenData[groep] || "";
+    container.innerHTML += `
+      <label>
+        ${groep}: <input type="number" min="0" name="${groep}" value="${waarde}" style="width:60px;">
+      </label><br>
+    `;
+  });
+}
+
+// → Leden per groep opslaan
+document.getElementById("ledenForm").addEventListener("submit", e => {
+  e.preventDefault();
+  if (!magBeheren()) return alert("Geen rechten.");
+  const inputs = document.querySelectorAll("#ledenInputs input");
+  const nieuweLeden = {};
+  inputs.forEach(inp => {
+    nieuweLeden[inp.name] = parseInt(inp.value) || 0;
+  });
+  firebase.database().ref("ledenPerGroep").set(nieuweLeden)
+    .then(() => {
+      ledenPerGroep = nieuweLeden;
+      alert("Leden per groep opgeslagen!");
+      renderSamenvatting();
+    })
+    .catch(err => alert("Opslaan mislukt: " + err.message));
+});
+});
