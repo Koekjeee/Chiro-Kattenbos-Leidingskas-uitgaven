@@ -241,13 +241,39 @@ document.addEventListener("DOMContentLoaded", () => {
   firebase.auth().onAuthStateChanged(async user => {
     if (user) {
       huidigeGebruiker = user;
-      gebruikersData = (await haalGebruikersData(user.uid)) || {};
-      ledenPerGroep = await haalLedenPerGroep();
-      document.getElementById("loginScherm").style.display = "none";
-      document.getElementById("appInhoud").style.display = "block";
-      document.getElementById("loginFout").textContent = "";
+
+      // haal gebruikersprofiel (rol/groep) altijd op
+      try {
+        gebruikersData = (await haalGebruikersData(user.uid)) || {};
+      } catch (err) {
+        console.error("Fout bij ophalen gebruikersData:", err);
+        gebruikersData = {};
+      }
+
+      // Alleen ledenPerGroep ophalen wanneer gebruiker financieel is
+      if (gebruikersData.rol === "financieel") {
+        try {
+          ledenPerGroep = await haalLedenPerGroep();
+        } catch (err) {
+          console.warn("Kon ledenPerGroep niet lezen (perm.): fallback naar lege waarden.", err);
+          ledenPerGroep = {};
+        }
+      } else {
+        // geen read proberen: voorkomt permission_denied logs
+        ledenPerGroep = {};
+      }
+
+      // UI init
+      const loginScherm = document.getElementById("loginScherm");
+      const appInhoud = document.getElementById("appInhoud");
+      if (loginScherm) loginScherm.style.display = "none";
+      if (appInhoud) appInhoud.style.display = "block";
+      const loginFout = document.getElementById("loginFout");
+      if (loginFout) loginFout.textContent = "";
+
       document.getElementById("gebruikerInfo").textContent =
-        `Ingelogd als ${gebruikersData.rol} (${gebruikersData.groep})`;
+        `Ingelogd als ${gebruikersData.rol || 'onbekend'} (${gebruikersData.groep || 'ALL'})`;
+
       vulGroepSelectie();
       setupSummaryToggle();
       setupPdfExport();
@@ -256,9 +282,15 @@ document.addEventListener("DOMContentLoaded", () => {
       toonFinancieelFeatures();
       toonFinancieelKolommen();
     } else {
-      document.getElementById("appInhoud").style.display = "none";
-      document.getElementById("loginScherm").style.display = "block";
-      document.getElementById("loginFout").textContent = "";
+      const appInhoud = document.getElementById("appInhoud");
+      const loginScherm = document.getElementById("loginScherm");
+      if (appInhoud) appInhoud.style.display = "none";
+      if (loginScherm) loginScherm.style.display = "block";
+      const loginFout = document.getElementById("loginFout");
+      if (loginFout) loginFout.textContent = "";
+      huidigeGebruiker = null;
+      gebruikersData = null;
+      ledenPerGroep = {};
     }
   });
 
