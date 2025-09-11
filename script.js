@@ -341,15 +341,15 @@ document.addEventListener("DOMContentLoaded", () => {
       groepen[groep].sort((a, b) => (a.datum || "").localeCompare(b.datum || ""));
       groepen[groep].forEach(u => {
         doc.text(
-          `${u.nummer || "-"} | ${u.groep || "-"} | `,
+          `${u.nummer || "-"} | `,
           10, y
         );
         doc.setFont(undefined, "bold");
-        doc.text(`€${u.bedrag || "-"}`, 70, y);
+        doc.text(`€${u.bedrag || "-"}`, 35, y);
         doc.setFont(undefined, "normal");
         doc.text(
           `| ${u.datum || "-"} | ${u.activiteit || "-"} | ${u.betaald ? "Betaald" : "Niet betaald"}`,
-          100, y
+          70, y
         );
         y += 8;
         if (y > 280) { doc.addPage(); y = 10; }
