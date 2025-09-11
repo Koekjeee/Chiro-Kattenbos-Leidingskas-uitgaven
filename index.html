@@ -212,15 +212,15 @@
     }
 
     function toonFinancieelKolommen() {
-      const betaaldTh = document.querySelector("#overzicht th:nth-child(6)");
-      const actieTh = document.querySelector("#overzicht th:nth-child(7)");
-      const betaaldTds = document.querySelectorAll("#overzicht td:nth-child(6)");
-      const actieTds = document.querySelectorAll("#overzicht td:nth-child(7)");
-      const show = magBeheren();
-      if (betaaldTh) betaaldTh.style.display = show ? "table-cell" : "none";
-      if (actieTh) actieTh.style.display = show ? "table-cell" : "none";
-      betaaldTds.forEach(td => td.style.display = show ? "table-cell" : "none");
-      actieTds.forEach(td => td.style.display = show ? "table-cell" : "none");
+      // Verberg alleen de kolommen 6 (Betaald), 7 (Actie), 8 (Terug betaald?) voor leiding
+      const financieelKolommen = [6, 7, 8];
+      financieelKolommen.forEach(idx => {
+        const th = document.querySelector(`#overzicht th:nth-child(${idx})`);
+        const tds = document.querySelectorAll(`#overzicht td:nth-child(${idx})`);
+        const show = magBeheren();
+        if (th) th.style.display = show ? "table-cell" : "none";
+        tds.forEach(td => td.style.display = show ? "table-cell" : "none");
+      });
     }
 
     function renderTabel(filterGroep = "", filterBetaald = "") {
