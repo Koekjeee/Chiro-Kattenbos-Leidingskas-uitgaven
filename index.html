@@ -23,11 +23,9 @@
     };
     firebase.initializeApp(firebaseConfig);
   </script>
-  <!-- jsPDF voor PDF-export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
-  <!-- 🔐 Login -->
   <div id="loginScherm">
     <h2>Inloggen</h2>
     <input type="email" id="loginEmail" placeholder="E-mailadres" required />
@@ -36,13 +34,11 @@
     <p id="loginFout" style="color: red;"></p>
   </div>
 
-  <!-- 📋 App -->
   <div id="appInhoud" style="display: none;">
     <h1>Chiro Kattenbos – Uitgavenbeheer</h1>
     <p id="gebruikerInfo"></p>
     <button id="logoutKnop" style="float: right;">Uitloggen</button>
 
-    <!-- 👤 Beheerpaneel (alleen voor financieel) -->
     <div id="beheerPaneel" style="display: none;">
       <h3>Gebruikersbeheer</h3>
       <form id="rolForm">
@@ -68,7 +64,6 @@
       </form>
     </div>
 
-    <!-- ✅ Uitgaveformulier -->
     <form id="uitgaveForm">
       <label for="groep">Groep:</label>
       <select id="groep" required></select>
@@ -85,7 +80,6 @@
       <button type="submit">Toevoegen</button>
     </form>
 
-    <!-- 🔍 Filters -->
     <div class="filter">
       <label for="filterGroep">Filter op groep:</label>
       <select id="filterGroep">
@@ -109,7 +103,6 @@
       </select>
     </div>
 
-    <!-- 📊 Tabel -->
     <table id="overzicht">
       <thead>
         <tr>
@@ -126,7 +119,6 @@
       <tbody></tbody>
     </table>
 
-    <!-- Samenvatting per groep met ledenaantal -->
     <button id="toggleSummary">▸ Toon uitgaven per groep</button>
     <div id="summaryContent" style="display:none;">
       <form id="ledenSamenvattingForm">
@@ -145,7 +137,6 @@
       </form>
     </div>
 
-    <!-- PDF-export knop -->
     <button id="exportPdfBtn">Exporteer naar PDF</button>
   </div>
 
