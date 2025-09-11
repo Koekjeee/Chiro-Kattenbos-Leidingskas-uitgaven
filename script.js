@@ -81,8 +81,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // → Render samenvatting per groep
   function renderSamenvatting() {
-    const lijst = document.getElementById("groepSamenvatting");
-    lijst.innerHTML = "";
+    const tbody = document.querySelector("#groepSamenvattingTabel tbody");
+    tbody.innerHTML = "";
     const totals = {};
     alleGroepen.forEach(g => (totals[g] = 0));
 
@@ -102,11 +102,23 @@ document.addEventListener("DOMContentLoaded", () => {
           const bedrag = totals[g].toFixed(2);
           const leden = ledenPerGroep[g] || 0;
           const euroPerKind = leden > 0 ? (totals[g] / leden).toFixed(2) : "0.00";
-          const li = document.createElement("li");
-          li.style.backgroundColor = groepKleuren[g] || "#fff";
-          li.innerHTML = `<b>${g}</b> (${leden} leden): €${bedrag} &mdash; <span style="color:#27ae60">€${euroPerKind} per kind</span>`;
-          lijst.appendChild(li);
+          const rij = document.createElement("tr");
+          rij.style.backgroundColor = groepKleuren[g] || "#fff";
+          rij.innerHTML = `
+            <td><b>${g}</b></td>
+            <td>
+              ${magBeheren() 
+                ? `<input type="number" min="0" name="${g}" value="${leden}" style="width:60px;">`
+                : leden}
+            </td>
+            <td>€${bedrag}</td>
+            <td><span style="color:#27ae60">€${euroPerKind}</span></td>
+          `;
+          tbody.appendChild(rij);
         });
+
+        // Toon de opslaan-knop alleen voor financieel
+        document.getElementById("ledenOpslaanBtn").style.display = magBeheren() ? "inline-block" : "none";
       });
   }
 
@@ -439,6 +451,23 @@ document.getElementById("ledenForm").addEventListener("submit", e => {
   e.preventDefault();
   if (!magBeheren()) return alert("Geen rechten.");
   const inputs = document.querySelectorAll("#ledenInputs input");
+  const nieuweLeden = {};
+  inputs.forEach(inp => {
+    nieuweLeden[inp.name] = parseInt(inp.value) || 0;
+  });
+  firebase.database().ref("ledenPerGroep").set(nieuweLeden)
+    .then(() => {
+      ledenPerGroep = nieuweLeden;
+      alert("Leden per groep opgeslagen!");
+      renderSamenvatting();
+    })
+    .catch(err => alert("Opslaan mislukt: " + err.message));
+});
+
+document.getElementById("ledenSamenvattingForm").addEventListener("submit", function(e) {
+  e.preventDefault();
+  if (!magBeheren()) return;
+  const inputs = document.querySelectorAll("#groepSamenvattingTabel input");
   const nieuweLeden = {};
   inputs.forEach(inp => {
     nieuweLeden[inp.name] = parseInt(inp.value) || 0;
