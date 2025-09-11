@@ -185,6 +185,34 @@ document.addEventListener("DOMContentLoaded", () => {
     }).catch(err => console.error("Lezen uitgaven mislukt:", err));
   }
 
+  function renderSamenvatting() {
+    const tbody = document.querySelector("#groepSamenvattingTabel tbody");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+
+    // Zorg dat ledenPerGroep en uitgavenData beschikbaar zijn
+    const groepen = Object.keys(ledenPerGroep || {});
+    groepen.forEach(groep => {
+      // Tel totaalbedrag voor deze groep
+      let totaal = 0;
+      // Haal uitgaven uit Firebase
+      // (Je kunt dit optimaliseren door uitgavenData globaal te cachen)
+      firebase.database().ref("uitgaven").orderByChild("groep").equalTo(groep).once("value").then(snap => {
+        const uitgaven = snap.val() || {};
+        Object.values(uitgaven).forEach(u => {
+          totaal += parseFloat(u.bedrag || 0);
+        });
+        const leden = ledenPerGroep[groep] || 0;
+        const perKind = leden > 0 ? (totaal / leden).toFixed(2) : "-";
+        const rij = tbody.insertRow();
+        rij.insertCell(0).textContent = groep;
+        rij.insertCell(1).textContent = leden;
+        rij.insertCell(2).textContent = `€${totaal.toFixed(2)}`;
+        rij.insertCell(3).textContent = perKind;
+      });
+    });
+  }
+
   // --- Auth state & init (kort) ---
   firebase.auth().onAuthStateChanged(async user => {
     if (user) {
@@ -286,4 +314,23 @@ document.addEventListener("DOMContentLoaded", () => {
         : "Verberg overzicht uitgaven per groep";
     };
   }
+
+  safeOn($("exportPdfBtn"), "click", () => {
+    const doc = new window.jspdf.jsPDF();
+    doc.text("Uitgaven per groep", 10, 10);
+
+    const tabel = document.getElementById("groepSamenvattingTabel");
+    if (tabel) {
+      let y = 20;
+      for (const row of tabel.rows) {
+        let rowText = "";
+        for (const cell of row.cells) {
+          rowText += cell.textContent + " | ";
+        }
+        doc.text(rowText, 10, y);
+        y += 10;
+      }
+    }
+    doc.save("uitgaven_samenvatting.pdf");
+  });
 });
