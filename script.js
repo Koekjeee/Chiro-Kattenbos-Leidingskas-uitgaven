@@ -177,13 +177,14 @@ document.addEventListener("DOMContentLoaded", () => {
           rij.insertCell(2).textContent = u.bedrag ? `€${u.bedrag}` : "-";
           rij.insertCell(3).textContent = u.activiteit || "-";
           rij.insertCell(4).textContent = u.datum || "-";
-          const betaaldStatusCell = rij.insertCell(5);
+          rij.insertCell(5).textContent = u.rekeningNummer || "-"; // <-- nieuwe kolom
+          const betaaldStatusCell = rij.insertCell(6);
           betaaldStatusCell.className = "betaald-status";
           betaaldStatusCell.textContent = u.betaald ? "✓" : "✗";
           betaaldStatusCell.style.color = u.betaald ? "#27ae60" : "#e74c3c";
 
           // Actie: Verwijder-knop (alleen voor financieel)
-          const actieCell = rij.insertCell(6);
+          const actieCell = rij.insertCell(7);
           if (magBeheren()) {
             const verwijderBtn = document.createElement("button");
             verwijderBtn.textContent = "🗑️";
@@ -199,7 +200,7 @@ document.addEventListener("DOMContentLoaded", () => {
           }
 
           // Betaald aanvinken (alleen voor financieel)
-          const betaaldCell = rij.insertCell(7);
+          const betaaldCell = rij.insertCell(8);
           if (magBeheren()) {
             const checkbox = document.createElement("input");
             checkbox.type = "checkbox";
