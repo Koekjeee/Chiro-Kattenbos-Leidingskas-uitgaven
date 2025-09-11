@@ -100,54 +100,30 @@ td {
 
 /* Tabel */
 #overzicht {
-  display: block;
   width: 100%;
-  overflow-x: auto;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-top: 20px;
+  font-family: inherit;
 }
 
-#overzicht thead, #overzicht tbody, #overzicht tr {
-  display: table;
-  width: 100%;
-  table-layout: fixed;
+#overzicht th {
+  background: #0084ff;
+  color: #fff;
+  font-weight: bold;
+  padding: 12px 8px;
+  text-align: center;
+  border-radius: 8px 8px 0 0;
 }
 
-#overzicht th, #overzicht td {
-  word-break: break-word;
-  padding: 8px 4px;
-  font-size: 1em;
+#overzicht td {
+  padding: 10px 8px;
+  text-align: center;
+  font-size: 1rem;
 }
 
-@media (max-width: 800px) {
-  #overzicht, #overzicht thead, #overzicht tbody, #overzicht tr, #overzicht th, #overzicht td {
-    display: block;
-    width: 100%;
-  }
-  #overzicht thead {
-    display: none;
-  }
-  #overzicht tr {
-    margin-bottom: 15px;
-    border-bottom: 2px solid #eee;
-    background: #fff;
-  }
-  #overzicht td {
-    position: relative;
-    padding-left: 50%;
-    min-height: 40px;
-    border: none;
-    border-bottom: 1px solid #eee;
-  }
-  #overzicht td:before {
-    position: absolute;
-    left: 10px;
-    top: 8px;
-    width: 45%;
-    white-space: nowrap;
-    font-weight: bold;
-    color: #2980b9;
-    content: attr(data-label);
-  }
+#overzicht tr {
+  border-radius: 0 0 8px 8px;
 }
 
 /* Betaald status */
@@ -179,21 +155,4 @@ td {
   cursor: not-allowed;
 }
 
-/* Formulieren en knoppen */
-form input, form select, form button {
-  width: 100%;
-  max-width: 400px;
-  margin-bottom: 10px;
-  font-size: 1.1em;
-  box-sizing: border-box;
-}
-
-@media (max-width: 600px) {
-  h1, h2, h3 {
-    font-size: 1.2em;
-  }
-  button, input, select {
-    font-size: 1em;
-  }
-}
 
