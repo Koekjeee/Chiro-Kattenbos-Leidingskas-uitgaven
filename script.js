@@ -172,17 +172,17 @@ document.addEventListener("DOMContentLoaded", () => {
         .sort((a, b) => (a.nummer || 0) - (b.nummer || 0))
         .forEach(u => {
           const rij = tbody.insertRow();
-          rij.style.backgroundColor = groepKleuren[u.groep] || "#ffd5f2";
-          rij.insertCell(0).textContent = u.groep || "-";
-          rij.insertCell(1).textContent = u.bedrag ? `€${u.bedrag}` : "-";
-          rij.insertCell(2).textContent = u.activiteit || "-";
-          rij.insertCell(3).textContent = u.datum || "-";
 
-          // Betaald status (vinkje/kruisje) - altijd zichtbaar
-          const betaaldStatusCell = rij.insertCell(4);
+          // Betaald status (vinkje/kruisje) - altijd als eerste kolom
+          const betaaldStatusCell = rij.insertCell(0);
           betaaldStatusCell.className = "betaald-status";
           betaaldStatusCell.textContent = u.betaald ? "✓" : "✗";
           betaaldStatusCell.style.color = u.betaald ? "#27ae60" : "#e74c3c";
+
+          rij.insertCell(1).textContent = u.groep || "-";
+          rij.insertCell(2).textContent = u.bedrag ? `€${u.bedrag}` : "-";
+          rij.insertCell(3).textContent = u.activiteit || "-";
+          rij.insertCell(4).textContent = u.datum || "-";
 
           // Actie: Verwijder-knop
           const actieCell = rij.insertCell(5);
