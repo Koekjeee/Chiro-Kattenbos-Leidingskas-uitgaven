@@ -1,24 +1,24 @@
 document.addEventListener("DOMContentLoaded", () => {
-  // Groepen en kleuren
-  const alleGroepen = [
-    "Ribbels", "Speelclubs", "Rakkers", "Kwiks",
-    "Tippers", "Toppers", "Aspi", "LEIDING"
-  ];
+  // --- Config / constants ---
+  const alleGroepen = ["Ribbels","Speelclubs","Rakkers","Kwiks","Tippers","Toppers","Aspi","LEIDING"];
   const groepKleuren = {
-    Ribbels: "#cce5ff", Speelclubs: "#ffe5cc", Rakkers: "#e5ffcc",
-    Kwiks: "#ffccf2", Tippers: "#d5ccff", Toppers: "#ccffd5",
-    Aspi: "#ffd5cc", LEIDING: "#dddddd"
+    Ribbels:"#cce5ff",Speelclubs:"#ffe5cc",Rakkers:"#e5ffcc",
+    Kwiks:"#ffccf2",Tippers:"#d5ccff",Toppers:"#ccffd5",
+    Aspi:"#ffd5cc",LEIDING:"#dddddd"
   };
-
-  // Cloudinary-config
   const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/<jouw-cloud-name>/upload";
   const CLOUDINARY_PRESET = "chiro_upload_fotos";
 
+  // --- State ---
   let huidigeGebruiker = null;
   let gebruikersData = null;
   let ledenPerGroep = {};
 
-  // Firebase helpers
+  // --- Helpers ---
+  const $ = id => document.getElementById(id);
+  function safeOn(el, ev, fn) { if (el) el.addEventListener(ev, fn); }
+
+  // --- Firebase helpers ---
   function haalGebruikersData(uid) {
     return firebase.database().ref("gebruikers/" + uid).once("value").then(snap => snap.val());
   }
@@ -26,7 +26,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return firebase.database().ref("ledenPerGroep").once("value").then(snap => snap.val() || {});
   }
 
-  // Permissies
+  // --- Permissions ---
   function magZien(groep) {
     return gebruikersData && (gebruikersData.rol === "financieel" || gebruikersData.groep === groep);
   }
@@ -37,74 +37,79 @@ document.addEventListener("DOMContentLoaded", () => {
     return gebruikersData && gebruikersData.rol === "financieel";
   }
 
-  // UI helpers
+  // --- UI helpers ---
   function toonBeheerPaneel() {
-    document.getElementById("beheerPaneel").style.display = magBeheren() ? "block" : "none";
+    const paneel = $("beheerPaneel");
+    if (paneel) paneel.style.display = magBeheren() ? "block" : "none";
   }
   function vulGroepSelectie() {
-    const select = document.getElementById("groep");
+    const select = $("groep");
+    if (!select || !gebruikersData) return;
     select.innerHTML = `<option value="">-- Kies een groep --</option>`;
     const toegestane = gebruikersData.rol === "financieel" ? alleGroepen : [gebruikersData.groep];
-    toegestane.forEach(g => { select.innerHTML += `<option>${g}</option>`; });
+    toegestane.forEach(g => { select.innerHTML += `<option value="${g}">${g}</option>`; });
   }
   function toonFinancieelFeatures() {
-    const summaryBtn = document.getElementById("toggleSummary");
-    const exportBtn = document.getElementById("exportPdfBtn");
-    if (magBeheren()) {
-      if (summaryBtn) summaryBtn.style.display = "block";
-      if (exportBtn) exportBtn.style.display = "block";
-    } else {
-      if (summaryBtn) summaryBtn.style.display = "none";
-      if (exportBtn) exportBtn.style.display = "none";
-    }
+    const summaryBtn = $("toggleSummary");
+    const exportBtn = $("exportPdfBtn");
+    const show = magBeheren();
+    if (summaryBtn) summaryBtn.style.display = show ? "block" : "none";
+    if (exportBtn) exportBtn.style.display = show ? "block" : "none";
   }
   function toonFinancieelKolommen() {
-    const betaaldKolom = document.querySelector("#overzicht th:nth-child(6), #overzicht td:nth-child(6)");
-    const actieKolom = document.querySelector("#overzicht th:nth-child(7), #overzicht td:nth-child(7)");
-    const toggle = magBeheren();
-    if (betaaldKolom) betaaldKolom.style.display = toggle ? "table-cell" : "none";
-    if (actieKolom) actieKolom.style.display = toggle ? "table-cell" : "none";
+    const betaaldTh = document.querySelector("#overzicht th:nth-child(6)");
+    const actieTh = document.querySelector("#overzicht th:nth-child(7)");
+    const betaaldTds = document.querySelectorAll("#overzicht td:nth-child(6)");
+    const actieTds = document.querySelectorAll("#overzicht td:nth-child(7)");
+    const show = magBeheren();
+    if (betaaldTh) betaaldTh.style.display = show ? "table-cell" : "none";
+    if (actieTh) actieTh.style.display = show ? "table-cell" : "none";
+    betaaldTds.forEach(td => td.style.display = show ? "table-cell" : "none");
+    actieTds.forEach(td => td.style.display = show ? "table-cell" : "none");
   }
 
-  // Samenvatting per groep (met ledenaantal bewerkbaar)
+  // --- Render summary (leden + euro per kind) ---
   function renderSamenvatting() {
     const tbody = document.querySelector("#groepSamenvattingTabel tbody");
+    if (!tbody) return;
     tbody.innerHTML = "";
     const totals = {};
-    alleGroepen.forEach(g => (totals[g] = 0));
+    alleGroepen.forEach(g => totals[g] = 0);
 
-    firebase.database().ref("uitgaven").once("value").then(snap => {
-      const data = snap.val() || {};
-      Object.values(data).forEach(u => {
-        if (magZien(u.groep)) totals[u.groep] += parseFloat(u.bedrag);
+    firebase.database().ref("uitgaven").once("value")
+      .then(snap => {
+        const data = snap.val() || {};
+        Object.values(data).forEach(u => {
+          if (u && u.groep && magZien(u.groep)) totals[u.groep] += parseFloat(u.bedrag) || 0;
+        });
+
+        alleGroepen.forEach(g => {
+          const bedrag = totals[g].toFixed(2);
+          const leden = Number(ledenPerGroep[g] || 0);
+          const euroPerKind = leden > 0 ? (totals[g] / leden).toFixed(2) : "0.00";
+          const rij = document.createElement("tr");
+          rij.style.backgroundColor = groepKleuren[g] || "#fff";
+          rij.innerHTML = `
+            <td><b>${g}</b></td>
+            <td>${magBeheren() ? `<input type="number" min="0" name="${g}" value="${leden}" style="width:60px;">` : leden}</td>
+            <td>€${bedrag}</td>
+            <td><span style="color:#27ae60">€${euroPerKind}</span></td>
+          `;
+          tbody.appendChild(rij);
+        });
+
+        const opslaanBtn = $("ledenOpslaanBtn");
+        if (opslaanBtn) opslaanBtn.style.display = magBeheren() ? "inline-block" : "none";
+      })
+      .catch(err => {
+        console.error("Lezen uitgaven mislukt:", err);
       });
-
-      alleGroepen.forEach(g => {
-        const bedrag = totals[g].toFixed(2);
-        const leden = ledenPerGroep[g] || 0;
-        const euroPerKind = leden > 0 ? (totals[g] / leden).toFixed(2) : "0.00";
-        const rij = document.createElement("tr");
-        rij.style.backgroundColor = groepKleuren[g] || "#fff";
-        rij.innerHTML = `
-          <td><b>${g}</b></td>
-          <td>
-            ${magBeheren() 
-              ? `<input type="number" min="0" name="${g}" value="${leden}" style="width:60px;">`
-              : leden}
-          </td>
-          <td>€${bedrag}</td>
-          <td><span style="color:#27ae60">€${euroPerKind}</span></td>
-        `;
-        tbody.appendChild(rij);
-      });
-
-      document.getElementById("ledenOpslaanBtn").style.display = magBeheren() ? "inline-block" : "none";
-    });
   }
 
-  // Uitgaven-tabel
+  // --- Render uitgaven tabel ---
   function renderTabel(filterGroep = "", filterBetaald = "") {
     const tbody = document.querySelector("#overzicht tbody");
+    if (!tbody) return;
     tbody.innerHTML = "";
 
     let query = firebase.database().ref("uitgaven");
@@ -115,11 +120,8 @@ document.addEventListener("DOMContentLoaded", () => {
     query.once("value").then(snap => {
       const data = snap.val() || {};
       Object.values(data)
-        .filter(u =>
-          (!filterGroep || u.groep === filterGroep) &&
-          (filterBetaald === "" || String(u.betaald) === filterBetaald)
-        )
-        .sort((a, b) => a.nummer - b.nummer)
+        .filter(u => (!filterGroep || u.groep === filterGroep) && (filterBetaald === "" || String(u.betaald) === filterBetaald))
+        .sort((a, b) => (a.nummer || 0) - (b.nummer || 0))
         .forEach(u => {
           const rij = tbody.insertRow();
           rij.style.backgroundColor = groepKleuren[u.groep] || "#ffd5f2";
@@ -138,50 +140,33 @@ document.addEventListener("DOMContentLoaded", () => {
             const btn = document.createElement("button");
             btn.textContent = "Verwijder";
             btn.className = "verwijder";
-            btn.disabled = !magBeheren();
             btn.onclick = () => {
-              if (magBeheren()) {
-                firebase.database().ref("uitgaven/" + u.nummer).remove();
-                renderTabel(
-                  document.getElementById("filterGroep").value,
-                  document.getElementById("filterBetaald").value
-                );
-              }
+              if (!magBeheren()) return;
+              firebase.database().ref("uitgaven/" + u.nummer).remove()
+                .then(() => renderTabel($("filterGroep")?.value, $("filterBetaald")?.value))
+                .catch(err => alert("Verwijderen mislukt: " + err.message));
             };
             actieCell.appendChild(btn);
 
             const betaaldCell = rij.insertCell(7);
-            betaaldCell.className = "betaald-toggle";
             const cb = document.createElement("input");
-            cb.type = "checkbox";
-            cb.checked = u.betaald;
-            cb.disabled = !magBeheren();
+            cb.type = "checkbox"; cb.checked = !!u.betaald;
             cb.onchange = () => {
-              if (magBeheren()) {
-                firebase.database().ref("uitgaven/" + u.nummer)
-                  .update({ betaald: cb.checked }, err => {
-                    if (!err) {
-                      renderTabel(
-                        document.getElementById("filterGroep").value,
-                        document.getElementById("filterBetaald").value
-                      );
-                    }
-                  });
-              } else {
-                cb.checked = !cb.checked;
-              }
+              if (!magBeheren()) { cb.checked = !cb.checked; return; }
+              firebase.database().ref("uitgaven/" + u.nummer).update({ betaald: cb.checked })
+                .then(() => renderTabel($("filterGroep")?.value, $("filterBetaald")?.value))
+                .catch(err => alert("Updaten mislukt: " + err.message));
             };
             betaaldCell.appendChild(cb);
           }
         });
-    }).catch(err => {
-      console.error("Lezen uitgaven mislukt:", err);
-    });
+    }).catch(err => console.error("Lezen uitgaven mislukt:", err));
   }
 
-  // PDF-export
+  // --- PDF export (unchanged) ---
   function setupPdfExport() {
-    const btn = document.getElementById("exportPdfBtn");
+    const btn = $("exportPdfBtn");
+    if (!btn) return;
     btn.addEventListener("click", async () => {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
@@ -190,36 +175,22 @@ document.addEventListener("DOMContentLoaded", () => {
         day: "2-digit", month: "2-digit", year: "numeric",
         hour: "2-digit", minute: "2-digit", second: "2-digit"
       });
-      const pageWidth = doc.internal.pageSize.getWidth();
       doc.setFontSize(10);
-      doc.text(timestamp, pageWidth - 20, 10, { align: "right" });
+      doc.text(timestamp, doc.internal.pageSize.getWidth() - 20, 10, { align: "right" });
       let y = 20;
-      doc.setFontSize(16);
-      doc.text("Uitgaven activiteitenkas per groep", 20, y);
-      y += 10;
-      const perGroep = {};
-      alleGroepen.forEach(g => (perGroep[g] = []));
+      doc.setFontSize(16); doc.text("Uitgaven activiteitenkas per groep", 20, y); y += 10;
+      const perGroep = {}; alleGroepen.forEach(g => perGroep[g] = []);
       const snap = await firebase.database().ref("uitgaven").once("value");
       const data = snap.val() || {};
-      Object.values(data).forEach(u => {
-        if (magZien(u.groep)) perGroep[u.groep].push(u);
-      });
-      alleGroepen.forEach(groep => {
-        const items = perGroep[groep];
+      Object.values(data).forEach(u => { if (magZien(u.groep)) perGroep[u.groep].push(u); });
+      alleGroepen.forEach(g => {
+        const items = perGroep[g];
         if (!items.length) return;
-        doc.setFontSize(14);
-        doc.text(groep, 20, y);
-        y += 8;
-        doc.setFontSize(11);
+        doc.setFontSize(14); doc.text(g, 20, y); y += 8; doc.setFontSize(11);
         items.forEach(u => {
-          const regel = `#${u.nummer} – ${u.datum} – €${u.bedrag} – ${u.activiteit} ` +
-                        (u.betaald ? "(Betaald)" : "(Niet betaald)");
-          doc.text(regel, 25, y);
-          y += 6;
-          if (y > 280) {
-            doc.addPage();
-            y = 20;
-          }
+          const regel = `#${u.nummer} – ${u.datum} – €${u.bedrag} – ${u.activiteit} ${u.betaald ? "(Betaald)" : "(Niet betaald)"}`;
+          doc.text(regel, 25, y); y += 6;
+          if (y > 280) { doc.addPage(); y = 20; }
         });
         y += 8;
       });
@@ -227,7 +198,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Cloudinary upload bewijsstuk
+  // --- Cloudinary upload bewijsstuk ---
   async function uploadBewijs(file) {
     const formData = new FormData();
     formData.append("file", file);
@@ -237,12 +208,10 @@ document.addEventListener("DOMContentLoaded", () => {
     return data.secure_url;
   }
 
-  // Auth & initialisatie
+  // --- Auth state: alleen ledenPerGroep lezen voor financieel ---
   firebase.auth().onAuthStateChanged(async user => {
     if (user) {
       huidigeGebruiker = user;
-
-      // haal gebruikersprofiel (rol/groep) altijd op
       try {
         gebruikersData = (await haalGebruikersData(user.uid)) || {};
       } catch (err) {
@@ -250,7 +219,7 @@ document.addEventListener("DOMContentLoaded", () => {
         gebruikersData = {};
       }
 
-      // Alleen ledenPerGroep ophalen wanneer gebruiker financieel is
+      // Alleen ophalen wanneer financiële rol — voorkomt permission_denied voor anderen
       if (gebruikersData.rol === "financieel") {
         try {
           ledenPerGroep = await haalLedenPerGroep();
@@ -259,20 +228,14 @@ document.addEventListener("DOMContentLoaded", () => {
           ledenPerGroep = {};
         }
       } else {
-        // geen read proberen: voorkomt permission_denied logs
         ledenPerGroep = {};
       }
 
-      // UI init
-      const loginScherm = document.getElementById("loginScherm");
-      const appInhoud = document.getElementById("appInhoud");
-      if (loginScherm) loginScherm.style.display = "none";
-      if (appInhoud) appInhoud.style.display = "block";
-      const loginFout = document.getElementById("loginFout");
-      if (loginFout) loginFout.textContent = "";
+      if ($("loginScherm")) $("loginScherm").style.display = "none";
+      if ($("appInhoud")) $("appInhoud").style.display = "block";
+      if ($("loginFout")) $("loginFout").textContent = "";
 
-      document.getElementById("gebruikerInfo").textContent =
-        `Ingelogd als ${gebruikersData.rol || 'onbekend'} (${gebruikersData.groep || 'ALL'})`;
+      if ($("gebruikerInfo")) $("gebruikerInfo").textContent = `Ingelogd als ${gebruikersData.rol || 'onbekend'} (${gebruikersData.groep || 'ALL'})`;
 
       vulGroepSelectie();
       setupSummaryToggle();
@@ -282,110 +245,82 @@ document.addEventListener("DOMContentLoaded", () => {
       toonFinancieelFeatures();
       toonFinancieelKolommen();
     } else {
-      const appInhoud = document.getElementById("appInhoud");
-      const loginScherm = document.getElementById("loginScherm");
-      if (appInhoud) appInhoud.style.display = "none";
-      if (loginScherm) loginScherm.style.display = "block";
-      const loginFout = document.getElementById("loginFout");
-      if (loginFout) loginFout.textContent = "";
+      if ($("appInhoud")) $("appInhoud").style.display = "none";
+      if ($("loginScherm")) $("loginScherm").style.display = "block";
+      if ($("loginFout")) $("loginFout").textContent = "";
       huidigeGebruiker = null;
       gebruikersData = null;
       ledenPerGroep = {};
     }
   });
 
-  // Login/Logout
-  document.getElementById("loginKnop").addEventListener("click", () => {
-    const email = document.getElementById("loginEmail").value;
-    const wachtwoord = document.getElementById("loginWachtwoord").value;
-    const fout = document.getElementById("loginFout");
-    firebase.auth()
-      .signInWithEmailAndPassword(email, wachtwoord)
-      .catch(err => { fout.textContent = "Login mislukt: " + err.message; });
-  });
-  document.getElementById("logoutKnop").addEventListener("click", () => {
-    firebase.auth().signOut();
+  // --- Safe event listeners ---
+  safeOn($("loginKnop"), "click", async () => {
+    const email = $("loginEmail")?.value || "";
+    const wachtwoord = $("loginWachtwoord")?.value || "";
+    const fout = $("loginFout");
+    try {
+      await firebase.auth().signInWithEmailAndPassword(email, wachtwoord);
+      if (fout) fout.textContent = "";
+    } catch (err) {
+      if (fout) fout.textContent = "Login mislukt: Firebase: " + (err && err.message ? err.message : err);
+      console.warn("Login fout:", err);
+    }
   });
 
-  // Gebruiker rollen toewijzen
-  document.getElementById("rolForm").addEventListener("submit", e => {
+  safeOn($("logoutKnop"), "click", () => firebase.auth().signOut());
+
+  safeOn($("rolForm"), "submit", e => {
     e.preventDefault();
-    const uid = document.getElementById("userUid").value.trim();
-    const groep = document.getElementById("userGroep").value;
-    const rol = document.getElementById("userRol").value;
+    if (!magBeheren()) return alert("Geen rechten.");
+    const uid = $("userUid")?.value.trim();
+    const groep = $("userGroep")?.value;
+    const rol = $("userRol")?.value;
     if (!uid || !groep || !rol) return alert("Vul alle velden in.");
     firebase.database().ref("gebruikers/" + uid).set({ groep, rol })
-      .then(() => {
-        alert("Gebruiker opgeslagen");
-        document.getElementById("rolForm").reset();
-      })
+      .then(() => { alert("Gebruiker opgeslagen"); $("rolForm").reset(); })
       .catch(err => alert("Opslaan mislukt: " + err.message));
   });
 
-  // Uitgave toevoegen
-  document.getElementById("uitgaveForm").addEventListener("submit", async e => {
+  safeOn($("uitgaveForm"), "submit", async e => {
     e.preventDefault();
-    const g = document.getElementById("groep").value;
-    const b = parseFloat(document.getElementById("bedrag").value) || 0;
-    const a = document.getElementById("activiteit").value;
-    const d = document.getElementById("datum").value;
-    const p = document.getElementById("betaald").checked;
-    const rekeningNummer = document.getElementById("rekeningNummer").value.trim();
+    const g = $("groep")?.value;
+    const b = parseFloat($("bedrag")?.value) || 0;
+    const a = $("activiteit")?.value;
+    const d = $("datum")?.value;
+    const p = $("betaald") ? $("betaald").checked : false;
+    const rekeningNummer = $("rekeningNummer")?.value.trim();
     if (!rekeningNummer) return alert("Vul je rekeningnummer in.");
-    const file = document.getElementById("bewijsUpload").files[0];
+    const file = $("bewijsUpload")?.files?.[0];
     if (!file) return alert("Upload een bewijsstuk.");
     if (!g || isNaN(b) || !a || !d) return alert("Gelieve alle velden correct in te vullen.");
     if (!magIndienen(g)) return alert("Je mag geen uitgave indienen voor deze groep.");
 
     let bewijsUrl = "";
-    if (file) {
-      try { bewijsUrl = await uploadBewijs(file); }
-      catch { return alert("Upload bewijsstuk mislukt."); }
-    }
+    try { bewijsUrl = await uploadBewijs(file); } catch { return alert("Upload bewijsstuk mislukt."); }
 
-    // Uniek nummer genereren
     const uitgavenRef = firebase.database().ref("uitgaven");
     uitgavenRef.once("value").then(snap => {
       const data = snap.val() || {};
       const nummers = Object.values(data).map(u => u.nummer || 0);
       let nieuwNummer;
-      do {
-        nieuwNummer = Math.floor(1000 + Math.random() * 9000);
-      } while (nummers.includes(nieuwNummer));
-
+      do { nieuwNummer = Math.floor(1000 + Math.random() * 9000); } while (nummers.includes(nieuwNummer));
       uitgavenRef.child(nieuwNummer).set({
-        nummer: nieuwNummer,
-        groep: g,
-        bedrag: b.toFixed(2),
-        activiteit: a,
-        datum: d,
-        betaald: p,
-        bewijsUrl,
-        status: "in_behandeling"
+        nummer: nieuwNummer, groep: g, bedrag: b.toFixed(2),
+        activiteit: a, datum: d, betaald: p, bewijsUrl, status: "in_behandeling"
       })
-      .then(() => {
-        document.getElementById("uitgaveForm").reset();
-        renderTabel(
-          document.getElementById("filterGroep").value,
-          document.getElementById("filterBetaald").value
-        );
-      })
+      .then(() => { $("uitgaveForm")?.reset(); renderTabel($("filterGroep")?.value, $("filterBetaald")?.value); })
       .catch(err => alert("Opslaan mislukt: " + err.message));
     });
   });
 
-  // Filters
-  document.getElementById("filterGroep").addEventListener("change", e => {
-    renderTabel(e.target.value, document.getElementById("filterBetaald").value);
-  });
-  document.getElementById("filterBetaald").addEventListener("change", e => {
-    renderTabel(document.getElementById("filterGroep").value, e.target.value);
-  });
+  safeOn($("filterGroep"), "change", e => renderTabel(e.target.value, $("filterBetaald")?.value));
+  safeOn($("filterBetaald"), "change", e => renderTabel($("filterGroep")?.value, e.target.value));
 
-  // Samenvatting toggler
+  // Toggle samenvatting
   function setupSummaryToggle() {
-    const btn = document.getElementById("toggleSummary");
-    const content = document.getElementById("summaryContent");
+    const btn = $("toggleSummary");
+    const content = $("summaryContent");
     if (!btn || !content) return;
     btn.addEventListener("click", () => {
       const open = content.style.display === "block";
@@ -395,25 +330,22 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Leden per groep opslaan via samenvattingstabel
-  document.getElementById("ledenSamenvattingForm").addEventListener("submit", function(e) {
+  // Leden opslaan via samenvattingstabel
+  safeOn($("ledenSamenvattingForm"), "submit", function(e) {
     e.preventDefault();
-    if (!magBeheren()) return;
+    if (!magBeheren()) return alert("Geen rechten om leden te bewerken.");
     const inputs = document.querySelectorAll("#groepSamenvattingTabel input");
     const nieuweLeden = {};
-    inputs.forEach(inp => {
-      nieuweLeden[inp.name] = parseInt(inp.value) || 0;
-    });
+    inputs.forEach(inp => { nieuweLeden[inp.name] = parseInt(inp.value) || 0; });
     firebase.database().ref("ledenPerGroep").set(nieuweLeden)
-      .then(() => {
-        ledenPerGroep = nieuweLeden;
-        alert("Leden per groep opgeslagen!");
-        renderSamenvatting();
-      })
-      .catch(err => alert("Opslaan mislukt: " + err.message));
+      .then(() => { ledenPerGroep = nieuweLeden; alert("Leden per groep opgeslagen!"); renderSamenvatting(); })
+      .catch(err => {
+        console.error("Opslaan ledenPerGroep mislukt:", err);
+        alert("Opslaan mislukt (geen permissie of fout). Controleer database regels.");
+      });
   });
 
-  // Initieel: verberg beheer-paneel en financieel functies
+  // Init UI (hidden until auth)
   toonBeheerPaneel();
   toonFinancieelFeatures();
   toonFinancieelKolommen();
