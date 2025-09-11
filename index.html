@@ -39,7 +39,9 @@
     <p id="gebruikerInfo"></p>
     <button id="logoutKnop" style="float: right;">Uitloggen</button>
 
-    <div id="beheerPaneel" style="display: none;">
+    <!-- Gebruikersbeheer paneel -->
+    <div id="beheerPaneel" style="display:none;">
+      <!-- Hier komt het gebruikersbeheer -->
       <h3>Gebruikersbeheer</h3>
       <form id="rolForm">
         <label for="userUid">Gebruiker UID:</label>
@@ -119,7 +121,9 @@
       <tbody></tbody>
     </table>
 
-    <button id="toggleSummary">▸ Toon uitgaven per groep</button>
+    <!-- Overzicht uitgaven knop -->
+    <button id="toggleSummary" style="display:none;">Toon overzicht uitgaven per groep</button>
+    <button id="exportPdfBtn" style="display:none;">Exporteer PDF</button>
     <div id="summaryContent" style="display:none;">
       <form id="ledenSamenvattingForm">
         <table id="groepSamenvattingTabel">
@@ -136,8 +140,6 @@
         <button type="submit" id="ledenOpslaanBtn" style="display:none;">Leden opslaan</button>
       </form>
     </div>
-
-    <button id="exportPdfBtn">Exporteer naar PDF</button>
   </div>
 
   <script src="script.js"></script>
