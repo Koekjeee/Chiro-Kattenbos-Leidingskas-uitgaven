@@ -181,6 +181,57 @@ document.addEventListener("DOMContentLoaded", () => {
           betaaldStatusCell.className = "betaald-status";
           betaaldStatusCell.textContent = u.betaald ? "✓" : "✗";
           betaaldStatusCell.style.color = u.betaald ? "#27ae60" : "#e74c3c";
+
+          // Actie: Verwijder-knop (alleen voor financieel)
+          const actieCell = rij.insertCell(6);
+          if (magBeheren()) {
+            const verwijderBtn = document.createElement("button");
+            verwijderBtn.textContent = "🗑️";
+            verwijderBtn.title = "Verwijder uitgave";
+            verwijderBtn.style.cursor = "pointer";
+            verwijderBtn.onclick = async () => {
+              if (confirm("Weet je zeker dat je deze uitgave wilt verwijderen?")) {
+                await firebase.database().ref("uitgaven/" + u.nummer).remove();
+                renderTabel(filterGroep, filterBetaald);
+              }
+            };
+            actieCell.appendChild(verwijderBtn);
+          }
+
+          // Betaald aanvinken (alleen voor financieel)
+          const betaaldCell = rij.insertCell(7);
+          if (magBeheren()) {
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.checked = !!u.betaald;
+            checkbox.title = "Markeer als betaald";
+            checkbox.onchange = async () => {
+              await firebase.database().ref("uitgaven/" + u.nummer).update({ betaald: checkbox.checked });
+              renderTabel(filterGroep, filterBetaald);
+            };
+            betaaldCell.appendChild(checkbox);
+          }
+
+          // Bewijsstuk afbeelding (indien aanwezig)
+          if (u.bewijsUrl) {
+            const bewijsCell = rij.insertCell(-1);
+            const link = document.createElement("a");
+            link.href = u.bewijsUrl;
+            link.target = "_blank";
+            link.rel = "noopener";
+            link.title = "Bekijk bewijsstuk";
+            if (u.bewijsUrl.match(/\.(jpg|jpeg|png|gif)$/i)) {
+              const img = document.createElement("img");
+              img.src = u.bewijsUrl;
+              img.alt = "Bewijs";
+              img.style.maxWidth = "40px";
+              img.style.maxHeight = "40px";
+              link.appendChild(img);
+            } else {
+              link.textContent = "📄";
+            }
+            bewijsCell.appendChild(link);
+          }
         });
     }).catch(err => console.error("Lezen uitgaven mislukt:", err));
   }
