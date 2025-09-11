@@ -124,19 +124,20 @@
     </div>
 
     <table id="overzicht">
-<thead>
-  <tr>
-    <th>Betaald</th>
-    <th>Groep</th>
-    <th>Bedrag</th>
-    <th>Activiteit</th>
-    <th>Datum</th>
-    <th>Actie</th>
-    <th>Terug betaald?</th>
-    <th>Rekeningnummer</th>
-    <th>Bewijs</th>
-  </tr>
-</thead>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Groep</th>
+          <th>Bedrag</th>
+          <th>Activiteit</th>
+          <th>Datum</th>
+          <th>Betaald</th>
+          <th>Actie</th>
+          <th>Terug betaald?</th>
+          <th>Rekeningnummer</th>
+          <th>Bewijs</th>
+        </tr>
+      </thead>
       <tbody></tbody>
     </table>
 
@@ -209,116 +210,6 @@
       if (exportBtn) exportBtn.style.display = show ? "block" : "none";
       // ... rest van je functie
     }
-
-    function toonFinancieelKolommen() {
-      // Nu zijn het de 8e, 9e en 10e kolom
-      const financieelKolommen = [8, 9, 10];
-      financieelKolommen.forEach(idx => {
-        const th = document.querySelector(`#overzicht th:nth-child(${idx})`);
-        const tds = document.querySelectorAll(`#overzicht td:nth-child(${idx})`);
-        const show = magBeheren();
-        if (th) th.style.display = show ? "table-cell" : "none";
-        tds.forEach(td => td.style.display = show ? "table-cell" : "none");
-      });
-    }
-
-    function renderTabel(filterGroep = "", filterBetaald = "") {
-      const tbody = document.querySelector("#overzicht tbody");
-      if (!tbody) return;
-      tbody.innerHTML = "";
-      let query = firebase.database().ref("uitgaven");
-      if (gebruikersData && gebruikersData.rol === "leiding") {
-        query = query.orderByChild("groep").equalTo(gebruikersData.groep);
-      }
-      query.once("value").then(snap => {
-        const data = snap.val() || {};
-        Object.values(data)
-          .filter(u => (!filterGroep || u.groep === filterGroep) && (filterBetaald === "" || String(u.betaald) === filterBetaald))
-          .sort((a, b) => (a.nummer || 0) - (b.nummer || 0))
-          .forEach(u => {
-            const rij = tbody.insertRow();
-            rij.style.backgroundColor = groepKleuren[u.groep] || "#ffd5f2";
-            rij.insertCell(0).textContent = u.nummer || "-";
-            rij.insertCell(1).textContent = u.groep || "-";
-            rij.insertCell(2).textContent = u.bedrag ? `€${u.bedrag}` : "-";
-            rij.insertCell(3).textContent = u.activiteit || "-";
-            rij.insertCell(4).textContent = u.datum || "-";
-            rij.insertCell(5).textContent = u.rekeningNummer || "-";
-
-            // Bewijsstuk
-            const bewijsCell = rij.insertCell(6);
-            if (u.bewijsUrl) {
-              const link = document.createElement("a");
-              link.href = u.bewijsUrl;
-              link.target = "_blank";
-              link.rel = "noopener";
-              link.title = "Bekijk bewijsstuk";
-              if (u.bewijsUrl.match(/\.(jpg|jpeg|png|gif)$/i)) {
-                const img = document.createElement("img");
-                img.src = u.bewijsUrl;
-                img.alt = "Bewijs";
-                img.style.maxWidth = "40px";
-                img.style.maxHeight = "40px";
-                link.appendChild(img);
-              } else {
-                link.textContent = "📄";
-              }
-              bewijsCell.appendChild(link);
-            }
-
-            // Betaald status (vinkje/kruisje)
-            const betaaldStatusCell = rij.insertCell(7);
-            betaaldStatusCell.className = "betaald-status";
-            betaaldStatusCell.textContent = u.betaald ? "✓" : "✗";
-            betaaldStatusCell.style.color = u.betaald ? "#27ae60" : "#e74c3c";
-            if (!magBeheren()) betaaldStatusCell.style.display = "none";
-
-            // Actie: Verwijder-knop
-            const actieCell = rij.insertCell(8);
-            if (magBeheren()) {
-              const verwijderBtn = document.createElement("button");
-              verwijderBtn.textContent = "🗑️";
-              verwijderBtn.title = "Verwijder uitgave";
-              verwijderBtn.style.cursor = "pointer";
-              verwijderBtn.onclick = async () => {
-                if (confirm("Weet je zeker dat je deze uitgave wilt verwijderen?")) {
-                  await firebase.database().ref("uitgaven/" + u.nummer).remove();
-                  renderTabel(filterGroep, filterBetaald);
-                }
-              };
-              actieCell.appendChild(verwijderBtn);
-            }
-            if (!magBeheren()) actieCell.style.display = "none";
-
-            // Betaald aanvinken (checkbox)
-            const betaaldCell = rij.insertCell(9);
-            if (magBeheren()) {
-              const checkbox = document.createElement("input");
-              checkbox.type = "checkbox";
-              checkbox.checked = !!u.betaald;
-              checkbox.title = "Markeer als betaald";
-              checkbox.onchange = async () => {
-                await firebase.database().ref("uitgaven/" + u.nummer).update({ betaald: checkbox.checked });
-                renderTabel(filterGroep, filterBetaald);
-              };
-              betaaldCell.appendChild(checkbox);
-            }
-            if (!magBeheren()) betaaldCell.style.display = "none";
-
-            // Na het vullen van de tabel, kolommen updaten
-            toonFinancieelKolommen();
-          }).catch(err => console.error("Lezen uitgaven mislukt:", err));
-    }
-
-    // Voeg deze functie toe in script.js
-function stuurDiscordWebhook(bericht) {
-  const webhookUrl = "JOUW_DISCORD_WEBHOOK_URL_HIER";
-  fetch(webhookUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ content: bericht })
-  });
-}
   </script>
 </body>
 </html>
