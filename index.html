@@ -57,30 +57,47 @@
     </button>
 
     <!-- Gebruikersbeheer paneel -->
-    <div id="beheerPaneel" style="display:none;">
-      <!-- Hier komt het gebruikersbeheer -->
-      <h3>Gebruikersbeheer</h3>
-      <form id="rolForm">
-        <label for="userUid">Gebruiker UID:</label>
-        <input type="text" id="userUid" required />
-        <label for="userGroep">Groep:</label>
-        <select id="userGroep">
-          <option value="Ribbels">Ribbels</option>
-          <option value="Speelclubs">Speelclubs</option>
-          <option value="Rakkers">Rakkers</option>
-          <option value="Kwiks">Kwiks</option>
-          <option value="Tippers">Tippers</option>
-          <option value="Toppers">Toppers</option>
-          <option value="Aspi">Aspi</option>
-          <option value="LEIDING">LEIDING</option>
-        </select>
-        <label for="userRol">Rol:</label>
-        <select id="userRol">
-          <option value="leiding">Leiding</option>
-          <option value="financieel">Financieel</option>
-        </select>
-        <button type="submit">Opslaan</button>
-      </form>
+    <div style="display: flex; gap: 32px;">
+      <div id="beheerPaneel" style="display:none;">
+        <!-- Hier komt het gebruikersbeheer -->
+        <h3>Gebruikersbeheer</h3>
+        <form id="rolForm">
+          <label for="userUid">Gebruiker UID:</label>
+          <input type="text" id="userUid" required />
+          <label for="userGroep">Groep:</label>
+          <select id="userGroep">
+            <option value="Ribbels">Ribbels</option>
+            <option value="Speelclubs">Speelclubs</option>
+            <option value="Rakkers">Rakkers</option>
+            <option value="Kwiks">Kwiks</option>
+            <option value="Tippers">Tippers</option>
+            <option value="Toppers">Toppers</option>
+            <option value="Aspi">Aspi</option>
+            <option value="LEIDING">LEIDING</option>
+          </select>
+          <label for="userRol">Rol:</label>
+          <select id="userRol">
+            <option value="leiding">Leiding</option>
+            <option value="financieel">Financieel</option>
+          </select>
+          <button type="submit">Opslaan</button>
+        </form>
+      </div>
+      <div id="gebruikersLijstPaneel" style="display:none; min-width:350px;">
+        <h3>Gebruikerslijst</h3>
+        <table style="width:100%;">
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>E-mail</th>
+              <th>UID</th>
+              <th>Rol</th>
+              <th>Groep</th>
+            </tr>
+          </thead>
+          <tbody id="gebruikersLijstBody"></tbody>
+        </table>
+      </div>
     </div>
 
     <form id="uitgaveForm">
