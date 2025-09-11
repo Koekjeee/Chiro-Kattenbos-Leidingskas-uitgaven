@@ -241,13 +241,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!tbody) return;
     tbody.innerHTML = "";
 
-    // Zorg dat ledenPerGroep en uitgavenData beschikbaar zijn
     const groepen = Object.keys(ledenPerGroep || {});
     groepen.forEach(groep => {
-      // Tel totaalbedrag voor deze groep
       let totaal = 0;
-      // Haal uitgaven uit Firebase
-      // (Je kunt dit optimaliseren door uitgavenData globaal te cachen)
       firebase.database().ref("uitgaven").orderByChild("groep").equalTo(groep).once("value").then(snap => {
         const uitgaven = snap.val() || {};
         Object.values(uitgaven).forEach(u => {
@@ -256,6 +252,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const leden = ledenPerGroep[groep] || 0;
         const perKind = leden > 0 ? (totaal / leden).toFixed(2) : "-";
         const rij = tbody.insertRow();
+        rij.style.backgroundColor = groepKleuren[groep] || "#ffd5f2";
         rij.insertCell(0).textContent = groep;
         rij.insertCell(1).textContent = leden;
         rij.insertCell(2).textContent = `€${totaal.toFixed(2)}`;
