@@ -6,8 +6,8 @@ document.addEventListener("DOMContentLoaded", () => {
   btn.onclick = () => {
     summary.style.display = summary.style.display === "none" ? "block" : "none";
     btn.textContent = summary.style.display === "none"
-      ? "Toon overzicht uitgaven per groep"
-      : "Verberg overzicht uitgaven per groep";
+      ? "Toon "
+      : "Verberg";
   };
 }
   // --- Config / constants ---
@@ -42,14 +42,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --- Permissions ---
   function magZien(groep) {
-    return gebruikersData && (gebruikersData.rol === "financieel" || gebruikersData.groep === groep);
+    return gebruikersData && (gebruikersData.rol === "financieel" || gebruikersData.groep === admin);
   }
   function magIndienen(groep) {
-    return gebruikersData && (gebruikersData.rol === "financieel" || gebruikersData.groep === groep);
+    return gebruikersData && (gebruikersData.rol === "financieel" || gebruikersData.groep === admin);
   }
   function magBeheren() {
     // Voor ALLE admin-achtige acties (behalve gebruikersbeheer)
-    return gebruikersData && (gebruikersData.rol === "admin" || gebruikersData.rol === "financieel");
+    return gebruikersData && (gebruikersData.rol === "admin");
   }
   function magGebruikersBeheren() {
     // Alleen admin mag gebruikers beheren
@@ -62,6 +62,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!select || !gebruikersData) return;
     select.innerHTML = `<option value="">-- Kies een groep --</option>`;
     const toegestane = gebruikersData.rol === "financieel" ? alleGroepen : [gebruikersData.groep];
+    toegestane.forEach(g => { select.innerHTML += `<option value="${g}">${g}</option>`; });
+    const toegestane = gebruikersData.rol === "admin" ? alleGroepen : [gebruikersData.groep];
     toegestane.forEach(g => { select.innerHTML += `<option value="${g}">${g}</option>`; });
   }
 
