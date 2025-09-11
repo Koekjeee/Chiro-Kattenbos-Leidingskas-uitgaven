@@ -30,7 +30,6 @@
   <!-- 🔐 Login -->
   <div id="loginScherm">
     <h2>Inloggen</h2>
-    <p>Log in met je e-mailadres en wachtwoord:</p>
     <input type="email" id="loginEmail" placeholder="E-mailadres" required />
     <input type="password" id="loginWachtwoord" placeholder="Wachtwoord" required />
     <button id="loginKnop">Inloggen</button>
@@ -43,13 +42,12 @@
     <p id="gebruikerInfo"></p>
     <button id="logoutKnop" style="float: right;">Uitloggen</button>
 
-    <!-- 👤 Beheerpaneel -->
+    <!-- 👤 Beheerpaneel (alleen voor financieel) -->
     <div id="beheerPaneel" style="display: none;">
       <h3>Gebruikersbeheer</h3>
       <form id="rolForm">
         <label for="userUid">Gebruiker UID:</label>
         <input type="text" id="userUid" required />
-
         <label for="userGroep">Groep:</label>
         <select id="userGroep">
           <option value="Ribbels">Ribbels</option>
@@ -61,39 +59,31 @@
           <option value="Aspi">Aspi</option>
           <option value="LEIDING">LEIDING</option>
         </select>
-
         <label for="userRol">Rol:</label>
         <select id="userRol">
           <option value="leiding">Leiding</option>
           <option value="financieel">Financieel</option>
         </select>
-
         <button type="submit">Opslaan</button>
       </form>
+    </div>
 
     <!-- ✅ Uitgaveformulier -->
-<!-- In index.html -->
-<form id="uitgaveForm">
-  <label for="groep">Groep:</label>
-  <select id="groep" required></select>
-
-  <label for="bedrag">Bedrag (€):</label>
-  <input type="number" id="bedrag" step="0.01" required />
-
-  <label for="activiteit">Activiteit/Omschrijving:</label>
-  <input type="text" id="activiteit" required />
-
-  <label for="datum">Datum:</label>
-  <input type="date" id="datum" required />
-
-  <label for="rekeningNummer">Rekeningnummer:</label>
-  <input type="text" id="rekeningNummer" required placeholder="BE00 0000 0000 0000" />
-
-  <label for="bewijsUpload">Upload bewijsstuk (verplicht):</label>
-  <input type="file" id="bewijsUpload" accept="image/*,application/pdf" required />
-
-  <button type="submit">Toevoegen</button>
-</form>
+    <form id="uitgaveForm">
+      <label for="groep">Groep:</label>
+      <select id="groep" required></select>
+      <label for="bedrag">Bedrag (€):</label>
+      <input type="number" id="bedrag" step="0.01" required />
+      <label for="activiteit">Activiteit/Omschrijving:</label>
+      <input type="text" id="activiteit" required />
+      <label for="datum">Datum:</label>
+      <input type="date" id="datum" required />
+      <label for="rekeningNummer">Rekeningnummer:</label>
+      <input type="text" id="rekeningNummer" required placeholder="BE00 0000 0000 0000" />
+      <label for="bewijsUpload">Upload bewijsstuk (verplicht):</label>
+      <input type="file" id="bewijsUpload" accept="image/*,application/pdf" required />
+      <button type="submit">Toevoegen</button>
+    </form>
 
     <!-- 🔍 Filters -->
     <div class="filter">
@@ -110,7 +100,6 @@
         <option value="LEIDING">LEIDING</option>
       </select>
     </div>
-
     <div class="filter">
       <label for="filterBetaald">Filter op betaald:</label>
       <select id="filterBetaald">
@@ -137,7 +126,7 @@
       <tbody></tbody>
     </table>
 
-    <!-- Samenvatting per groep -->
+    <!-- Samenvatting per groep met ledenaantal -->
     <button id="toggleSummary">▸ Toon uitgaven per groep</button>
     <div id="summaryContent" style="display:none;">
       <form id="ledenSamenvattingForm">
