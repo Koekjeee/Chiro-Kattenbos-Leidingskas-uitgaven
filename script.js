@@ -178,21 +178,44 @@ document.addEventListener("DOMContentLoaded", () => {
   firebase.auth().onAuthStateChanged(async user => {
     if (user) {
       huidigeGebruiker = user;
-      try { gebruikersData = (await haalGebruikersData(user.uid)) || {}; } catch (err) { gebruikersData = {}; console.warn("haalGebruikersData faalde:", err); }
-      // alleen ledenPerGroep ophalen voor financieel (vermijdt permission_denied)
-      if (gebruikersData.rol === "financieel") {
-        try { ledenPerGroep = await haalLedenPerGroep(); } catch (err) { ledenPerGroep = {}; console.warn("geen toegang tot ledenPerGroep:", err); }
-      } else ledenPerGroep = {};
+      try { gebruikersData = (await haalGebruikersData(user.uid)) || {}; }
+      catch (err) { gebruikersData = {}; console.warn("haalGebruikersData faalde:", err); }
 
+      if (gebruikersData.rol === "financieel") {
+        try { ledenPerGroep = await haalLedenPerGroep(); }
+        catch (err) { ledenPerGroep = {}; console.warn("geen toegang tot ledenPerGroep:", err); }
+      } else {
+        ledenPerGroep = {};
+      }
+
+      // UI: show/hide relevant onderdelen
       $("loginScherm") && ($("loginScherm").style.display = "none");
       $("appInhoud") && ($("appInhoud").style.display = "block");
       $("gebruikerInfo") && ($("gebruikerInfo").textContent = `Ingelogd als ${gebruikersData.rol || 'onbekend'} (${gebruikersData.groep || 'ALL'})`);
+
+      // vul selects / render tabelen
       vulGroepSelectie();
+
+      // herstel zichtbaarheidsregels voor financieel
+      toonBeheerPaneel();
+      toonFinancieelFeatures();
+      toonFinancieelKolommen();
+
+      // summary toggle en inhoud (veilig: alleen aanroepen als functie bestaat)
+      setupSummaryToggle();
+      if (typeof renderSamenvatting === "function" && magBeheren()) {
+        renderSamenvatting();
+      }
+
       renderTabel();
     } else {
+      // logged out
       $("appInhoud") && ($("appInhoud").style.display = "none");
       $("loginScherm") && ($("loginScherm").style.display = "block");
-      huidigeGebruiker = null; gebruikersData = null; ledenPerGroep = {};
+      $("loginFout") && ($("loginFout").textContent = "");
+      huidigeGebruiker = null;
+      gebruikersData = null;
+      ledenPerGroep = {};
     }
   });
 
@@ -213,4 +236,31 @@ document.addEventListener("DOMContentLoaded", () => {
   // Filters
   safeOn($("filterGroep"), "change", e => renderTabel(e.target.value, $("filterBetaald")?.value));
   safeOn($("filterBetaald"), "change", e => renderTabel($("filterGroep")?.value, e.target.value));
+
+  // toon/verberg beheerpaneel en financieel features/kolommen
+  function toonBeheerPaneel() {
+    const paneel = $("beheerPaneel");
+    if (!paneel) return;
+    paneel.style.display = magBeheren() ? "block" : "none";
+  }
+
+  function toonFinancieelFeatures() {
+    const summaryBtn = $("toggleSummary");
+    const exportBtn = $("exportPdfBtn");
+    const show = magBeheren();
+    if (summaryBtn) summaryBtn.style.display = show ? "block" : "none";
+    if (exportBtn) exportBtn.style.display = show ? "block" : "none";
+  }
+
+  function toonFinancieelKolommen() {
+    const betaaldTh = document.querySelector("#overzicht th:nth-child(6)");
+    const actieTh = document.querySelector("#overzicht th:nth-child(7)");
+    const betaaldTds = document.querySelectorAll("#overzicht td:nth-child(6)");
+    const actieTds = document.querySelectorAll("#overzicht td:nth-child(7)");
+    const show = magBeheren();
+    if (betaaldTh) betaaldTh.style.display = show ? "table-cell" : "none";
+    if (actieTh) actieTh.style.display = show ? "table-cell" : "none";
+    betaaldTds.forEach(td => td.style.display = show ? "table-cell" : "none");
+    actieTds.forEach(td => td.style.display = show ? "table-cell" : "none");
+  }
 });
