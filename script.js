@@ -173,20 +173,23 @@ document.addEventListener("DOMContentLoaded", () => {
         .forEach(u => {
           const rij = tbody.insertRow();
           rij.style.backgroundColor = groepKleuren[u.groep] || "#ffd5f2";
-          rij.insertCell(0).textContent = u.nummer || "-";
-          rij.insertCell(1).textContent = u.groep || "-";
-          rij.insertCell(2).textContent = u.bedrag ? `€${u.bedrag}` : "-";
-          rij.insertCell(3).textContent = u.activiteit || "-";
-          rij.insertCell(4).textContent = u.datum || "-";
+          const td0 = rij.insertCell(0);
+          td0.textContent = u.betaald ? "✓" : "✗";
+          td0.setAttribute("data-label", "Betaald");
+          rij.insertCell(1).textContent = u.nummer || "-";
+          rij.insertCell(2).textContent = u.groep || "-";
+          rij.insertCell(3).textContent = u.bedrag ? `€${u.bedrag}` : "-";
+          rij.insertCell(4).textContent = u.activiteit || "-";
+          rij.insertCell(5).textContent = u.datum || "-";
 
           // Betaald status (vinkje/kruisje)
-          const betaaldStatusCell = rij.insertCell(5);
+          const betaaldStatusCell = rij.insertCell(6);
           betaaldStatusCell.className = "betaald-status";
           betaaldStatusCell.textContent = u.betaald ? "✓" : "✗";
           betaaldStatusCell.style.color = u.betaald ? "#27ae60" : "#e74c3c";
 
           // Actie: Verwijder-knop
-          const actieCell = rij.insertCell(6);
+          const actieCell = rij.insertCell(7);
           if (magBeheren()) {
             const verwijderBtn = document.createElement("button");
             verwijderBtn.textContent = "🗑️";
@@ -202,7 +205,7 @@ document.addEventListener("DOMContentLoaded", () => {
           }
 
           // Betaald aanvinken (checkbox)
-          const betaaldCell = rij.insertCell(7);
+          const betaaldCell = rij.insertCell(8);
           if (magBeheren()) {
             const checkbox = document.createElement("input");
             checkbox.type = "checkbox";
@@ -216,10 +219,10 @@ document.addEventListener("DOMContentLoaded", () => {
           }
 
           // Rekeningnummer
-          rij.insertCell(8).textContent = u.rekeningNummer || "-";
+          rij.insertCell(9).textContent = u.rekeningNummer || "-";
 
           // Bewijsstuk afbeelding/document
-          const bewijsCell = rij.insertCell(9);
+          const bewijsCell = rij.insertCell(10);
           if (u.bewijsUrl) {
             const link = document.createElement("a");
             link.href = u.bewijsUrl;
