@@ -1,15 +1,4 @@
 document.addEventListener("DOMContentLoaded", () => {
-  function setupSummaryToggle() {
-  const btn = document.getElementById("toggleSummary");
-  const summary = document.getElementById("summaryContent");
-  if (!btn || !summary) return;
-  btn.onclick = () => {
-    summary.style.display = summary.style.display === "none" ? "block" : "none";
-    btn.textContent = summary.style.display === "none"
-      ? "Toon "
-      : "Verberg";
-  };
-}
   // --- Config / constants ---
   const alleGroepen = ["Ribbels","Speelclubs","Rakkers","Kwiks","Tippers","Toppers","Aspi","LEIDING"];
   const groepKleuren = {
@@ -18,8 +7,7 @@ document.addEventListener("DOMContentLoaded", () => {
     Aspi:"#ffd5cc",LEIDING:"#dddddd"
   };
 
-  // >>> VERVANG HIER je cloud name en preset door jouw waarden <<<
-  // Bijvoorbeeld: https://api.cloudinary.com/v1_1/voorbeeldcloud/upload
+  // Cloudinary config
   const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dxizebpwn/upload";
   const CLOUDINARY_PRESET = "chiro_upload_fotos";
 
@@ -42,40 +30,33 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --- Permissions ---
   function magZien(groep) {
-    // Admin en financieel mogen alles zien, leiding alleen eigen groep
+    // Financieel mag alles zien, leiding alleen eigen groep
     return gebruikersData && (
-      gebruikersData.rol === "admin" ||
       gebruikersData.rol === "financieel" ||
       gebruikersData.groep === groep
     );
   }
 
   function magIndienen(groep) {
-    // Admin en financieel mogen alles indienen, leiding alleen eigen groep
+    // Financieel mag alles indienen, leiding alleen eigen groep
     return gebruikersData && (
-      gebruikersData.rol === "admin" ||
       gebruikersData.rol === "financieel" ||
       gebruikersData.groep === groep
     );
   }
 
   function magBeheren() {
-    // Admin en financieel mogen alles behalve gebruikersbeheer
-    return gebruikersData && (gebruikersData.rol === "admin" || gebruikersData.rol === "financieel");
+    // Alleen financieel mag beheren
+    return gebruikersData && gebruikersData.rol === "financieel";
   }
 
-  function magGebruikersBeheren() {
-    // Alleen admin mag gebruikers beheren
-    return gebruikersData && gebruikersData.rol === "admin";
-  }
-
-  // --- UI helpers (kort gehouden) ---
+  // --- UI helpers ---
   function vulGroepSelectie() {
     const select = $("groep");
     if (!select || !gebruikersData) return;
     select.innerHTML = `<option value="">-- Kies een groep --</option>`;
     let toegestane;
-    if (gebruikersData.rol === "admin" || gebruikersData.rol === "financieel") {
+    if (gebruikersData.rol === "financieel") {
       toegestane = alleGroepen;
     } else {
       toegestane = [gebruikersData.groep];
@@ -85,10 +66,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --- Upload bewijsstuk (Cloudinary) ---
   async function uploadBewijs(file) {
-    // Basischecks en duidelijke foutmeldingen
     if (!file) throw new Error("Geen bestand opgegeven voor upload.");
     if (!CLOUDINARY_URL || CLOUDINARY_URL.includes("<") || CLOUDINARY_URL.toLowerCase().includes("your")) {
-      throw new Error("Cloudinary niet ingesteld: zet je CLOUDINARY_URL (vervang <jouw-cloud-name>) en CLOUDINARY_PRESET in script.js");
+      throw new Error("Cloudinary niet ingesteld: zet je CLOUDINARY_URL en CLOUDINARY_PRESET in script.js");
     }
     if (!CLOUDINARY_PRESET || CLOUDINARY_PRESET.includes("<")) {
       throw new Error("Cloudinary preset niet ingesteld: controleer CLOUDINARY_PRESET in script.js");
@@ -99,12 +79,10 @@ document.addEventListener("DOMContentLoaded", () => {
     formData.append("upload_preset", CLOUDINARY_PRESET);
 
     const res = await fetch(CLOUDINARY_URL, { method: "POST", body: formData });
-    // Check op HTTP success; bij 401/403/4xx geef duidelijke instructie
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      // als 401 Unauthorized, geef gerichte tip
       if (res.status === 401 || res.status === 403) {
-        throw new Error(`Upload geweigerd (HTTP ${res.status}). Controleer CLOUDINARY_URL (cloud name) en preset. Server says: ${text}`);
+        throw new Error(`Upload geweigerd (HTTP ${res.status}). Controleer CLOUDINARY_URL en preset. Server says: ${text}`);
       }
       throw new Error(`Upload naar Cloudinary mislukt (HTTP ${res.status}). Response: ${text}`);
     }
@@ -120,7 +98,6 @@ document.addEventListener("DOMContentLoaded", () => {
   safeOn($("uitgaveForm"), "submit", async e => {
     e.preventDefault();
 
-    // Lees en valideer velden
     const g = $("groep")?.value;
     const bRaw = $("bedrag")?.value;
     const b = parseFloat(bRaw);
@@ -134,18 +111,14 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!rekeningNummer) return alert("Vul je rekeningnummer in.");
     if (!file) return alert("Upload een bewijsstuk.");
 
-    // Upload eerst het bewijs en stop bij fout (zodat we geen undefined naar DB schrijven)
     let bewijsUrl = "";
     try {
       bewijsUrl = await uploadBewijs(file);
     } catch (err) {
-      console.error("Upload bewijsstuk mislukt:", err);
-      // toon duidelijke melding voor gebruiker
       alert("Upload bewijsstuk mislukt:\n" + (err && err.message ? err.message : err));
-      return; // stop submit — geen DB write met undefined
+      return;
     }
 
-    // Schrijf uitgave naar Firebase: gebruik veilige waarden (nooit undefined)
     const uitgavenRef = firebase.database().ref("uitgaven");
     try {
       const snap = await uitgavenRef.once("value");
@@ -163,23 +136,20 @@ document.addEventListener("DOMContentLoaded", () => {
         betaald: false,
         bewijsUrl: bewijsUrl || "",
         status: "in_behandeling",
-        rekeningNummer: rekeningNummer // <-- deze regel toevoegen!
+        rekeningNummer: rekeningNummer
       };
 
-      // Voorkom undefined velden - Firebase weigert undefined in object
       Object.keys(entry).forEach(k => { if (entry[k] === undefined) entry[k] = null; });
 
       await uitgavenRef.child(nieuwNummer).set(entry);
-      // reset formulier en herlaad tabel
       $("uitgaveForm")?.reset();
       renderTabel($("filterGroep")?.value, $("filterBetaald")?.value);
     } catch (err) {
-      console.error("Opslaan uitgave mislukt:", err);
       alert("Opslaan mislukt: " + (err && err.message ? err.message : err));
     }
   });
 
-  // --- Rendering functies (kort) ---
+  // --- Rendering functies ---
   function renderTabel(filterGroep = "", filterBetaald = "") {
     const tbody = document.querySelector("#overzicht tbody");
     if (!tbody) return;
@@ -202,7 +172,7 @@ document.addEventListener("DOMContentLoaded", () => {
           rij.insertCell(3).textContent = u.activiteit || "-";
           rij.insertCell(4).textContent = u.datum || "-";
 
-          // Betaald status (vinkje/kruisje)
+          // Betaald status
           const betaaldStatusCell = rij.insertCell(5);
           betaaldStatusCell.className = "betaald-status";
           betaaldStatusCell.textContent = u.betaald ? "✓" : "✗";
@@ -290,51 +260,34 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // --- Auth state & init (kort) ---
+  // --- Auth state & init ---
   firebase.auth().onAuthStateChanged(async user => {
     if (user) {
       huidigeGebruiker = user;
       try { gebruikersData = (await haalGebruikersData(user.uid)) || {}; }
-      catch (err) { gebruikersData = {}; console.warn("haalGebruikersData faalde:", err); }
+      catch (err) { gebruikersData = {}; }
 
       if (gebruikersData.rol === "financieel") {
         try { ledenPerGroep = await haalLedenPerGroep(); }
-        catch (err) { ledenPerGroep = {}; console.warn("geen toegang tot ledenPerGroep:", err); }
+        catch (err) { ledenPerGroep = {}; }
       } else {
         ledenPerGroep = {};
       }
 
-      // UI: show/hide relevant onderdelen
       $("loginScherm") && ($("loginScherm").style.display = "none");
       $("appInhoud") && ($("appInhoud").style.display = "block");
       $("gebruikerInfo") && ($("gebruikerInfo").textContent = `Ingelogd als ${gebruikersData.rol || 'onbekend'} (${gebruikersData.groep || 'ALL'})`);
 
-      // vul selects / render tabelen
       vulGroepSelectie();
-
-      // herstel zichtbaarheidsregels voor admin en financieel
-      toonBeheerPaneel();
       toonFinancieelFeatures();
       toonFinancieelKolommen();
-
-      // summary toggle en inhoud (veilig: alleen aanroepen als functie bestaat)
       setupSummaryToggle();
       if (typeof renderSamenvatting === "function" && magBeheren()) {
         renderSamenvatting();
       }
-
       renderTabel();
       toonLogoutKnop();
-
-      // --- ZORG DAT ADMIN ALLES ZIET ---
-      if (gebruikersData.rol === "admin") {
-        // Toon beheerpaneel en gebruikerslijst direct
-        $("beheerPaneel") && ($("beheerPaneel").style.display = "block");
-        $("toggleBeheerPaneel") && ($("toggleBeheerPaneel").style.display = "block");
-        renderGebruikersLijst();
-      }
     } else {
-      // logged out
       $("appInhoud") && ($("appInhoud").style.display = "none");
       $("loginScherm") && ($("loginScherm").style.display = "block");
       $("loginFout") && ($("loginFout").textContent = "");
@@ -361,16 +314,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // Filters
   safeOn($("filterGroep"), "change", e => renderTabel(e.target.value, $("filterBetaald")?.value));
   safeOn($("filterBetaald"), "change", e => renderTabel($("filterGroep")?.value, e.target.value));
-
-  // toon/verberg beheerpaneel en financieel features/kolommen
-  function toonBeheerPaneel() {
-    const paneel = $("beheerPaneel");
-    const toggleBtn = $("toggleBeheerPaneel");
-    if (!paneel || !toggleBtn) return;
-    const show = magGebruikersBeheren(); // Alleen admin!
-    toggleBtn.style.display = show ? "block" : "none";
-    paneel.style.display = "none"; // standaard ingeklapt
-  }
 
   function toonFinancieelFeatures() {
     const summaryBtn = $("toggleSummary");
@@ -404,168 +347,6 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
-  safeOn($("exportPdfBtn"), "click", async () => {
-    const doc = new window.jspdf.jsPDF();
-    doc.setFontSize(14);
-    doc.text("Uitgavenoverzicht per groep", 10, 10);
-
-    // Haal alle uitgaven op
-    const uitgavenSnap = await firebase.database().ref("uitgaven").once("value");
-    const uitgaven = Object.values(uitgavenSnap.val() || {});
-
-    // Groepeer per groep
-    const groepen = {};
-    uitgaven.forEach(u => {
-      if (!groepen[u.groep]) groepen[u.groep] = [];
-      groepen[u.groep].push(u);
-    });
-
-    let y = 20;
-    Object.keys(groepen).forEach(groep => {
-      doc.setFont(undefined, "bold");
-      doc.text(groep, 10, y);
-      y += 8;
-      doc.setFont(undefined, "normal");
-      // Sorteer op datum
-      groepen[groep].sort((a, b) => (a.datum || "").localeCompare(b.datum || ""));
-      groepen[groep].forEach(u => {
-        doc.text(
-          `${u.nummer || "-"} | `,
-          10, y
-        );
-        doc.setFont(undefined, "bold");
-        doc.text(`€${u.bedrag || "-"}`, 35, y);
-        doc.setFont(undefined, "normal");
-        doc.text(
-          `| ${u.datum || "-"} | ${u.activiteit || "-"} | ${u.betaald ? "Betaald" : "Niet betaald"}`,
-          70, y
-        );
-        y += 8;
-        if (y > 280) { doc.addPage(); y = 10; }
-      });
-      y += 4;
-    });
-
-    doc.save("uitgaven_per_groep.pdf");
-  });
-  safeOn($("rolForm"), "submit", async e => {
-    e.preventDefault();
-    if (!magGebruikersBeheren()) return alert("Je hebt geen rechten om gebruikers te beheren.");
-    const uid = $("userUid")?.value.trim();
-    const groep = $("userGroep")?.value;
-    const rol = $("userRol")?.value;
-    if (!uid || !groep || !rol) return alert("Vul alle velden in.");
-
-    try {
-      await firebase.database().ref("gebruikers/" + uid).update({ groep, rol });
-      alert("Gebruiker succesvol aangepast!");
-      $("rolForm").reset();
-    } catch (err) {
-      alert("Opslaan mislukt: " + (err && err.message ? err.message : err));
-    }
-  });
-  safeOn($("toggleBeheerPaneel"), "click", () => {
-    const paneel = $("beheerPaneel");
-    if (!paneel) return;
-    if (paneel.style.display === "none" || paneel.style.display === "") {
-      paneel.style.display = "block";
-    } else {
-      paneel.style.display = "none";
-    }
-  });
-
-  // Zorg dat de knop zichtbaar is voor financieel
-  function toonBeheerPaneel() {
-    const paneel = $("beheerPaneel");
-    const toggleBtn = $("toggleBeheerPaneel");
-    if (!paneel || !toggleBtn) return;
-    const show = magGebruikersBeheren(); // <-- Alleen admin!
-    toggleBtn.style.display = show ? "block" : "none";
-    paneel.style.display = "none"; // standaard ingeklapt
-  }
-
   function toonLogoutKnop() {
     const logoutBtn = $("logoutKnop");
     if (logoutBtn) logoutBtn.style.display = "block";
-  }
-
-  // Toon gebruikerslijst met statusbolletjes
-  async function renderGebruikersLijst() {
-    const paneel = document.getElementById("gebruikersLijstPaneel");
-    const tbody = document.getElementById("gebruikersLijstBody");
-    if (!paneel || !tbody) return;
-    if (!magGebruikersBeheren()) { // <-- Alleen admin!
-      paneel.style.display = "none";
-      return;
-    }
-    paneel.style.display = "block";
-    tbody.innerHTML = "";
-
-    // Haal alle gebruikers uit Firebase
-    const snap = await firebase.database().ref("gebruikers").once("value");
-    const gebruikers = snap.val() || {};
-
-    // Haal alle actieve sessions uit Firebase Auth
-    const allUsers = [];
-    for (const uid in gebruikers) {
-      allUsers.push({ uid, ...gebruikers[uid] });
-    }
-
-    // Haal online status op via presence (of alleen huidige user als je geen presence gebruikt)
-    // Simpel: alleen huidige gebruiker is online
-    const currentUid = firebase.auth().currentUser?.uid;
-
-    allUsers.forEach(user => {
-      const tr = document.createElement("tr");
-
-      // Statusbolletje
-      const statusTd = document.createElement("td");
-      const bol = document.createElement("span");
-      bol.style.display = "inline-block";
-      bol.style.width = "14px";
-      bol.style.height = "14px";
-      bol.style.borderRadius = "50%";
-      bol.style.background = user.uid === currentUid ? "#27ae60" : "#e74c3c";
-      bol.title = user.uid === currentUid ? "Online" : "Offline";
-      statusTd.appendChild(bol);
-      tr.appendChild(statusTd);
-
-      // E-mail
-      const emailTd = document.createElement("td");
-      emailTd.textContent = user.email || "-";
-      tr.appendChild(emailTd);
-
-      // UID
-      const uidTd = document.createElement("td");
-      uidTd.textContent = user.uid;
-      tr.appendChild(uidTd);
-
-      // Rol
-      const rolTd = document.createElement("td");
-      rolTd.textContent = user.rol || "-";
-      tr.appendChild(rolTd);
-
-      // Groep
-      const groepTd = document.createElement("td");
-      groepTd.textContent = user.groep || "-";
-      tr.appendChild(groepTd);
-
-      tbody.appendChild(tr);
-    });
-  }
-
-  // Roep deze functie aan na het tonen van het beheerpaneel:
-  function toonBeheerPaneel() {
-    const paneel = $("beheerPaneel");
-    const toggleBtn = $("toggleBeheerPaneel");
-    if (!paneel || !toggleBtn) return;
-    const show = magGebruikersBeheren(); // <-- Alleen admin!
-    toggleBtn.style.display = show ? "block" : "none";
-    paneel.style.display = "none"; // standaard ingeklapt
-    renderGebruikersLijst(); // <-- voeg deze regel toe
-  }
-
-  if (gebruikersData && gebruikersData.rol === "admin") {
-    // Toon ALLE knoppen, panelen, acties, etc.
-  }
-});
