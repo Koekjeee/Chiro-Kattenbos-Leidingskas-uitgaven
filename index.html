@@ -124,20 +124,19 @@
     </div>
 
     <table id="overzicht">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Groep</th>
-          <th>Bedrag</th>
-          <th>Activiteit</th>
-          <th>Datum</th>
-          <th>Betaald</th>
-          <th>Actie</th>
-          <th>Terug betaald?</th>
-          <th>Rekeningnummer</th>
-          <th>Bewijs</th>
-        </tr>
-      </thead>
+<thead>
+  <tr>
+    <th>Groep</th>
+    <th>Bedrag</th>
+    <th>Activiteit</th>
+    <th>Datum</th>
+    <th>Betaald</th>
+    <th>Actie</th>
+    <th>Terug betaald?</th>
+    <th>Rekeningnummer</th>
+    <th>Bewijs</th>
+  </tr>
+</thead>
       <tbody></tbody>
     </table>
 
@@ -310,6 +309,16 @@
             toonFinancieelKolommen();
           }).catch(err => console.error("Lezen uitgaven mislukt:", err));
     }
+
+    // Voeg deze functie toe in script.js
+function stuurDiscordWebhook(bericht) {
+  const webhookUrl = "JOUW_DISCORD_WEBHOOK_URL_HIER";
+  fetch(webhookUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content: bericht })
+  });
+}
   </script>
 </body>
 </html>
