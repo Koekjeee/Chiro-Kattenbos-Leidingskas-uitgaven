@@ -263,4 +263,16 @@ document.addEventListener("DOMContentLoaded", () => {
     betaaldTds.forEach(td => td.style.display = show ? "table-cell" : "none");
     actieTds.forEach(td => td.style.display = show ? "table-cell" : "none");
   }
+
+  function setupSummaryToggle() {
+    const btn = document.getElementById("toggleSummary");
+    const summary = document.getElementById("summaryContent");
+    if (!btn || !summary) return;
+    btn.onclick = () => {
+      summary.style.display = summary.style.display === "none" ? "block" : "none";
+      btn.textContent = summary.style.display === "none"
+        ? "Toon overzicht uitgaven per groep"
+        : "Verberg overzicht uitgaven per groep";
+    };
+  }
 });
