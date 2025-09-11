@@ -556,4 +556,8 @@ document.addEventListener("DOMContentLoaded", () => {
     paneel.style.display = "none"; // standaard ingeklapt
     renderGebruikersLijst(); // <-- voeg deze regel toe
   }
+
+  if (gebruikersData && gebruikersData.rol === "admin") {
+    // Toon ALLE knoppen, panelen, acties, etc.
+  }
 });
