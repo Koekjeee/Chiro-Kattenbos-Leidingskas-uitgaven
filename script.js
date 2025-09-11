@@ -61,7 +61,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const select = $("groep");
     if (!select || !gebruikersData) return;
     select.innerHTML = `<option value="">-- Kies een groep --</option>`;
-    const toegestane = gebruikersData.rol === "financieel" ? alleGroepen : [gebruikersData.groep];
+    let toegestane;
+    if (gebruikersData.rol === "admin" || gebruikersData.rol === "financieel") {
+      toegestane = alleGroepen;
+    } else {
+      toegestane = [gebruikersData.groep];
+    }
     toegestane.forEach(g => { select.innerHTML += `<option value="${g}">${g}</option>`; });
   }
 
