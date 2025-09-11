@@ -295,6 +295,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       renderTabel();
+      toonLogoutKnop();
     } else {
       // logged out
       $("appInhoud") && ($("appInhoud").style.display = "none");
@@ -443,5 +444,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const show = magBeheren();
     toggleBtn.style.display = show ? "block" : "none";
     paneel.style.display = "none"; // standaard ingeklapt
+  }
+
+  function toonLogoutKnop() {
+    const logoutBtn = $("logoutKnop");
+    if (logoutBtn) logoutBtn.style.display = "block";
   }
 });
