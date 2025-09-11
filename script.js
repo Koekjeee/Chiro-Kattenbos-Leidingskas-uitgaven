@@ -315,22 +315,48 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
-  safeOn($("exportPdfBtn"), "click", () => {
+  safeOn($("exportPdfBtn"), "click", async () => {
     const doc = new window.jspdf.jsPDF();
-    doc.text("Uitgaven per groep", 10, 10);
+    doc.setFontSize(14);
+    doc.text("Uitgavenoverzicht per groep", 10, 10);
 
-    const tabel = document.getElementById("groepSamenvattingTabel");
-    if (tabel) {
-      let y = 20;
-      for (const row of tabel.rows) {
-        let rowText = "";
-        for (const cell of row.cells) {
-          rowText += cell.textContent + " | ";
-        }
-        doc.text(rowText, 10, y);
-        y += 10;
-      }
-    }
-    doc.save("uitgaven_samenvatting.pdf");
+    // Haal alle uitgaven op
+    const uitgavenSnap = await firebase.database().ref("uitgaven").once("value");
+    const uitgaven = Object.values(uitgavenSnap.val() || {});
+
+    // Groepeer per groep
+    const groepen = {};
+    uitgaven.forEach(u => {
+      if (!groepen[u.groep]) groepen[u.groep] = [];
+      groepen[u.groep].push(u);
+    });
+
+    let y = 20;
+    Object.keys(groepen).forEach(groep => {
+      doc.setFont(undefined, "bold");
+      doc.text(groep, 10, y);
+      y += 8;
+      doc.setFont(undefined, "normal");
+      // Sorteer op datum
+      groepen[groep].sort((a, b) => (a.datum || "").localeCompare(b.datum || ""));
+      groepen[groep].forEach(u => {
+        doc.text(
+          `${u.nummer || "-"} | ${u.groep || "-"} | `,
+          10, y
+        );
+        doc.setFont(undefined, "bold");
+        doc.text(`€${u.bedrag || "-"}`, 70, y);
+        doc.setFont(undefined, "normal");
+        doc.text(
+          `| ${u.datum || "-"} | ${u.activiteit || "-"} | ${u.betaald ? "Betaald" : "Niet betaald"}`,
+          100, y
+        );
+        y += 8;
+        if (y > 280) { doc.addPage(); y = 10; }
+      });
+      y += 4;
+    });
+
+    doc.save("uitgaven_per_groep.pdf");
   });
 });
