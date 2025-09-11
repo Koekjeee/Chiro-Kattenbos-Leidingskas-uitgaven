@@ -139,7 +139,8 @@ document.addEventListener("DOMContentLoaded", () => {
         datum: d,
         betaald: false,
         bewijsUrl: bewijsUrl || "",
-        status: "in_behandeling"
+        status: "in_behandeling",
+        rekeningNummer: rekeningNummer // <-- deze regel toevoegen!
       };
 
       // Voorkom undefined velden - Firebase weigert undefined in object
