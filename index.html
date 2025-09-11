@@ -123,7 +123,23 @@
 
     <!-- Overzicht uitgaven knop -->
     <button id="toggleSummary" style="display:none;">Toon overzicht uitgaven per groep</button>
-    <button id="exportPdfBtn" style="display:none;">Exporteer PDF</button>
+    <button id="exportPdfBtn" title="Exporteer naar PDF" style="
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 40px;
+      height: 40px;
+      background: #27ae60;
+      border: none;
+      border-radius: 6px;
+      display: none;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    ">
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="white" viewBox="0 0 24 24">
+        <path d="M5 20h14v-2H5v2zm7-18C6.48 2 2 6.48 2 12c0 5.52 4.48 10 10 10s10-4.48 10-10c0-5.52-4.48-10-10-10zm1 14h-2v-6H8l4-4 4 4h-3v6z"/>
+      </svg>
+    </button>
     <div id="summaryContent" style="display:none;">
       <form id="ledenSamenvattingForm">
         <table id="groepSamenvattingTabel">
@@ -143,5 +159,13 @@
   </div>
 
   <script src="script.js"></script>
+  <script>
+    function toonFinancieelFeatures() {
+      const exportBtn = $("exportPdfBtn");
+      const show = magBeheren();
+      if (exportBtn) exportBtn.style.display = show ? "block" : "none";
+      // ... rest van je functie
+    }
+  </script>
 </body>
 </html>
