@@ -177,9 +177,13 @@ document.addEventListener("DOMContentLoaded", () => {
           const rij = tbody.insertRow();
           rij.style.backgroundColor = groepKleuren[u.groep] || "#ffd5f2";
           const td0 = rij.insertCell(0);
-          td0.textContent = u.betaald ? "✓" : "✗";
-          td0.setAttribute("data-label", "Betaald");
-          rij.insertCell(1).textContent = u.naam || "-";
+          td0.textContent = u.nummer || "-";
+          td0.setAttribute("data-label", "#");
+
+          const td1 = rij.insertCell(1);
+          td1.textContent = u.naam || "-";
+          td1.setAttribute("data-label", "Naam");
+
           rij.insertCell(2).textContent = u.groep || "-";
           rij.insertCell(3).textContent = u.bedrag ? `€${u.bedrag}` : "-";
           rij.insertCell(4).textContent = u.activiteit || "-";
