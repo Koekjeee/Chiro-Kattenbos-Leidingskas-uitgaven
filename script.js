@@ -42,14 +42,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --- Permissions ---
   function magZien(groep) {
-    return gebruikersData && (gebruikersData.rol === "financieel" || gebruikersData.groep === admin);
+    return gebruikersData && (gebruikersData.rol === "financieel" || gebruikersData.groep === groep);
   }
   function magIndienen(groep) {
-    return gebruikersData && (gebruikersData.rol === "financieel" || gebruikersData.groep === admin);
+    return gebruikersData && (gebruikersData.rol === "financieel" || gebruikersData.groep === groep);
   }
   function magBeheren() {
-    // Voor ALLE admin-achtige acties (behalve gebruikersbeheer)
-    return gebruikersData && (gebruikersData.rol === "admin");
+    // Admin en financieel verantwoordelijke mogen alles behalve gebruikersbeheer
+    return gebruikersData && (gebruikersData.rol === "admin" || gebruikersData.rol === "financieel");
   }
   function magGebruikersBeheren() {
     // Alleen admin mag gebruikers beheren
@@ -62,8 +62,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!select || !gebruikersData) return;
     select.innerHTML = `<option value="">-- Kies een groep --</option>`;
     const toegestane = gebruikersData.rol === "financieel" ? alleGroepen : [gebruikersData.groep];
-    toegestane.forEach(g => { select.innerHTML += `<option value="${g}">${g}</option>`; });
-    const toegestane = gebruikersData.rol === "admin" ? alleGroepen : [gebruikersData.groep];
     toegestane.forEach(g => { select.innerHTML += `<option value="${g}">${g}</option>`; });
   }
 
@@ -329,7 +327,7 @@ document.addEventListener("DOMContentLoaded", () => {
       await firebase.auth().signInWithEmailAndPassword(email, wachtwoord);
       if (fout) fout.textContent = "";
     } catch (err) {
-      if (fout) fout.textContent = "Login mislukt: Firebase: " + (err && err.message ? err.message : err);
+      if (fout) fout.textContent = "Login mislukt" + (err && err.message ? err.message : err);
     }
   });
   safeOn($("logoutKnop"), "click", () => firebase.auth().signOut());
@@ -376,8 +374,8 @@ document.addEventListener("DOMContentLoaded", () => {
     btn.onclick = () => {
       summary.style.display = summary.style.display === "none" ? "block" : "none";
       btn.textContent = summary.style.display === "none"
-        ? "Toon overzicht uitgaven per groep"
-        : "Verberg overzicht uitgaven per groep";
+        ? "Toon"
+        : "Verberg";
     };
   }
 
