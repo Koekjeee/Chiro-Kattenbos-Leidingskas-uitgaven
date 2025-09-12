@@ -16,7 +16,7 @@ const ROLLEN_CONFIG = {
     magIndienen: () => true,
     magBeheren: () => true,
     magGebruikersBeheer: () => false,
-    magGebruikerAanpassen: () => false,
+    magGebruikerAanpassen: () => true,
     magGroepenBeheren: () => false
   },
   admin: {
@@ -582,5 +582,6 @@ const ROLLEN_CONFIG = {
     renderGebruikersLijst(); // <-- voeg deze regel toe
   }
 });
+
 
 
