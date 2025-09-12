@@ -1,36 +1,4 @@
 document.addEventListener("DOMContentLoaded", () => {
-  // --- Rollen en permissies centraal beheren ---
-const ROLLEN_CONFIG = {
-  leiding: {
-    naam: "Leiding",
-    magZien: (gebruiker, groep) => gebruiker.groep === groep,
-    magIndienen: (gebruiker, groep) => gebruiker.groep === groep,
-    magBeheren: () => false,
-    magGebruikersBeheer: () => false, // mag gebruikersbeheer-paneel zien
-    magGebruikerAanpassen: () => false, // mag gebruikers aanpassen
-    magGroepenBeheren: () => false // mag groepen toevoegen/verwijderen
-  },
-  financieel: {
-    naam: "Financieel",
-    magZien: () => true,
-    magIndienen: () => true,
-    magBeheren: () => true,
-    magGebruikersBeheer: () => true,
-    magGebruikerAanpassen: () => false,
-    magGroepenBeheren: () => false
-  },
-  admin: {
-    naam: "Admin",
-    magZien: () => true,
-    magIndienen: () => true,
-    magBeheren: () => true,
-    magGebruikersBeheer: () => true,
-    magGebruikerAanpassen: () => true,
-    magGroepenBeheren: () => true
-  }
-  // Voeg hier eenvoudig nieuwe rollen toe!
-};
-
   function setupSummaryToggle() {
   const btn = document.getElementById("toggleSummary");
   const summary = document.getElementById("summaryContent");
@@ -74,29 +42,13 @@ const ROLLEN_CONFIG = {
 
   // --- Permissions ---
   function magZien(groep) {
-    if (!gebruikersData || !ROLLEN_CONFIG[gebruikersData.rol]) return false;
-    return ROLLEN_CONFIG[gebruikersData.rol].magZien(gebruikersData, groep);
+    return gebruikersData && (gebruikersData.rol === "financieel" || gebruikersData.groep === groep);
   }
   function magIndienen(groep) {
-    if (!gebruikersData || !ROLLEN_CONFIG[gebruikersData.rol]) return false;
-    return ROLLEN_CONFIG[gebruikersData.rol].magIndienen(gebruikersData, groep);
+    return gebruikersData && (gebruikersData.rol === "financieel" || gebruikersData.groep === groep);
   }
   function magBeheren() {
-    if (!gebruikersData || !ROLLEN_CONFIG[gebruikersData.rol]) return false;
-    return ROLLEN_CONFIG[gebruikersData.rol].magBeheren(gebruikersData);
-  }
-  // Helperfuncties voor de nieuwe permissies:
-  function magGebruikersBeheer() {
-    if (!gebruikersData || !ROLLEN_CONFIG[gebruikersData.rol]) return false;
-    return ROLLEN_CONFIG[gebruikersData.rol].magGebruikersBeheer(gebruikersData);
-  }
-  function magGebruikerAanpassen() {
-    if (!gebruikersData || !ROLLEN_CONFIG[gebruikersData.rol]) return false;
-    return ROLLEN_CONFIG[gebruikersData.rol].magGebruikerAanpassen(gebruikersData);
-  }
-  function magGroepenBeheren() {
-    if (!gebruikersData || !ROLLEN_CONFIG[gebruikersData.rol]) return false;
-    return ROLLEN_CONFIG[gebruikersData.rol].magGroepenBeheren(gebruikersData);
+    return gebruikersData && gebruikersData.rol === "financieel";
   }
 
   // --- UI helpers (kort gehouden) ---
@@ -384,10 +336,10 @@ const ROLLEN_CONFIG = {
     const paneel = $("beheerPaneel");
     const toggleBtn = $("toggleBeheerPaneel");
     if (!paneel || !toggleBtn) return;
-    const show = magGebruikersBeheer();
+    const show = magBeheren();
     toggleBtn.style.display = show ? "block" : "none";
-    paneel.style.display = "none";
-    if (show) renderGebruikersLijst();
+    paneel.style.display = "none"; // standaard ingeklapt
+    renderGebruikersLijst(); // <-- voeg deze regel toe
   }
 
   function toonFinancieelFeatures() {
@@ -582,8 +534,4 @@ const ROLLEN_CONFIG = {
     renderGebruikersLijst(); // <-- voeg deze regel toe
   }
 });
-
-
-
-
 
