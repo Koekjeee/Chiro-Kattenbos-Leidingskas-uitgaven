@@ -105,13 +105,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const d = $("datum")?.value;
     const rekeningNummer = $("rekeningNummer")?.value.trim();
     const file = $("bewijsUpload")?.files?.[0];
-    const naam = $("naam")?.value.trim();
 
     if (!g || isNaN(b) || !a || !d) return alert("Gelieve alle velden correct in te vullen.");
     if (!magIndienen(g)) return alert("Je mag geen uitgave indienen voor deze groep.");
     if (!rekeningNummer) return alert("Vul je rekeningnummer in.");
     if (!file) return alert("Upload een bewijsstuk.");
-    if (!naam) return alert("Vul je naam in.");
 
     // Upload eerst het bewijs en stop bij fout (zodat we geen undefined naar DB schrijven)
     let bewijsUrl = "";
@@ -135,7 +133,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const entry = {
         nummer: nieuwNummer,
-        naam: naam,
         groep: g,
         bedrag: b.toFixed(2),
         activiteit: a,
@@ -175,47 +172,21 @@ document.addEventListener("DOMContentLoaded", () => {
         .sort((a, b) => (a.nummer || 0) - (b.nummer || 0))
         .forEach(u => {
           const rij = tbody.insertRow();
-
-          // # (nummer)
-          const tdNummer = rij.insertCell(0);
-          tdNummer.textContent = u.nummer || "-";
-          tdNummer.setAttribute("data-label", "#");
-
-          // Naam
-          const tdNaam = rij.insertCell(1);
-          tdNaam.textContent = u.naam || "-";
-          tdNaam.setAttribute("data-label", "Naam");
-
-          // Groep
-          const tdGroep = rij.insertCell(2);
-          tdGroep.textContent = u.groep || "-";
-          tdGroep.setAttribute("data-label", "Groep");
-
-          // Bedrag
-          const tdBedrag = rij.insertCell(3);
-          tdBedrag.textContent = u.bedrag ? `€${u.bedrag}` : "-";
-          tdBedrag.setAttribute("data-label", "Bedrag");
-
-          // Activiteit
-          const tdActiviteit = rij.insertCell(4);
-          tdActiviteit.textContent = u.activiteit || "-";
-          tdActiviteit.setAttribute("data-label", "Activiteit");
-
-          // Datum
-          const tdDatum = rij.insertCell(5);
-          tdDatum.textContent = u.datum || "-";
-          tdDatum.setAttribute("data-label", "Datum");
+          rij.style.backgroundColor = groepKleuren[u.groep] || "#ffd5f2";
+          rij.insertCell(0).textContent = u.nummer || "-";
+          rij.insertCell(1).textContent = u.groep || "-";
+          rij.insertCell(2).textContent = u.bedrag ? `€${u.bedrag}` : "-";
+          rij.insertCell(3).textContent = u.activiteit || "-";
+          rij.insertCell(4).textContent = u.datum || "-";
 
           // Betaald status (vinkje/kruisje)
-          const tdBetaald = rij.insertCell(6);
-          tdBetaald.className = "betaald-status";
-          tdBetaald.textContent = u.betaald ? "✓" : "✗";
-          tdBetaald.style.color = u.betaald ? "#27ae60" : "#e74c3c";
-          tdBetaald.setAttribute("data-label", "Betaald");
+          const betaaldStatusCell = rij.insertCell(5);
+          betaaldStatusCell.className = "betaald-status";
+          betaaldStatusCell.textContent = u.betaald ? "✓" : "✗";
+          betaaldStatusCell.style.color = u.betaald ? "#27ae60" : "#e74c3c";
 
           // Actie: Verwijder-knop
-          const tdActie = rij.insertCell(7);
-          tdActie.setAttribute("data-label", "Actie");
+          const actieCell = rij.insertCell(6);
           if (magBeheren()) {
             const verwijderBtn = document.createElement("button");
             verwijderBtn.textContent = "🗑️";
@@ -227,12 +198,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 renderTabel(filterGroep, filterBetaald);
               }
             };
-            tdActie.appendChild(verwijderBtn);
+            actieCell.appendChild(verwijderBtn);
           }
 
-          // Terug betaald? (checkbox)
-          const tdTerugBetaald = rij.insertCell(8);
-          tdTerugBetaald.setAttribute("data-label", "Terug betaald?");
+          // Betaald aanvinken (checkbox)
+          const betaaldCell = rij.insertCell(7);
           if (magBeheren()) {
             const checkbox = document.createElement("input");
             checkbox.type = "checkbox";
@@ -242,17 +212,14 @@ document.addEventListener("DOMContentLoaded", () => {
               await firebase.database().ref("uitgaven/" + u.nummer).update({ betaald: checkbox.checked });
               renderTabel(filterGroep, filterBetaald);
             };
-            tdTerugBetaald.appendChild(checkbox);
+            betaaldCell.appendChild(checkbox);
           }
 
           // Rekeningnummer
-          const tdRekening = rij.insertCell(9);
-          tdRekening.textContent = u.rekeningNummer || "-";
-          tdRekening.setAttribute("data-label", "Rekeningnummer");
+          rij.insertCell(8).textContent = u.rekeningNummer || "-";
 
           // Bewijsstuk afbeelding/document
-          const bewijsCell = rij.insertCell(10);
-          bewijsCell.setAttribute("data-label", "Bewijs");
+          const bewijsCell = rij.insertCell(9);
           if (u.bewijsUrl) {
             const link = document.createElement("a");
             link.href = u.bewijsUrl;
@@ -433,7 +400,7 @@ document.addEventListener("DOMContentLoaded", () => {
       groepen[groep].sort((a, b) => (a.datum || "").localeCompare(b.datum || ""));
       groepen[groep].forEach(u => {
         doc.text(
-          `${u.nummer || "-"} | ${u.naam || "-"} | `,
+          `${u.nummer || "-"} | `,
           10, y
         );
         doc.setFont(undefined, "bold");
@@ -567,4 +534,3 @@ document.addEventListener("DOMContentLoaded", () => {
     renderGebruikersLijst(); // <-- voeg deze regel toe
   }
 });
-
