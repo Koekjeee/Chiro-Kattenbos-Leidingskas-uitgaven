@@ -14,7 +14,7 @@ const ROLLEN_CONFIG = {
     naam: "Financieel",
     magZien: () => true,
     magIndienen: () => true,
-    magBeheren: () => false,
+    magBeheren: () => true,
     magGebruikersBeheer: () => false,
     magGebruikerAanpassen: () => false,
     magGroepenBeheren: () => false
@@ -582,4 +582,5 @@ const ROLLEN_CONFIG = {
     renderGebruikersLijst(); // <-- voeg deze regel toe
   }
 });
+
 
