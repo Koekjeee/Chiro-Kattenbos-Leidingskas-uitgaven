@@ -5,19 +5,28 @@ const ROLLEN_CONFIG = {
     naam: "Leiding",
     magZien: (gebruiker, groep) => gebruiker.groep === groep,
     magIndienen: (gebruiker, groep) => gebruiker.groep === groep,
-    magBeheren: () => false
+    magBeheren: () => false,
+    magGebruikersBeheer: () => false, // mag gebruikersbeheer-paneel zien
+    magGebruikerAanpassen: () => false, // mag gebruikers aanpassen
+    magGroepenBeheren: () => false // mag groepen toevoegen/verwijderen
   },
   financieel: {
     naam: "Financieel",
     magZien: () => true,
     magIndienen: () => true,
-    magBeheren: () => false
+    magBeheren: () => false,
+    magGebruikersBeheer: () => false,
+    magGebruikerAanpassen: () => false,
+    magGroepenBeheren: () => false
   },
   admin: {
     naam: "Admin",
     magZien: () => true,
     magIndienen: () => true,
-    magBeheren: () => true
+    magBeheren: () => true,
+    magGebruikersBeheer: () => true,
+    magGebruikerAanpassen: () => true,
+    magGroepenBeheren: () => true
   }
   // Voeg hier eenvoudig nieuwe rollen toe!
 };
@@ -75,6 +84,19 @@ const ROLLEN_CONFIG = {
   function magBeheren() {
     if (!gebruikersData || !ROLLEN_CONFIG[gebruikersData.rol]) return false;
     return ROLLEN_CONFIG[gebruikersData.rol].magBeheren(gebruikersData);
+  }
+  // Helperfuncties voor de nieuwe permissies:
+  function magGebruikersBeheer() {
+    if (!gebruikersData || !ROLLEN_CONFIG[gebruikersData.rol]) return false;
+    return ROLLEN_CONFIG[gebruikersData.rol].magGebruikersBeheer(gebruikersData);
+  }
+  function magGebruikerAanpassen() {
+    if (!gebruikersData || !ROLLEN_CONFIG[gebruikersData.rol]) return false;
+    return ROLLEN_CONFIG[gebruikersData.rol].magGebruikerAanpassen(gebruikersData);
+  }
+  function magGroepenBeheren() {
+    if (!gebruikersData || !ROLLEN_CONFIG[gebruikersData.rol]) return false;
+    return ROLLEN_CONFIG[gebruikersData.rol].magGroepenBeheren(gebruikersData);
   }
 
   // --- UI helpers (kort gehouden) ---
@@ -362,10 +384,10 @@ const ROLLEN_CONFIG = {
     const paneel = $("beheerPaneel");
     const toggleBtn = $("toggleBeheerPaneel");
     if (!paneel || !toggleBtn) return;
-    const show = magBeheren();
+    const show = magGebruikersBeheer();
     toggleBtn.style.display = show ? "block" : "none";
-    paneel.style.display = "none"; // standaard ingeklapt
-    renderGebruikersLijst(); // <-- voeg deze regel toe
+    paneel.style.display = "none";
+    if (show) renderGebruikersLijst();
   }
 
   function toonFinancieelFeatures() {
