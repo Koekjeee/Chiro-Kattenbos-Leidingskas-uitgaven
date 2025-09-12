@@ -1,4 +1,27 @@
 document.addEventListener("DOMContentLoaded", () => {
+  // --- Rollen en permissies centraal beheren ---
+const ROLLEN_CONFIG = {
+  leiding: {
+    naam: "Leiding",
+    magZien: (gebruiker, groep) => gebruiker.groep === groep,
+    magIndienen: (gebruiker, groep) => gebruiker.groep === groep,
+    magBeheren: () => false
+  },
+  financieel: {
+    naam: "Financieel",
+    magZien: () => true,
+    magIndienen: () => true,
+    magBeheren: () => false
+  },
+  admin: {
+    naam: "Admin",
+    magZien: () => true,
+    magIndienen: () => true,
+    magBeheren: () => true
+  }
+  // Voeg hier eenvoudig nieuwe rollen toe!
+};
+
   function setupSummaryToggle() {
   const btn = document.getElementById("toggleSummary");
   const summary = document.getElementById("summaryContent");
@@ -42,13 +65,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --- Permissions ---
   function magZien(groep) {
-    return gebruikersData && (gebruikersData.rol === "financieel" || gebruikersData.groep === groep);
+    if (!gebruikersData || !ROLLEN_CONFIG[gebruikersData.rol]) return false;
+    return ROLLEN_CONFIG[gebruikersData.rol].magZien(gebruikersData, groep);
   }
   function magIndienen(groep) {
-    return gebruikersData && (gebruikersData.rol === "financieel" || gebruikersData.groep === groep);
+    if (!gebruikersData || !ROLLEN_CONFIG[gebruikersData.rol]) return false;
+    return ROLLEN_CONFIG[gebruikersData.rol].magIndienen(gebruikersData, groep);
   }
   function magBeheren() {
-    return gebruikersData && gebruikersData.rol === "financieel";
+    if (!gebruikersData || !ROLLEN_CONFIG[gebruikersData.rol]) return false;
+    return ROLLEN_CONFIG[gebruikersData.rol].magBeheren(gebruikersData);
   }
 
   // --- UI helpers (kort gehouden) ---
@@ -534,3 +560,4 @@ document.addEventListener("DOMContentLoaded", () => {
     renderGebruikersLijst(); // <-- voeg deze regel toe
   }
 });
+
