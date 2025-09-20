@@ -332,7 +332,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (betaaldTh) betaaldTh.style.display = show ? "table-cell" : "none";
     if (actieTh) actieTh.style.display = show ? "table-cell" : "none";
     betaaldTds.forEach(td => td.style.display = show ? "table-cell" : "none");
-    actieTds.forEach(td => td.style.display = show ? "table-cell" : "none";
+    actieTds.forEach(td => td.style.display = show ? "table-cell" : "none");
   }
 
   function setupSummaryToggle() {
