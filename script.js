@@ -316,10 +316,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function toonFinancieelFeatures() {
-    const summaryBtn = $("toggleSummary");
     const exportBtn = $("exportPdfBtn");
     const show = magBeheren();
-    if (summaryBtn) summaryBtn.style.display = show ? "block" : "none";
     if (exportBtn) exportBtn.style.display = show ? "block" : "none";
   }
 
@@ -473,5 +471,9 @@ document.addEventListener("DOMContentLoaded", () => {
       tbody.appendChild(tr);
     });
   }
+
+  document.getElementById("evenementenBtn").onclick = function() {
+    window.open("evenementen.html", "_blank");
+  };
 });
 
