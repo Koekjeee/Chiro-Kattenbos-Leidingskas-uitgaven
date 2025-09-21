@@ -253,6 +253,8 @@ document.addEventListener("DOMContentLoaded", () => {
       vulGroepSelectie();
       renderTabel();
       toonLogoutKnop();
+      toonFinancieelFeatures();
+      toonBeheerPaneel();
     } else {
       $("appInhoud") && ($("appInhoud").style.display = "none");
       $("loginScherm") && ($("loginScherm").style.display = "block");
@@ -282,5 +284,21 @@ document.addEventListener("DOMContentLoaded", () => {
   function toonLogoutKnop() {
     const logoutBtn = $("logoutKnop");
     if (logoutBtn) logoutBtn.style.display = "block";
+  }
+
+  function toonFinancieelFeatures() {
+    const exportBtn = $("exportPdfBtn");
+    const summaryBtn = $("toggleSummary");
+    if (exportBtn) exportBtn.style.display = magBeheren() ? "block" : "none";
+    if (summaryBtn) summaryBtn.style.display = magBeheren() ? "block" : "none";
+  }
+
+  function toonBeheerPaneel() {
+    const paneel = $("beheerPaneel");
+    const toggleBtn = $("toggleBeheerPaneel");
+    if (!paneel || !toggleBtn) return;
+    const show = magBeheren();
+    toggleBtn.style.display = show ? "block" : "none";
+    paneel.style.display = "none";
   }
 });
