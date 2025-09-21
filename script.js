@@ -205,8 +205,27 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // --- Auth state & init ---
-  firebase.auth().onAuthStateChanged(async user => {
+  firebase.auth().onAuthStateChanged(function(user) {
     if (user) {
+      const uid = user.uid;
+      // Controleer of gebruiker al in ledenPerGroep staat
+      firebase.database().ref('ledenPerGroep').once('value').then(snapshot => {
+        let gevonden = false;
+        snapshot.forEach(groepSnap => {
+          if (groepSnap.hasChild(uid)) {
+            gevonden = true;
+          }
+        });
+        if (!gevonden) {
+          // Voeg toe aan standaardgroep
+          const standaardGroep = "LEIDING";
+          firebase.database().ref('ledenPerGroep/' + standaardGroep + '/' + uid).set({
+            email: user.email,
+            rol: 'leiding',
+            naam: user.displayName || ''
+          });
+        }
+      });
       huidigeGebruiker = user;
       // Automatisch toevoegen aan database als nog niet aanwezig
       gebruikersData = await haalGebruikersData(user.uid);
