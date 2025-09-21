@@ -208,6 +208,79 @@ document.addEventListener("DOMContentLoaded", () => {
     }).catch(err => console.error("Lezen uitgaven mislukt:", err));
   }
 
-  // ...rest van je script.js (auth, filters, beheer, samenvatting, etc.)...
-  // (Laat weten als je die ook volledig wilt, deze basis werkt voor de naam en tabblad functionaliteit)
+  function renderSamenvatting() {
+    const tbody = document.querySelector("#groepSamenvattingTabel tbody");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+
+    const groepen = Object.keys(ledenPerGroep || {});
+    groepen.forEach(groep => {
+      let totaal = 0;
+      firebase.database().ref("uitgaven").orderByChild("groep").equalTo(groep).once("value").then(snap => {
+        const uitgaven = snap.val() || {};
+        Object.values(uitgaven).forEach(u => {
+          totaal += parseFloat(u.bedrag || 0);
+        });
+        const leden = ledenPerGroep[groep] || 0;
+        const perKind = leden > 0 ? (totaal / leden).toFixed(2) : "-";
+        const rij = tbody.insertRow();
+        rij.style.backgroundColor = groepKleuren[groep] || "#ffd5f2";
+        rij.insertCell(0).textContent = groep;
+        rij.insertCell(1).textContent = leden;
+        rij.insertCell(2).textContent = `€${totaal.toFixed(2)}`;
+        rij.insertCell(3).textContent = perKind;
+      });
+    });
+  }
+
+  firebase.auth().onAuthStateChanged(async user => {
+    if (user) {
+      huidigeGebruiker = user;
+      try { gebruikersData = (await haalGebruikersData(user.uid)) || {}; }
+      catch (err) { gebruikersData = {}; console.warn("haalGebruikersData faalde:", err); }
+
+      if (gebruikersData.rol === "financieel") {
+        try { ledenPerGroep = await haalLedenPerGroep(); }
+        catch (err) { ledenPerGroep = {}; console.warn("geen toegang tot ledenPerGroep:", err); }
+      } else {
+        ledenPerGroep = {};
+      }
+
+      $("loginScherm") && ($("loginScherm").style.display = "none");
+      $("appInhoud") && ($("appInhoud").style.display = "block");
+      $("gebruikerInfo") && ($("gebruikerInfo").textContent = `Ingelogd als ${gebruikersData.rol || 'onbekend'} (${gebruikersData.groep || 'ALL'})`);
+
+      vulGroepSelectie();
+      renderTabel();
+      toonLogoutKnop();
+    } else {
+      $("appInhoud") && ($("appInhoud").style.display = "none");
+      $("loginScherm") && ($("loginScherm").style.display = "block");
+      $("loginFout") && ($("loginFout").textContent = "");
+      huidigeGebruiker = null;
+      gebruikersData = null;
+      ledenPerGroep = {};
+    }
+  });
+
+  safeOn($("loginKnop"), "click", async () => {
+    const email = $("loginEmail")?.value || "";
+    const wachtwoord = $("loginWachtwoord")?.value || "";
+    const fout = $("loginFout");
+    try {
+      await firebase.auth().signInWithEmailAndPassword(email, wachtwoord);
+      if (fout) fout.textContent = "";
+    } catch (err) {
+      if (fout) fout.textContent = "Login mislukt: Firebase: " + (err && err.message ? err.message : err);
+    }
+  });
+  safeOn($("logoutKnop"), "click", () => firebase.auth().signOut());
+
+  safeOn($("filterGroep"), "change", e => renderTabel(e.target.value, $("filterBetaald")?.value));
+  safeOn($("filterBetaald"), "change", e => renderTabel($("filterGroep")?.value, e.target.value));
+
+  function toonLogoutKnop() {
+    const logoutBtn = $("logoutKnop");
+    if (logoutBtn) logoutBtn.style.display = "block";
+  }
 });
