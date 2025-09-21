@@ -278,6 +278,19 @@ document.addEventListener("DOMContentLoaded", () => {
   safeOn($("filterGroep"), "change", e => renderTabel(e.target.value, $("filterBetaald")?.value));
   safeOn($("filterBetaald"), "change", e => renderTabel($("filterGroep")?.value, e.target.value));
 
+  safeOn($("rolForm"), "submit", async e => {
+    e.preventDefault();
+    const uid = $("userUid").value.trim();
+    const groep = $("userGroep").value;
+    const rol = $("userRol").value;
+    if (!uid || !groep || !rol) return alert("Vul alle velden in.");
+    await firebase.database().ref("gebruikers/" + uid).set({
+      groep,
+      rol
+    });
+    alert("Gebruiker opgeslagen!");
+  });
+
   function toonLogoutKnop() {
     const logoutBtn = $("logoutKnop");
     if (logoutBtn) logoutBtn.style.display = "block";
