@@ -41,18 +41,107 @@ firebase.initializeApp(firebaseConfig);
     <thead><tr><th>Groep</th><th>Leden</th><th>Totaal (€)</th><th>€ per kind</th></tr></thead>
     <tbody></tbody>
   </table>
+  <p id="samenvattingStatus" style="font-style:italic; color:#555; margin-top:8px;"></p>
 </div>
 <script>
-const db=firebase.firestore();
-let gebruikersData=null; let ledenPerGroep={};
-function $(id){return document.getElementById(id);} 
-function magBeheren(){return gebruikersData && gebruikersData.rol==='financieel';}
-function haalLedenPerGroep(){return db.collection('config').doc('ledenPerGroep').get().then(d=>d.exists?d.data():{});} 
-async function renderSamenvatting(){const tbody=document.querySelector('#groepSamenvattingTabel tbody'); tbody.innerHTML=''; const groepen=Object.keys(ledenPerGroep||{}); for(const g of groepen){ let totaal=0; const snap=await db.collection('uitgaven').where('groep','==',g).get(); snap.docs.forEach(doc=>{totaal+=parseFloat(doc.data().bedrag)||0;}); const leden=ledenPerGroep[g]||0; const perKind= leden>0 ? (totaal/leden).toFixed(2):'-'; const tr=document.createElement('tr'); tr.innerHTML=`<td>${g}</td><td>${leden}</td><td>€${totaal.toFixed(2)}</td><td>${perKind}</td>`; tbody.appendChild(tr);} }
-firebase.auth().onAuthStateChanged(async user=>{ if(user){ const d=await db.collection('gebruikers').doc(user.uid).get(); gebruikersData=d.exists?d.data():{}; if(!magBeheren()){alert('Geen toegang'); firebase.auth().signOut(); return;} ledenPerGroep=await haalLedenPerGroep(); $("loginScherm").style.display='none'; $("appInhoud").style.display='block'; document.getElementById('mainNav').style.display='flex'; const navSam=document.getElementById('navSamenvatting'); const navBeh=document.getElementById('navBeheer'); const navLogout=document.getElementById('navLogout'); if(navSam) navSam.style.display='inline'; if(navBeh) navBeh.style.display='inline'; if(navLogout) navLogout.style.display='inline'; $("gebruikerInfo").textContent=`Ingelogd als ${gebruikersData.rol||'-'} (${gebruikersData.groep||'-'})`; renderSamenvatting(); } else { $("appInhoud").style.display='none'; $("loginScherm").style.display='block'; } });
-document.getElementById('navLogout').addEventListener('click',()=>firebase.auth().signOut());
-$("loginKnop").addEventListener('click',async()=>{const e=$("loginEmail").value.trim(); const p=$("loginWachtwoord").value.trim(); const f=$("loginFout"); try{await firebase.auth().signInWithEmailAndPassword(e,p); f.textContent='';}catch(err){f.textContent='Login mislukt: '+(err.message||err);} });
-$("logoutKnop").addEventListener('click',()=>firebase.auth().signOut());
+// Realtime samenvatting implementatie
+const db = firebase.firestore();
+let gebruikersData = null;
+let ledenPerGroep = {};
+let uitgavenCache = [];
+let unsubUitgaven = null;
+let unsubLeden = null;
+
+function $(id){ return document.getElementById(id); }
+function magBeheren(){ return gebruikersData && gebruikersData.rol === 'financieel'; }
+
+function renderSamenvatting(){
+  const tbody = document.querySelector('#groepSamenvattingTabel tbody');
+  const statusEl = $('#samenvattingStatus');
+  if(!tbody) return;
+  tbody.innerHTML='';
+
+  if(!uitgavenCache.length && Object.keys(ledenPerGroep||{}).length===0){
+    if(statusEl) statusEl.textContent = 'Nog geen data beschikbaar.';
+    return;
+  } else if(statusEl) {
+    statusEl.textContent = '';
+  }
+
+  const groepenSet = new Set([
+    ...Object.keys(ledenPerGroep||{}),
+    ...uitgavenCache.map(u=>u.groep).filter(Boolean)
+  ]);
+  const groepen = Array.from(groepenSet).sort();
+
+  const totalen = {};
+  uitgavenCache.forEach(u => {
+    const g = u.groep || 'UNKNOWN';
+    const bedrag = parseFloat(u.bedrag) || 0;
+    if(!totalen[g]) totalen[g] = 0;
+    totalen[g] += bedrag;
+  });
+
+  groepen.forEach(g => {
+    const leden = ledenPerGroep[g] || 0;
+    const totaal = totalen[g] || 0;
+    const perKind = leden > 0 ? (totaal / leden).toFixed(2) : '-';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${g}</td><td>${leden}</td><td>€${totaal.toFixed(2)}</td><td>${perKind}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function startSamenvattingListeners(){
+  unsubLeden = db.collection('config').doc('ledenPerGroep').onSnapshot(doc => {
+    ledenPerGroep = doc.exists ? (doc.data()||{}) : {};
+    renderSamenvatting();
+  }, err => console.warn('ledenPerGroep listener fout:', err));
+
+  unsubUitgaven = db.collection('uitgaven').onSnapshot(snap => {
+    uitgavenCache = snap.docs.map(d => d.data());
+    renderSamenvatting();
+  }, err => console.error('uitgaven listener fout:', err));
+}
+
+firebase.auth().onAuthStateChanged(async user => {
+  if(user){
+    const d = await db.collection('gebruikers').doc(user.uid).get();
+    gebruikersData = d.exists ? d.data() : {};
+    if(!magBeheren()){
+      alert('Geen toegang tot deze pagina.');
+      firebase.auth().signOut();
+      return;
+    }
+    $('#loginScherm').style.display='none';
+    $('#appInhoud').style.display='block';
+    const nav = document.getElementById('mainNav'); if(nav) nav.style.display='flex';
+    const navSam=document.getElementById('navSamenvatting'); const navBeh=document.getElementById('navBeheer'); const navLogout=document.getElementById('navLogout');
+    if(navSam) navSam.style.display='inline'; if(navBeh) navBeh.style.display='inline'; if(navLogout) navLogout.style.display='inline';
+    $('#gebruikerInfo').textContent = `Ingelogd als ${gebruikersData.rol||'-'} (${gebruikersData.groep||'-'})`;
+    startSamenvattingListeners();
+  } else {
+    if(unsubUitgaven){unsubUitgaven(); unsubUitgaven=null;}
+    if(unsubLeden){unsubLeden(); unsubLeden=null;}
+    gebruikersData=null; ledenPerGroep={}; uitgavenCache=[];
+    $('#appInhoud').style.display='none';
+    $('#loginScherm').style.display='block';
+    const tbody = document.querySelector('#groepSamenvattingTabel tbody'); if(tbody) tbody.innerHTML='';
+    const statusEl = $('#samenvattingStatus'); if(statusEl) statusEl.textContent='';
+  }
+});
+
+document.getElementById('navLogout').addEventListener('click', ()=> firebase.auth().signOut());
+$('#loginKnop').addEventListener('click', async () => {
+  const e = $('#loginEmail').value.trim();
+  const p = $('#loginWachtwoord').value.trim();
+  const f = $('#loginFout');
+  if(!e || !p){ f.textContent='Vul e-mail en wachtwoord in.'; return; }
+  try { await firebase.auth().signInWithEmailAndPassword(e,p); f.textContent=''; }
+  catch(err){ f.textContent = 'Login mislukt: ' + (err.message||err); }
+});
+$('#logoutKnop').addEventListener('click', ()=> firebase.auth().signOut());
 </script>
 </body>
 </html>
+
