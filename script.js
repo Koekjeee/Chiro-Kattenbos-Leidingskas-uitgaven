@@ -315,14 +315,37 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --- Safe event listeners (rest of UI) ---
   safeOn($("loginKnop"), "click", async () => {
-    const email = $("loginEmail")?.value || "";
-    const wachtwoord = $("loginWachtwoord")?.value || "";
+    const emailInput = $("loginEmail");
+    const passInput = $("loginWachtwoord");
+    const loginBtn = $("loginKnop");
     const fout = $("loginFout");
+    const email = (emailInput?.value || "").trim();
+    const wachtwoord = (passInput?.value || "").trim();
+    if (!email || !wachtwoord) {
+      if (fout) fout.textContent = "Vul e-mail en wachtwoord in.";
+      return;
+    }
+    if (loginBtn) loginBtn.disabled = true;
+    if (fout) fout.textContent = "Bezig met inloggen...";
     try {
+      console.debug("Attempt login", { email, projectId: firebase.app().options.projectId });
       await firebase.auth().signInWithEmailAndPassword(email, wachtwoord);
       if (fout) fout.textContent = "";
     } catch (err) {
-      if (fout) fout.textContent = "Login mislukt: Firebase: " + (err && err.message ? err.message : err);
+      let msg = (err && err.message) ? err.message : String(err);
+      // Bekende auth codes verduidelijken
+      const code = err && err.code ? err.code : "";
+      switch (code) {
+        case "auth/invalid-email": msg = "Ongeldig e-mailadres"; break;
+        case "auth/user-not-found": msg = "Geen account met dit e-mailadres"; break;
+        case "auth/wrong-password": msg = "Onjuist wachtwoord"; break;
+        case "auth/too-many-requests": msg = "Te veel pogingen, probeer later opnieuw"; break;
+        case "auth/invalid-login-credentials": msg = "Combinatie e-mail/wachtwoord ongeldig"; break;
+      }
+      if (fout) fout.textContent = "Login mislukt: " + msg;
+      console.warn("Login error", err);
+    } finally {
+      if (loginBtn) loginBtn.disabled = false;
     }
   });
   safeOn($("logoutKnop"), "click", () => firebase.auth().signOut());
@@ -510,6 +533,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Roep deze functie aan na het tonen van het beheerpaneel:
   // (Laatste dubbele toonBeheerPaneel verwijderd - gebruik geconsolideerde versie)
 });
+
 
 
 
