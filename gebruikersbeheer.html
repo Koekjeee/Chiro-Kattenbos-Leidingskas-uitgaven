@@ -19,7 +19,13 @@ firebase.initializeApp(firebaseConfig);
 </script>
 </head>
 <body>
-  <a href="index.html" style="position:absolute; top:10px; left:10px;">← Terug</a>
+  <nav id="mainNav" style="display:none; background:#2c3e50; color:#fff; padding:10px 15px; display:flex; align-items:center; gap:15px;">
+    <span style="font-weight:600;">Chiro Kattenbos</span>
+    <a href="index.html" style="color:#fff; text-decoration:none;">Home</a>
+    <a id="navSamenvatting" href="samenvatting.html" style="color:#fff; text-decoration:none; display:none;">Samenvatting</a>
+    <a id="navBeheer" href="gebruikersbeheer.html" style="color:#fff; text-decoration:none; display:none;">Gebruikersbeheer</a>
+    <button id="navLogout" style="margin-left:auto; background:#e74c3c; color:#fff; border:none; padding:6px 12px; cursor:pointer; display:none;">Uitloggen</button>
+  </nav>
   <div id="loginScherm">
     <h2>Inloggen</h2>
     <input type="email" id="loginEmail" placeholder="E-mailadres" required />
@@ -63,6 +69,13 @@ firebase.auth().onAuthStateChanged(async user=>{
    $("gebruikerInfo").textContent=`Ingelogd als ${gebruikersData.rol||'-'} (${gebruikersData.groep||'-'})`;
    if(!magBeheren()){alert('Geen toegang'); firebase.auth().signOut(); return;}
    renderGebruikers();
+   document.getElementById('mainNav').style.display='flex';
+   const navSam = document.getElementById('navSamenvatting');
+   const navBeh = document.getElementById('navBeheer');
+   const navLogout = document.getElementById('navLogout');
+   if(navSam) navSam.style.display = 'inline';
+   if(navBeh) navBeh.style.display = 'inline';
+   if(navLogout) navLogout.style.display = 'inline';
  } else {
    $("appInhoud").style.display='none';
    $("loginScherm").style.display='block';
@@ -75,3 +88,4 @@ async function renderGebruikers(){const tbody=$("gebruikersLijstBody"); tbody.in
 </script>
 </body>
 </html>
+
