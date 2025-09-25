@@ -46,13 +46,15 @@ const firebaseConfig = {
       </svg>
     </button>
 
-    <!-- Gebruikersbeheer paneel -->
-  <div id="beheerPaneel" style="display:none;">
-        <!-- Hier komt het gebruikersbeheer -->
-        <h3>Gebruikersbeheer</h3>
-        <form id="rolForm">
+    <!-- Gebruikersbeheer paneel (inclusief gebruikerslijst) -->
+    <div id="beheerPaneel" style="display:none;">
+      <h3>Gebruikersbeheer</h3>
+      <form id="rolForm" style="margin-bottom:1rem;">
+        <div class="form-row">
           <label for="userUid">Gebruiker UID:</label>
           <input type="text" id="userUid" required />
+        </div>
+        <div class="form-row">
           <label for="userGroep">Groep:</label>
           <select id="userGroep">
             <option value="Ribbels">Ribbels</option>
@@ -64,18 +66,17 @@ const firebaseConfig = {
             <option value="Aspi">Aspi</option>
             <option value="LEIDING">LEIDING</option>
           </select>
+        </div>
+        <div class="form-row">
           <label for="userRol">Rol:</label>
           <select id="userRol">
             <option value="leiding">Leiding</option>
             <option value="financieel">Financieel</option>
           </select>
-          <button type="submit">Opslaan</button>
-        </form>
-      </div>
-
-    <!-- Gebruikerslijst voor financieel beheer -->
-    <div id="gebruikersLijstPaneel" style="display:none; margin-top:20px;">
-      <h3>Gebruikers</h3>
+        </div>
+        <button type="submit">Opslaan</button>
+      </form>
+      <h3 style="margin-top:1.5rem;">Gebruikers</h3>
       <table id="gebruikersLijstTabel">
         <thead>
           <tr>
@@ -183,39 +184,11 @@ const firebaseConfig = {
       </svg>
     </button>
 
-    <!-- Toon gebruikers tabel knop -->
-    <button id="toggleUserTable" class="top-icon-btn info" title="Toon gebruikers" style="display:none; right:60px;">
-      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="white" viewBox="0 0 24 24">
-        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-      </svg>
-    </button>
-
-    <!-- Gebruikers tabel sectie -->
-    <div id="userTableSection" style="display:none; margin-top:20px;">
-      <table id="gebruikersLijstTabel">
-        <thead>
-          <tr>
-            <th>Status</th>
-            <th>E-mail</th>
-            <th>UID</th>
-            <th>Rol</th>
-            <th>Groep</th>
-          </tr>
-        </thead>
-        <tbody id="gebruikersLijstBody"></tbody>
-      </table>
-    </div>
+    <!-- Verwijderd: losse gebruikers toggle & aparte sectie, zit nu in beheerPaneel -->
   </div>
 
   <script src="script.js"></script>
-  <!-- Inline script verwijderd; logica zit in script.js -->
-  <script>
-    document.getElementById('toggleUserTable').addEventListener('click', function() {
-      const userTableSection = document.getElementById('userTableSection');
-      const isVisible = userTableSection.style.display === 'block';
-      userTableSection.style.display = isVisible ? 'none' : 'block';
-    });
-  </script>
+  <!-- Inline script voor oude toggleUserTable verwijderd -->
 </body>
 </html>
 
