@@ -363,8 +363,6 @@ document.addEventListener("DOMContentLoaded", () => {
     toggleBtn.style.display = show ? "block" : "none";
     if (!show) {
       paneel.style.display = "none";
-      const lijstPaneel = $("gebruikersLijstPaneel");
-      if (lijstPaneel) lijstPaneel.style.display = "none";
       return;
     }
     // standaard ingeklapt
@@ -473,14 +471,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Toon gebruikerslijst met statusbolletjes
   async function renderGebruikersLijst() {
-    const paneel = document.getElementById("gebruikersLijstPaneel");
     const tbody = document.getElementById("gebruikersLijstBody");
-    if (!paneel || !tbody) return;
-    if (!magBeheren()) {
-      paneel.style.display = "none";
-      return;
-    }
-    paneel.style.display = "block";
+    if (!tbody) return;
+    if (!magBeheren()) { tbody.innerHTML = ""; return; }
     tbody.innerHTML = "";
 
     // Haal alle gebruikers uit Firebase
