@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Samenvatting – Chiro Kattenbos</title>
+<link rel="stylesheet" href="style.css" />
+<script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyC-UaXhh5juhV4raXWnzku9fSZZD75-y9w",
+  authDomain: "uitgavebeheerch.firebaseapp.com",
+  projectId: "uitgavebeheerch",
+  storageBucket: "uitgavebeheerch.firebasestorage.app"
+};
+firebase.initializeApp(firebaseConfig);
+</script>
+</head>
+<body>
+<a href="index.html" style="position:absolute; top:10px; left:10px;">← Terug</a>
+<div id="loginScherm">
+  <h2>Inloggen</h2>
+  <input type="email" id="loginEmail" placeholder="E-mailadres" required />
+  <input type="password" id="loginWachtwoord" placeholder="Wachtwoord" required />
+  <button id="loginKnop">Inloggen</button>
+  <p id="loginFout" style="color:red;"></p>
+</div>
+<div id="appInhoud" style="display:none;">
+  <h1>Samenvatting per Groep</h1>
+  <p id="gebruikerInfo"></p>
+  <button id="logoutKnop" class="top-icon-btn danger" style="display:none;">Uitloggen</button>
+  <table id="groepSamenvattingTabel">
+    <thead><tr><th>Groep</th><th>Leden</th><th>Totaal (€)</th><th>€ per kind</th></tr></thead>
+    <tbody></tbody>
+  </table>
+</div>
+<script>
+const db=firebase.firestore();
+let gebruikersData=null; let ledenPerGroep={};
+function $(id){return document.getElementById(id);} 
+function magBeheren(){return gebruikersData && gebruikersData.rol==='financieel';}
+function haalLedenPerGroep(){return db.collection('config').doc('ledenPerGroep').get().then(d=>d.exists?d.data():{});} 
+async function renderSamenvatting(){const tbody=document.querySelector('#groepSamenvattingTabel tbody'); tbody.innerHTML=''; const groepen=Object.keys(ledenPerGroep||{}); for(const g of groepen){ let totaal=0; const snap=await db.collection('uitgaven').where('groep','==',g).get(); snap.docs.forEach(doc=>{totaal+=parseFloat(doc.data().bedrag)||0;}); const leden=ledenPerGroep[g]||0; const perKind= leden>0 ? (totaal/leden).toFixed(2):'-'; const tr=document.createElement('tr'); tr.innerHTML=`<td>${g}</td><td>${leden}</td><td>€${totaal.toFixed(2)}</td><td>${perKind}</td>`; tbody.appendChild(tr);} }
+firebase.auth().onAuthStateChanged(async user=>{ if(user){ const d=await db.collection('gebruikers').doc(user.uid).get(); gebruikersData=d.exists?d.data():{}; if(!magBeheren()){alert('Geen toegang'); firebase.auth().signOut(); return;} ledenPerGroep=await haalLedenPerGroep(); $("loginScherm").style.display='none'; $("appInhoud").style.display='block'; $("gebruikerInfo").textContent=`Ingelogd als ${gebruikersData.rol||'-'} (${gebruikersData.groep||'-'})`; renderSamenvatting(); } else { $("appInhoud").style.display='none'; $("loginScherm").style.display='block'; } });
+$("loginKnop").addEventListener('click',async()=>{const e=$("loginEmail").value.trim(); const p=$("loginWachtwoord").value.trim(); const f=$("loginFout"); try{await firebase.auth().signInWithEmailAndPassword(e,p); f.textContent='';}catch(err){f.textContent='Login mislukt: '+(err.message||err);} });
+$("logoutKnop").addEventListener('click',()=>firebase.auth().signOut());
+</script>
+</body>
+</html>
