@@ -1,515 +1,193 @@
-document.addEventListener("DOMContentLoaded", () => {
-  // --- UI INIT HELPERS ---
-  function setupSummaryToggle() {
-    const btn = document.getElementById("toggleSummary");
-    const summary = document.getElementById("summaryContent");
-    if (!btn || !summary) return;
-    btn.onclick = () => {
-      const open = summary.style.display === "none" || summary.style.display === "";
-      summary.style.display = open ? "block" : "none";
-      btn.setAttribute("aria-expanded", open ? "true" : "false");
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chiro Kattenbos – Uitgavenbeheer</title>
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-auth-compat.js"></script>
+  <!-- Verwijderd: realtime database compat (oude) -->
+  <!-- <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-database-compat.js"></script> -->
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-firestore-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyA2--5vxLThr-jq5WHHboSakHgbjyBSFm0",
+      authDomain: "leidingskas.firebaseapp.com",
+      databaseURL: "https://leidingskas-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "leidingskas",
+      storageBucket: "leidingskas.appspot.com",
+      messagingSenderId: "4767553066",
+      appId: "1:4767553066:web:6018139d9ac3e044bc1553",
+      measurementId: "G-XRD72XNPCR"
     };
-  }
-  // --- Config / constants ---
-  const alleGroepen = ["Ribbels","Speelclubs","Rakkers","Kwiks","Tippers","Toppers","Aspi","LEIDING"];
-  const groepKleuren = {
-    Ribbels:"#cce5ff",Speelclubs:"#ffe5cc",Rakkers:"#e5ffcc",
-    Kwiks:"#ffccf2",Tippers:"#d5ccff",Toppers:"#ccffd5",
-    Aspi:"#ffd5cc",LEIDING:"#dddddd"
-  };
+    firebase.initializeApp(firebaseConfig);
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+  <div id="loginScherm">
+    <h2>Inloggen</h2>
+    <input type="email" id="loginEmail" placeholder="E-mailadres" required />
+    <input type="password" id="loginWachtwoord" placeholder="Wachtwoord" required />
+    <button id="loginKnop">Inloggen</button>
+    <p id="loginFout" style="color: red;"></p>
+  </div>
 
-  // >>> VERVANG HIER je cloud name en preset door jouw waarden <<<
-  // Bijvoorbeeld: https://api.cloudinary.com/v1_1/voorbeeldcloud/upload
-  const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dxizebpwn/upload";
-  const CLOUDINARY_PRESET = "chiro_upload_fotos";
+  <div id="appInhoud" style="display: none;">
+    <h1>Chiro Kattenbos – Uitgavenbeheer</h1>
+    <p id="gebruikerInfo"></p>
+    <!-- Actieknoppen rechtsboven -->
+    <button id="logoutKnop" class="top-icon-btn danger" title="Uitloggen" style="display:none;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="white" viewBox="0 0 24 24">
+        <path d="M16 13v-2H7V8l-5 4 5 4v-3h9zm3-10H5c-1.1 0-2 .9-2 2v6h2V5h14v14H5v-6H3v6c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>
+      </svg>
+    </button>
 
-  // --- State ---
-  let huidigeGebruiker = null;
-  let gebruikersData = null;
-  let ledenPerGroep = {};
+    <!-- Gebruikersbeheer paneel -->
+  <div id="beheerPaneel" style="display:none;">
+        <!-- Hier komt het gebruikersbeheer -->
+        <h3>Gebruikersbeheer</h3>
+        <form id="rolForm">
+          <label for="userUid">Gebruiker UID:</label>
+          <input type="text" id="userUid" required />
+          <label for="userGroep">Groep:</label>
+          <select id="userGroep">
+            <option value="Ribbels">Ribbels</option>
+            <option value="Speelclubs">Speelclubs</option>
+            <option value="Rakkers">Rakkers</option>
+            <option value="Kwiks">Kwiks</option>
+            <option value="Tippers">Tippers</option>
+            <option value="Toppers">Toppers</option>
+            <option value="Aspi">Aspi</option>
+            <option value="LEIDING">LEIDING</option>
+          </select>
+          <label for="userRol">Rol:</label>
+          <select id="userRol">
+            <option value="leiding">Leiding</option>
+            <option value="financieel">Financieel</option>
+          </select>
+          <button type="submit">Opslaan</button>
+        </form>
+      </div>
 
-  // --- Helpers ---
-  const $ = id => document.getElementById(id);
-  function safeOn(el, ev, fn) { if (el) el.addEventListener(ev, fn); }
+    <!-- Gebruikerslijst voor financieel beheer -->
+    <div id="gebruikersLijstPaneel" style="display:none; margin-top:20px;">
+      <h3>Gebruikers</h3>
+      <table id="gebruikersLijstTabel">
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>E-mail</th>
+            <th>UID</th>
+            <th>Rol</th>
+            <th>Groep</th>
+          </tr>
+        </thead>
+        <tbody id="gebruikersLijstBody"></tbody>
+      </table>
+    </div>
 
-  // --- Firebase helpers ---
-  // --- Firestore helpers ---
-  const db = firebase.firestore();
-  function haalGebruikersData(uid) {
-    return db.collection("gebruikers").doc(uid).get().then(d => d.exists ? d.data() : null);
-  }
-  function haalLedenPerGroep() {
-    // opslaan als 1 document 'meta/ledenPerGroep' of collection 'ledenPerGroep'
-    // We kiezen hier een enkel doc in collection 'config'
-    return db.collection("config").doc("ledenPerGroep").get().then(d => d.exists ? d.data() : {});
-  }
 
-  // --- Permissions ---
-  function magZien(groep) {
-    return gebruikersData && (gebruikersData.rol === "financieel" || gebruikersData.groep === groep);
-  }
-  function magIndienen(groep) {
-    return gebruikersData && (gebruikersData.rol === "financieel" || gebruikersData.groep === groep);
-  }
-  function magBeheren() {
-    return gebruikersData && gebruikersData.rol === "financieel";
-  }
+    <form id="uitgaveForm">
+      <label for="groep">Groep:</label>
+      <select id="groep" required></select>
+      <label for="bedrag">Bedrag (€):</label>
+      <input type="number" id="bedrag" step="0.01" required />
+      <label for="activiteit">Activiteit/Omschrijving:</label>
+      <input type="text" id="activiteit" required />
+      <label for="datum">Datum:</label>
+      <input type="date" id="datum" required />
+      <label for="rekeningNummer">Rekeningnummer:</label>
+      <input type="text" id="rekeningNummer" required placeholder="BE00 0000 0000 0000" />
+      <label for="bewijsUpload">Upload bewijsstuk (verplicht):</label>
+      <input type="file" id="bewijsUpload" accept="image/*,application/pdf" required />
+      <button type="submit">Toevoegen</button>
+    </form>
 
-  // --- UI helpers (kort gehouden) ---
-  function vulGroepSelectie() {
-    const select = $("groep");
-    if (!select || !gebruikersData) return;
-    select.innerHTML = `<option value="">-- Kies een groep --</option>`;
-    const toegestane = gebruikersData.rol === "financieel" ? alleGroepen : [gebruikersData.groep];
-    toegestane.forEach(g => { select.innerHTML += `<option value="${g}">${g}</option>`; });
-  }
+    <div class="filter">
+      <label for="filterGroep">Filter op groep:</label>
+      <select id="filterGroep">
+        <option value="">Alle groepen</option>
+        <option value="Ribbels">Ribbels</option>
+        <option value="Speelclubs">Speelclubs</option>
+        <option value="Rakkers">Rakkers</option>
+        <option value="Kwiks">Kwiks</option>
+        <option value="Tippers">Tippers</option>
+        <option value="Toppers">Toppers</option>
+        <option value="Aspi">Aspi</option>
+        <option value="LEIDING">LEIDING</option>
+      </select>
+    </div>
+    <div class="filter">
+      <label for="filterBetaald">Filter op betaald:</label>
+      <select id="filterBetaald">
+        <option value="">Alles</option>
+        <option value="true">Betaald</option>
+        <option value="false">Niet betaald</option>
+      </select>
+    </div>
 
-  // --- Upload bewijsstuk (Cloudinary) ---
-  async function uploadBewijs(file) {
-    // Basischecks en duidelijke foutmeldingen
-    if (!file) throw new Error("Geen bestand opgegeven voor upload.");
-    if (!CLOUDINARY_URL || CLOUDINARY_URL.includes("<") || CLOUDINARY_URL.toLowerCase().includes("your")) {
-      throw new Error("Cloudinary niet ingesteld: zet je CLOUDINARY_URL (vervang <jouw-cloud-name>) en CLOUDINARY_PRESET in script.js");
-    }
-    if (!CLOUDINARY_PRESET || CLOUDINARY_PRESET.includes("<")) {
-      throw new Error("Cloudinary preset niet ingesteld: controleer CLOUDINARY_PRESET in script.js");
-    }
+    <table id="overzicht">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Groep</th>
+          <th>Bedrag</th>
+          <th>Activiteit</th>
+          <th>Datum</th>
+          <th>Betaald</th>
+          <th>Actie</th>
+          <th>Terug betaald?</th>
+          <th>Rekeningnummer</th>
+          <th>Bewijs</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
 
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("upload_preset", CLOUDINARY_PRESET);
+    <!-- Overzicht uitgaven knop -->
+    <button id="toggleSummary" class="top-icon-btn info" title="Overzicht per groep" style="display:none; right:120px;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="white" viewBox="0 0 24 24">
+        <path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 8h14v-2H7v2zm0-4h14v-2H7v2zm0-6v2h14V7H7z"/>
+      </svg>
+    </button>
+    <button id="exportPdfBtn" class="top-icon-btn success" title="Exporteer naar PDF" style="display:none;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="white" viewBox="0 0 24 24">
+        <path d="M5 20h14v-2H5v2zm7-18C6.48 2 2 6.48 2 12c0 5.52 4.48 10 10 10s10-4.48 10-10c0-5.52-4.48-10-10-10zm1 14h-2v-6H8l4-4 4 4h-3v6z"/>
+      </svg>
+    </button>
+    <div id="summaryContent" style="display:none;">
+      <form id="ledenSamenvattingForm">
+        <table id="groepSamenvattingTabel">
+          <thead>
+            <tr>
+              <th>Groep</th>
+              <th>Leden</th>
+              <th>Totaal (€)</th>
+              <th>€ per kind</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <button type="submit" id="ledenOpslaanBtn" style="display:none;">Leden opslaan</button>
+      </form>
+    </div>
 
-    const res = await fetch(CLOUDINARY_URL, { method: "POST", body: formData });
-    // Check op HTTP success; bij 401/403/4xx geef duidelijke instructie
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      // als 401 Unauthorized, geef gerichte tip
-      if (res.status === 401 || res.status === 403) {
-        throw new Error(`Upload geweigerd (HTTP ${res.status}). Controleer CLOUDINARY_URL (cloud name) en preset. Server says: ${text}`);
-      }
-      throw new Error(`Upload naar Cloudinary mislukt (HTTP ${res.status}). Response: ${text}`);
-    }
+    <!-- Voeg deze knop toe boven je #beheerPaneel in index.html -->
+    <button id="toggleBeheerPaneel" class="top-icon-btn info" style="display:none; top:70px;" title="Gebruikersbeheer">
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="white" viewBox="0 0 24 24">
+        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+      </svg>
+    </button>
+  </div>
 
-    const data = await res.json().catch(() => null);
-    if (!data || !data.secure_url) {
-      throw new Error("Cloudinary-respons bevat geen secure_url. Controleer preset en account.");
-    }
-    return data.secure_url;
-  }
-
-  // --- Uitgaven toevoegen (submit handler) ---
-  safeOn($("uitgaveForm"), "submit", async e => {
-    e.preventDefault();
-
-    // Lees en valideer velden
-    const g = $("groep")?.value;
-    const bRaw = $("bedrag")?.value;
-    const b = parseFloat(bRaw);
-    const a = $("activiteit")?.value;
-    const d = $("datum")?.value;
-    const rekeningNummer = $("rekeningNummer")?.value.trim();
-    const file = $("bewijsUpload")?.files?.[0];
-
-    if (!g || isNaN(b) || !a || !d) return alert("Gelieve alle velden correct in te vullen.");
-    if (!magIndienen(g)) return alert("Je mag geen uitgave indienen voor deze groep.");
-    if (!rekeningNummer) return alert("Vul je rekeningnummer in.");
-    if (!file) return alert("Upload een bewijsstuk.");
-
-    // Upload eerst het bewijs en stop bij fout (zodat we geen undefined naar DB schrijven)
-    let bewijsUrl = "";
-    try {
-      bewijsUrl = await uploadBewijs(file);
-    } catch (err) {
-      console.error("Upload bewijsstuk mislukt:", err);
-      // toon duidelijke melding voor gebruiker
-      alert("Upload bewijsstuk mislukt:\n" + (err && err.message ? err.message : err));
-      return; // stop submit — geen DB write met undefined
-    }
-
-    // Schrijf uitgave naar Firebase: gebruik veilige waarden (nooit undefined)
-    try {
-      // Genereer nummer (uniek) via query op bestaande nummers
-      const uitgavenSnap = await db.collection("uitgaven").get();
-      const bestaandeNummers = uitgavenSnap.docs.map(d => (d.data().nummer)||0);
-      let nieuwNummer;
-      do { nieuwNummer = Math.floor(1000 + Math.random() * 9000); } while (bestaandeNummers.includes(nieuwNummer));
-      const entry = {
-        nummer: nieuwNummer,
-        groep: g,
-        bedrag: b.toFixed(2),
-        activiteit: a,
-        datum: d,
-        betaald: false,
-        bewijsUrl: bewijsUrl || "",
-        status: "in_behandeling",
-        rekeningNummer: rekeningNummer,
-        aangemaaktOp: firebase.firestore.FieldValue.serverTimestamp()
-      };
-      await db.collection("uitgaven").doc(String(nieuwNummer)).set(entry);
-      // reset formulier en herlaad tabel
-      $("uitgaveForm")?.reset();
-      renderTabel($("filterGroep")?.value, $("filterBetaald")?.value);
-    } catch (err) {
-      console.error("Opslaan uitgave mislukt:", err);
-      alert("Opslaan mislukt: " + (err && err.message ? err.message : err));
-    }
-  });
-
-  // --- Rendering functies (kort) ---
-  function renderTabel(filterGroep = "", filterBetaald = "") {
-    const tbody = document.querySelector("#overzicht tbody");
-    if (!tbody) return;
-    tbody.innerHTML = "";
-    // basis query
-    let q = db.collection("uitgaven");
-    if (gebruikersData && gebruikersData.rol === "leiding") {
-      q = q.where("groep", "==", gebruikersData.groep);
-    }
-    // extra filters
-    if (filterGroep) q = q.where("groep", "==", filterGroep);
-    // betaald filter kan niet samen met groep direct in 1 where als mix? Kan wel: we voegen als tweede where toe
-    if (filterBetaald !== "") q = q.where("betaald", "==", filterBetaald === "true");
-
-    q.get().then(snap => {
-      const rows = snap.docs.map(d => d.data())
-        .sort((a,b) => (a.nummer||0) - (b.nummer||0));
-      rows.forEach(u => {
-          const rij = tbody.insertRow();
-          rij.style.backgroundColor = groepKleuren[u.groep] || "#ffd5f2";
-          rij.insertCell(0).textContent = u.nummer || "-";
-          rij.insertCell(1).textContent = u.groep || "-";
-          rij.insertCell(2).textContent = u.bedrag ? `€${u.bedrag}` : "-";
-          rij.insertCell(3).textContent = u.activiteit || "-";
-          rij.insertCell(4).textContent = u.datum || "-";
-
-          // Betaald status (vinkje/kruisje)
-          const betaaldStatusCell = rij.insertCell(5);
-          betaaldStatusCell.className = "betaald-status";
-          betaaldStatusCell.textContent = u.betaald ? "✓" : "✗";
-          betaaldStatusCell.style.color = u.betaald ? "#27ae60" : "#e74c3c";
-
-          // Actie: Verwijder-knop
-          const actieCell = rij.insertCell(6);
-          if (magBeheren()) {
-            const verwijderBtn = document.createElement("button");
-            verwijderBtn.textContent = "🗑️";
-            verwijderBtn.title = "Verwijder uitgave";
-            verwijderBtn.style.cursor = "pointer";
-            verwijderBtn.onclick = async () => {
-              if (confirm("Weet je zeker dat je deze uitgave wilt verwijderen?")) {
-                await db.collection("uitgaven").doc(String(u.nummer)).delete();
-                renderTabel(filterGroep, filterBetaald);
-              }
-            };
-            actieCell.appendChild(verwijderBtn);
-          }
-
-          // Betaald aanvinken (checkbox)
-          const betaaldCell = rij.insertCell(7);
-          if (magBeheren()) {
-            const checkbox = document.createElement("input");
-            checkbox.type = "checkbox";
-            checkbox.checked = !!u.betaald;
-            checkbox.title = "Markeer als betaald";
-            checkbox.onchange = async () => {
-              await db.collection("uitgaven").doc(String(u.nummer)).update({ betaald: checkbox.checked });
-              renderTabel(filterGroep, filterBetaald);
-            };
-            betaaldCell.appendChild(checkbox);
-          }
-
-          // Rekeningnummer
-          rij.insertCell(8).textContent = u.rekeningNummer || "-";
-
-          // Bewijsstuk afbeelding/document
-          const bewijsCell = rij.insertCell(9);
-          if (u.bewijsUrl) {
-            const link = document.createElement("a");
-            link.href = u.bewijsUrl;
-            link.target = "_blank";
-            link.rel = "noopener";
-            link.title = "Bekijk bewijsstuk";
-            if (u.bewijsUrl.match(/\.(jpg|jpeg|png|gif)$/i)) {
-              const img = document.createElement("img");
-              img.src = u.bewijsUrl;
-              img.alt = "Bewijs";
-              img.style.maxWidth = "40px";
-              img.style.maxHeight = "40px";
-              link.appendChild(img);
-            } else {
-              link.textContent = "📄";
-            }
-            bewijsCell.appendChild(link);
-          }
-        });
-    }).catch(err => console.error("Lezen uitgaven mislukt:", err));
-  }
-
-  function renderSamenvatting() {
-    const tbody = document.querySelector("#groepSamenvattingTabel tbody");
-    if (!tbody) return;
-    tbody.innerHTML = "";
-
-    const groepen = Object.keys(ledenPerGroep || {});
-    groepen.forEach(groep => {
-      let totaal = 0;
-      db.collection("uitgaven").where("groep","==",groep).get().then(snap => {
-        snap.docs.forEach(doc => { totaal += parseFloat((doc.data().bedrag)||0); });
-        const leden = ledenPerGroep[groep] || 0;
-        const perKind = leden > 0 ? (totaal / leden).toFixed(2) : "-";
-        const rij = tbody.insertRow();
-        rij.style.backgroundColor = groepKleuren[groep] || "#ffd5f2";
-        rij.insertCell(0).textContent = groep;
-        rij.insertCell(1).textContent = leden;
-        rij.insertCell(2).textContent = `€${totaal.toFixed(2)}`;
-        rij.insertCell(3).textContent = perKind;
-      });
-    });
-  }
-
-  // --- Auth state & init (kort) ---
-  firebase.auth().onAuthStateChanged(async user => {
-    if (user) {
-      huidigeGebruiker = user;
-      try { gebruikersData = (await haalGebruikersData(user.uid)) || {}; }
-      catch (err) { gebruikersData = {}; console.warn("haalGebruikersData faalde:", err); }
-
-      if (gebruikersData.rol === "financieel") {
-        try { ledenPerGroep = await haalLedenPerGroep(); }
-        catch (err) { ledenPerGroep = {}; console.warn("geen toegang tot ledenPerGroep:", err); }
-      } else {
-        ledenPerGroep = {};
-      }
-
-      // UI: show/hide relevant onderdelen
-      $("loginScherm") && ($("loginScherm").style.display = "none");
-      $("appInhoud") && ($("appInhoud").style.display = "block");
-      $("gebruikerInfo") && ($("gebruikerInfo").textContent = `Ingelogd als ${gebruikersData.rol || 'onbekend'} (${gebruikersData.groep || 'ALL'})`);
-
-      // vul selects / render tabelen
-      vulGroepSelectie();
-
-      // herstel zichtbaarheidsregels voor financieel
-      toonBeheerPaneel();
-      toonFinancieelFeatures();
-      toonFinancieelKolommen();
-
-      // summary toggle en inhoud (veilig: alleen aanroepen als functie bestaat)
-      setupSummaryToggle();
-      if (typeof renderSamenvatting === "function" && magBeheren()) {
-        renderSamenvatting();
-      }
-
-      renderTabel();
-      toonLogoutKnop();
-    } else {
-      // logged out
-      $("appInhoud") && ($("appInhoud").style.display = "none");
-      $("loginScherm") && ($("loginScherm").style.display = "block");
-      $("loginFout") && ($("loginFout").textContent = "");
-      huidigeGebruiker = null;
-      gebruikersData = null;
-      ledenPerGroep = {};
-    }
-  });
-
-  // --- Safe event listeners (rest of UI) ---
-  safeOn($("loginKnop"), "click", async () => {
-    const email = $("loginEmail")?.value || "";
-    const wachtwoord = $("loginWachtwoord")?.value || "";
-    const fout = $("loginFout");
-    try {
-      await firebase.auth().signInWithEmailAndPassword(email, wachtwoord);
-      if (fout) fout.textContent = "";
-    } catch (err) {
-      if (fout) fout.textContent = "Login mislukt: Firebase: " + (err && err.message ? err.message : err);
-    }
-  });
-  safeOn($("logoutKnop"), "click", () => firebase.auth().signOut());
-
-  // Filters
-  safeOn($("filterGroep"), "change", e => renderTabel(e.target.value, $("filterBetaald")?.value));
-  safeOn($("filterBetaald"), "change", e => renderTabel($("filterGroep")?.value, e.target.value));
-
-  // toon/verberg beheerpaneel en financieel features/kolommen
-  function toonBeheerPaneel() {
-    const paneel = $("beheerPaneel");
-    const toggleBtn = $("toggleBeheerPaneel");
-    if (!paneel || !toggleBtn) return;
-    const show = magBeheren();
-    toggleBtn.style.display = show ? "block" : "none";
-    if (!show) {
-      paneel.style.display = "none";
-      const lijstPaneel = $("gebruikersLijstPaneel");
-      if (lijstPaneel) lijstPaneel.style.display = "none";
-      return;
-    }
-    // standaard ingeklapt
-    if (paneel.style.display === "") paneel.style.display = "none";
-    renderGebruikersLijst();
-  }
-
-  function toonFinancieelFeatures() {
-    const summaryBtn = $("toggleSummary");
-    const exportBtn = $("exportPdfBtn");
-    const show = magBeheren();
-    if (summaryBtn) summaryBtn.style.display = show ? "block" : "none";
-    if (exportBtn) exportBtn.style.display = show ? "block" : "none";
-  }
-
-  function toonFinancieelKolommen() {
-    const betaaldTh = document.querySelector("#overzicht th:nth-child(6)");
-    const actieTh = document.querySelector("#overzicht th:nth-child(7)");
-    const betaaldTds = document.querySelectorAll("#overzicht td:nth-child(6)");
-    const actieTds = document.querySelectorAll("#overzicht td:nth-child(7)");
-    const show = magBeheren();
-    if (betaaldTh) betaaldTh.style.display = show ? "table-cell" : "none";
-    if (actieTh) actieTh.style.display = show ? "table-cell" : "none";
-    betaaldTds.forEach(td => td.style.display = show ? "table-cell" : "none");
-    actieTds.forEach(td => td.style.display = show ? "table-cell" : "none");
-  }
-
-  // (Dubbele definitie van setupSummaryToggle verwijderd)
-
-  safeOn($("exportPdfBtn"), "click", async () => {
-    const doc = new window.jspdf.jsPDF();
-    doc.setFontSize(14);
-    doc.text("Uitgavenoverzicht per groep", 10, 10);
-
-    // Haal alle uitgaven op
-  const uitgavenSnap = await db.collection("uitgaven").get();
-  const uitgaven = uitgavenSnap.docs.map(d => d.data());
-
-    // Groepeer per groep
-    const groepen = {};
-    uitgaven.forEach(u => {
-      if (!groepen[u.groep]) groepen[u.groep] = [];
-      groepen[u.groep].push(u);
-    });
-
-    let y = 20;
-    Object.keys(groepen).forEach(groep => {
-      doc.setFont(undefined, "bold");
-      doc.text(groep, 10, y);
-      y += 8;
-      doc.setFont(undefined, "normal");
-      // Sorteer op datum
-      groepen[groep].sort((a, b) => (a.datum || "").localeCompare(b.datum || ""));
-      groepen[groep].forEach(u => {
-        doc.text(
-          `${u.nummer || "-"} | `,
-          10, y
-        );
-        doc.setFont(undefined, "bold");
-        doc.text(`€${u.bedrag || "-"}`, 35, y);
-        doc.setFont(undefined, "normal");
-        doc.text(
-          `| ${u.datum || "-"} | ${u.activiteit || "-"} | ${u.betaald ? "Betaald" : "Niet betaald"}`,
-          70, y
-        );
-        y += 8;
-        if (y > 280) { doc.addPage(); y = 10; }
-      });
-      y += 4;
-    });
-
-    doc.save("uitgaven_per_groep.pdf");
-  });
-  safeOn($("rolForm"), "submit", async e => {
-    e.preventDefault();
-    const uid = $("userUid")?.value.trim();
-    const groep = $("userGroep")?.value;
-    const rol = $("userRol")?.value;
-    if (!uid || !groep || !rol) return alert("Vul alle velden in.");
-
-    try {
-      await db.collection("gebruikers").doc(uid).set({ groep, rol }, { merge: true });
-      alert("Gebruiker succesvol aangepast!");
-      $("rolForm").reset();
-    } catch (err) {
-      alert("Opslaan mislukt: " + (err && err.message ? err.message : err));
-    }
-  });
-  safeOn($("toggleBeheerPaneel"), "click", () => {
-    const paneel = $("beheerPaneel");
-    if (!paneel) return;
-    if (paneel.style.display === "none" || paneel.style.display === "") {
-      paneel.style.display = "block";
-    } else {
-      paneel.style.display = "none";
-    }
-  });
-
-  // Zorg dat de knop zichtbaar is voor financieel
-  // (Dubbele toonBeheerPaneel definitie verwijderd bovenaan geconsolideerd)
-
-  function toonLogoutKnop() {
-    const logoutBtn = $("logoutKnop");
-    if (logoutBtn) logoutBtn.style.display = "block";
-  }
-
-  // Toon gebruikerslijst met statusbolletjes
-  async function renderGebruikersLijst() {
-    const paneel = document.getElementById("gebruikersLijstPaneel");
-    const tbody = document.getElementById("gebruikersLijstBody");
-    if (!paneel || !tbody) return;
-    if (!magBeheren()) {
-      paneel.style.display = "none";
-      return;
-    }
-    paneel.style.display = "block";
-    tbody.innerHTML = "";
-
-    // Haal alle gebruikers uit Firebase
-    const gebruikersSnap = await db.collection("gebruikers").get();
-    const allUsers = gebruikersSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
-
-    // Haal online status op via presence (of alleen huidige user als je geen presence gebruikt)
-    // Simpel: alleen huidige gebruiker is online
-    const currentUid = firebase.auth().currentUser?.uid;
-
-    allUsers.forEach(user => {
-      const tr = document.createElement("tr");
-
-      // Statusbolletje
-      const statusTd = document.createElement("td");
-      const bol = document.createElement("span");
-      bol.style.display = "inline-block";
-      bol.style.width = "14px";
-      bol.style.height = "14px";
-      bol.style.borderRadius = "50%";
-      bol.style.background = user.uid === currentUid ? "#27ae60" : "#e74c3c";
-      bol.title = user.uid === currentUid ? "Online" : "Offline";
-      statusTd.appendChild(bol);
-      tr.appendChild(statusTd);
-
-      // E-mail
-      const emailTd = document.createElement("td");
-      emailTd.textContent = user.email || "-";
-      tr.appendChild(emailTd);
-
-      // UID
-      const uidTd = document.createElement("td");
-      uidTd.textContent = user.uid;
-      tr.appendChild(uidTd);
-
-      // Rol
-      const rolTd = document.createElement("td");
-      rolTd.textContent = user.rol || "-";
-      tr.appendChild(rolTd);
-
-      // Groep
-      const groepTd = document.createElement("td");
-      groepTd.textContent = user.groep || "-";
-      tr.appendChild(groepTd);
-
-      tbody.appendChild(tr);
-    });
-  }
-
-  // Roep deze functie aan na het tonen van het beheerpaneel:
-  // (Laatste dubbele toonBeheerPaneel verwijderd - gebruik geconsolideerde versie)
-});
+  <script src="script.js"></script>
+  <!-- Inline script verwijderd; logica zit in script.js -->
+</body>
+</html>
 
 
 
