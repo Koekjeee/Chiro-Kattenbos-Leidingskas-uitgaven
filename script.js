@@ -33,11 +33,15 @@ document.addEventListener("DOMContentLoaded", () => {
   function safeOn(el, ev, fn) { if (el) el.addEventListener(ev, fn); }
 
   // --- Firebase helpers ---
+  // --- Firestore helpers ---
+  const db = firebase.firestore();
   function haalGebruikersData(uid) {
-    return firebase.database().ref("gebruikers/" + uid).once("value").then(snap => snap.val());
+    return db.collection("gebruikers").doc(uid).get().then(d => d.exists ? d.data() : null);
   }
   function haalLedenPerGroep() {
-    return firebase.database().ref("ledenPerGroep").once("value").then(snap => snap.val() || {});
+    // opslaan als 1 document 'meta/ledenPerGroep' of collection 'ledenPerGroep'
+    // We kiezen hier een enkel doc in collection 'config'
+    return db.collection("config").doc("ledenPerGroep").get().then(d => d.exists ? d.data() : {});
   }
 
   // --- Permissions ---
@@ -123,14 +127,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Schrijf uitgave naar Firebase: gebruik veilige waarden (nooit undefined)
-    const uitgavenRef = firebase.database().ref("uitgaven");
     try {
-      const snap = await uitgavenRef.once("value");
-      const data = snap.val() || {};
-      const nummers = Object.values(data).map(u => u.nummer || 0);
+      // Genereer nummer (uniek) via query op bestaande nummers
+      const uitgavenSnap = await db.collection("uitgaven").get();
+      const bestaandeNummers = uitgavenSnap.docs.map(d => (d.data().nummer)||0);
       let nieuwNummer;
-      do { nieuwNummer = Math.floor(1000 + Math.random() * 9000); } while (nummers.includes(nieuwNummer));
-
+      do { nieuwNummer = Math.floor(1000 + Math.random() * 9000); } while (bestaandeNummers.includes(nieuwNummer));
       const entry = {
         nummer: nieuwNummer,
         groep: g,
@@ -140,13 +142,10 @@ document.addEventListener("DOMContentLoaded", () => {
         betaald: false,
         bewijsUrl: bewijsUrl || "",
         status: "in_behandeling",
-        rekeningNummer: rekeningNummer // <-- deze regel toevoegen!
+        rekeningNummer: rekeningNummer,
+        aangemaaktOp: firebase.firestore.FieldValue.serverTimestamp()
       };
-
-      // Voorkom undefined velden - Firebase weigert undefined in object
-      Object.keys(entry).forEach(k => { if (entry[k] === undefined) entry[k] = null; });
-
-      await uitgavenRef.child(nieuwNummer).set(entry);
+      await db.collection("uitgaven").doc(String(nieuwNummer)).set(entry);
       // reset formulier en herlaad tabel
       $("uitgaveForm")?.reset();
       renderTabel($("filterGroep")?.value, $("filterBetaald")?.value);
@@ -161,16 +160,20 @@ document.addEventListener("DOMContentLoaded", () => {
     const tbody = document.querySelector("#overzicht tbody");
     if (!tbody) return;
     tbody.innerHTML = "";
-    let query = firebase.database().ref("uitgaven");
+    // basis query
+    let q = db.collection("uitgaven");
     if (gebruikersData && gebruikersData.rol === "leiding") {
-      query = query.orderByChild("groep").equalTo(gebruikersData.groep);
+      q = q.where("groep", "==", gebruikersData.groep);
     }
-    query.once("value").then(snap => {
-      const data = snap.val() || {};
-      Object.values(data)
-        .filter(u => (!filterGroep || u.groep === filterGroep) && (filterBetaald === "" || String(u.betaald) === filterBetaald))
-        .sort((a, b) => (a.nummer || 0) - (b.nummer || 0))
-        .forEach(u => {
+    // extra filters
+    if (filterGroep) q = q.where("groep", "==", filterGroep);
+    // betaald filter kan niet samen met groep direct in 1 where als mix? Kan wel: we voegen als tweede where toe
+    if (filterBetaald !== "") q = q.where("betaald", "==", filterBetaald === "true");
+
+    q.get().then(snap => {
+      const rows = snap.docs.map(d => d.data())
+        .sort((a,b) => (a.nummer||0) - (b.nummer||0));
+      rows.forEach(u => {
           const rij = tbody.insertRow();
           rij.style.backgroundColor = groepKleuren[u.groep] || "#ffd5f2";
           rij.insertCell(0).textContent = u.nummer || "-";
@@ -194,7 +197,7 @@ document.addEventListener("DOMContentLoaded", () => {
             verwijderBtn.style.cursor = "pointer";
             verwijderBtn.onclick = async () => {
               if (confirm("Weet je zeker dat je deze uitgave wilt verwijderen?")) {
-                await firebase.database().ref("uitgaven/" + u.nummer).remove();
+                await db.collection("uitgaven").doc(String(u.nummer)).delete();
                 renderTabel(filterGroep, filterBetaald);
               }
             };
@@ -209,7 +212,7 @@ document.addEventListener("DOMContentLoaded", () => {
             checkbox.checked = !!u.betaald;
             checkbox.title = "Markeer als betaald";
             checkbox.onchange = async () => {
-              await firebase.database().ref("uitgaven/" + u.nummer).update({ betaald: checkbox.checked });
+              await db.collection("uitgaven").doc(String(u.nummer)).update({ betaald: checkbox.checked });
               renderTabel(filterGroep, filterBetaald);
             };
             betaaldCell.appendChild(checkbox);
@@ -250,11 +253,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const groepen = Object.keys(ledenPerGroep || {});
     groepen.forEach(groep => {
       let totaal = 0;
-      firebase.database().ref("uitgaven").orderByChild("groep").equalTo(groep).once("value").then(snap => {
-        const uitgaven = snap.val() || {};
-        Object.values(uitgaven).forEach(u => {
-          totaal += parseFloat(u.bedrag || 0);
-        });
+      db.collection("uitgaven").where("groep","==",groep).get().then(snap => {
+        snap.docs.forEach(doc => { totaal += parseFloat((doc.data().bedrag)||0); });
         const leden = ledenPerGroep[groep] || 0;
         const perKind = leden > 0 ? (totaal / leden).toFixed(2) : "-";
         const rij = tbody.insertRow();
@@ -377,8 +377,8 @@ document.addEventListener("DOMContentLoaded", () => {
     doc.text("Uitgavenoverzicht per groep", 10, 10);
 
     // Haal alle uitgaven op
-    const uitgavenSnap = await firebase.database().ref("uitgaven").once("value");
-    const uitgaven = Object.values(uitgavenSnap.val() || {});
+  const uitgavenSnap = await db.collection("uitgaven").get();
+  const uitgaven = uitgavenSnap.docs.map(d => d.data());
 
     // Groepeer per groep
     const groepen = {};
@@ -423,7 +423,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!uid || !groep || !rol) return alert("Vul alle velden in.");
 
     try {
-      await firebase.database().ref("gebruikers/" + uid).update({ groep, rol });
+      await db.collection("gebruikers").doc(uid).set({ groep, rol }, { merge: true });
       alert("Gebruiker succesvol aangepast!");
       $("rolForm").reset();
     } catch (err) {
@@ -461,14 +461,8 @@ document.addEventListener("DOMContentLoaded", () => {
     tbody.innerHTML = "";
 
     // Haal alle gebruikers uit Firebase
-    const snap = await firebase.database().ref("gebruikers").once("value");
-    const gebruikers = snap.val() || {};
-
-    // Haal alle actieve sessions uit Firebase Auth
-    const allUsers = [];
-    for (const uid in gebruikers) {
-      allUsers.push({ uid, ...gebruikers[uid] });
-    }
+    const gebruikersSnap = await db.collection("gebruikers").get();
+    const allUsers = gebruikersSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
 
     // Haal online status op via presence (of alleen huidige user als je geen presence gebruikt)
     // Simpel: alleen huidige gebruiker is online
@@ -516,5 +510,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // Roep deze functie aan na het tonen van het beheerpaneel:
   // (Laatste dubbele toonBeheerPaneel verwijderd - gebruik geconsolideerde versie)
 });
+
 
 
