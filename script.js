@@ -1,15 +1,15 @@
 document.addEventListener("DOMContentLoaded", () => {
+  // --- UI INIT HELPERS ---
   function setupSummaryToggle() {
-  const btn = document.getElementById("toggleSummary");
-  const summary = document.getElementById("summaryContent");
-  if (!btn || !summary) return;
-  btn.onclick = () => {
-    summary.style.display = summary.style.display === "none" ? "block" : "none";
-    btn.textContent = summary.style.display === "none"
-      ? "Toon overzicht uitgaven per groep"
-      : "Verberg overzicht uitgaven per groep";
-  };
-}
+    const btn = document.getElementById("toggleSummary");
+    const summary = document.getElementById("summaryContent");
+    if (!btn || !summary) return;
+    btn.onclick = () => {
+      const open = summary.style.display === "none" || summary.style.display === "";
+      summary.style.display = open ? "block" : "none";
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+    };
+  }
   // --- Config / constants ---
   const alleGroepen = ["Ribbels","Speelclubs","Rakkers","Kwiks","Tippers","Toppers","Aspi","LEIDING"];
   const groepKleuren = {
@@ -338,8 +338,15 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!paneel || !toggleBtn) return;
     const show = magBeheren();
     toggleBtn.style.display = show ? "block" : "none";
-    paneel.style.display = "none"; // standaard ingeklapt
-    renderGebruikersLijst(); // <-- voeg deze regel toe
+    if (!show) {
+      paneel.style.display = "none";
+      const lijstPaneel = $("gebruikersLijstPaneel");
+      if (lijstPaneel) lijstPaneel.style.display = "none";
+      return;
+    }
+    // standaard ingeklapt
+    if (paneel.style.display === "") paneel.style.display = "none";
+    renderGebruikersLijst();
   }
 
   function toonFinancieelFeatures() {
@@ -362,17 +369,7 @@ document.addEventListener("DOMContentLoaded", () => {
     actieTds.forEach(td => td.style.display = show ? "table-cell" : "none");
   }
 
-  function setupSummaryToggle() {
-    const btn = document.getElementById("toggleSummary");
-    const summary = document.getElementById("summaryContent");
-    if (!btn || !summary) return;
-    btn.onclick = () => {
-      summary.style.display = summary.style.display === "none" ? "block" : "none";
-      btn.textContent = summary.style.display === "none"
-        ? "Toon overzicht uitgaven per groep"
-        : "Verberg overzicht uitgaven per groep";
-    };
-  }
+  // (Dubbele definitie van setupSummaryToggle verwijderd)
 
   safeOn($("exportPdfBtn"), "click", async () => {
     const doc = new window.jspdf.jsPDF();
@@ -444,14 +441,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Zorg dat de knop zichtbaar is voor financieel
-  function toonBeheerPaneel() {
-    const paneel = $("beheerPaneel");
-    const toggleBtn = $("toggleBeheerPaneel");
-    if (!paneel || !toggleBtn) return;
-    const show = magBeheren();
-    toggleBtn.style.display = show ? "block" : "none";
-    paneel.style.display = "none"; // standaard ingeklapt
-  }
+  // (Dubbele toonBeheerPaneel definitie verwijderd bovenaan geconsolideerd)
 
   function toonLogoutKnop() {
     const logoutBtn = $("logoutKnop");
@@ -524,15 +514,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Roep deze functie aan na het tonen van het beheerpaneel:
-  function toonBeheerPaneel() {
-    const paneel = $("beheerPaneel");
-    const toggleBtn = $("toggleBeheerPaneel");
-    if (!paneel || !toggleBtn) return;
-    const show = magBeheren();
-    toggleBtn.style.display = show ? "block" : "none";
-    paneel.style.display = "none"; // standaard ingeklapt
-    renderGebruikersLijst(); // <-- voeg deze regel toe
-  }
+  // (Laatste dubbele toonBeheerPaneel verwijderd - gebruik geconsolideerde versie)
 });
 
 
