@@ -113,35 +113,45 @@ firebase.auth().onAuthStateChanged(async user => {
       firebase.auth().signOut();
       return;
     }
-    $('#loginScherm').style.display='none';
-    $('#appInhoud').style.display='block';
+    const loginSchermEl = $('#loginScherm');
+    const appInhoudEl = $('#appInhoud');
+    if(loginSchermEl) loginSchermEl.style.display='none';
+    if(appInhoudEl) appInhoudEl.style.display='block';
     const nav = document.getElementById('mainNav'); if(nav) nav.style.display='flex';
     const navSam=document.getElementById('navSamenvatting'); const navBeh=document.getElementById('navBeheer'); const navLogout=document.getElementById('navLogout');
     if(navSam) navSam.style.display='inline'; if(navBeh) navBeh.style.display='inline'; if(navLogout) navLogout.style.display='inline';
-    $('#gebruikerInfo').textContent = `Ingelogd als ${gebruikersData.rol||'-'} (${gebruikersData.groep||'-'})`;
+    const infoEl = $('#gebruikerInfo'); if(infoEl) infoEl.textContent = `Ingelogd als ${gebruikersData.rol||'-'} (${gebruikersData.groep||'-'})`;
     startSamenvattingListeners();
   } else {
     if(unsubUitgaven){unsubUitgaven(); unsubUitgaven=null;}
     if(unsubLeden){unsubLeden(); unsubLeden=null;}
     gebruikersData=null; ledenPerGroep={}; uitgavenCache=[];
-    $('#appInhoud').style.display='none';
-    $('#loginScherm').style.display='block';
+    const appInhoudEl = $('#appInhoud'); if(appInhoudEl) appInhoudEl.style.display='none';
+    const loginSchermEl = $('#loginScherm'); if(loginSchermEl) loginSchermEl.style.display='block';
     const tbody = document.querySelector('#groepSamenvattingTabel tbody'); if(tbody) tbody.innerHTML='';
     const statusEl = $('#samenvattingStatus'); if(statusEl) statusEl.textContent='';
   }
 });
+// Veilige event listeners (null-checks)
+const navLogoutBtn = document.getElementById('navLogout');
+if(navLogoutBtn) navLogoutBtn.addEventListener('click', ()=> firebase.auth().signOut());
 
-document.getElementById('navLogout').addEventListener('click', ()=> firebase.auth().signOut());
-$('#loginKnop').addEventListener('click', async () => {
-  const e = $('#loginEmail').value.trim();
-  const p = $('#loginWachtwoord').value.trim();
-  const f = $('#loginFout');
-  if(!e || !p){ f.textContent='Vul e-mail en wachtwoord in.'; return; }
-  try { await firebase.auth().signInWithEmailAndPassword(e,p); f.textContent=''; }
-  catch(err){ f.textContent = 'Login mislukt: ' + (err.message||err); }
+const loginBtnEl = $('#loginKnop');
+if(loginBtnEl) loginBtnEl.addEventListener('click', async () => {
+  const emailEl = $('#loginEmail');
+  const passEl = $('#loginWachtwoord');
+  const foutEl = $('#loginFout');
+  const e = emailEl ? emailEl.value.trim() : '';
+  const p = passEl ? passEl.value.trim() : '';
+  if(!e || !p){ if(foutEl) foutEl.textContent='Vul e-mail en wachtwoord in.'; return; }
+  try { await firebase.auth().signInWithEmailAndPassword(e,p); if(foutEl) foutEl.textContent=''; }
+  catch(err){ if(foutEl) foutEl.textContent = 'Login mislukt: ' + (err && err.message ? err.message : err); }
 });
-$('#logoutKnop').addEventListener('click', ()=> firebase.auth().signOut());
+
+const logoutKnopEl = $('#logoutKnop');
+if(logoutKnopEl) logoutKnopEl.addEventListener('click', ()=> firebase.auth().signOut());
 </script>
 </body>
 </html>
+
 
