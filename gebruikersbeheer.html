@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Gebruikersbeheer – Chiro Kattenbos</title>
+<link rel="stylesheet" href="style.css" />
+<script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyC-UaXhh5juhV4raXWnzku9fSZZD75-y9w",
+  authDomain: "uitgavebeheerch.firebaseapp.com",
+  projectId: "uitgavebeheerch",
+  storageBucket: "uitgavebeheerch.firebasestorage.app"
+};
+firebase.initializeApp(firebaseConfig);
+</script>
+</head>
+<body>
+  <a href="index.html" style="position:absolute; top:10px; left:10px;">← Terug</a>
+  <div id="loginScherm">
+    <h2>Inloggen</h2>
+    <input type="email" id="loginEmail" placeholder="E-mailadres" required />
+    <input type="password" id="loginWachtwoord" placeholder="Wachtwoord" required />
+    <button id="loginKnop">Inloggen</button>
+    <p id="loginFout" style="color:red;"></p>
+  </div>
+  <div id="appInhoud" style="display:none;">
+    <h1>Gebruikersbeheer</h1>
+    <p id="gebruikerInfo"></p>
+    <button id="logoutKnop" class="top-icon-btn danger" style="display:none;">Uitloggen</button>
+    <div id="beheerPaneel">
+      <form id="rolForm" style="margin-bottom:1rem;">
+        <label for="userUid">Gebruiker UID:</label>
+        <input type="text" id="userUid" required />
+        <label for="userGroep">Groep:</label>
+        <select id="userGroep">
+          <option value="Ribbels">Ribbels</option><option value="Speelclubs">Speelclubs</option><option value="Rakkers">Rakkers</option><option value="Kwiks">Kwiks</option><option value="Tippers">Tippers</option><option value="Toppers">Toppers</option><option value="Aspi">Aspi</option><option value="LEIDING">LEIDING</option>
+        </select>
+        <label for="userRol">Rol:</label>
+        <select id="userRol"><option value="leiding">Leiding</option><option value="financieel">Financieel</option></select>
+        <button type="submit">Opslaan</button>
+      </form>
+      <table id="gebruikersLijstTabel">
+        <thead><tr><th>E-mail</th><th>UID</th><th>Rol</th><th>Groep</th></tr></thead>
+        <tbody id="gebruikersLijstBody"></tbody>
+      </table>
+    </div>
+  </div>
+<script>
+const db = firebase.firestore();
+let gebruikersData=null;
+function $(id){return document.getElementById(id);} 
+function magBeheren(){return gebruikersData && gebruikersData.rol==='financieel';}
+firebase.auth().onAuthStateChanged(async user=>{
+ if(user){
+   const d= await db.collection('gebruikers').doc(user.uid).get();
+   gebruikersData = d.exists? d.data():{};
+   $("loginScherm").style.display='none';
+   $("appInhoud").style.display='block';
+   $("gebruikerInfo").textContent=`Ingelogd als ${gebruikersData.rol||'-'} (${gebruikersData.groep||'-'})`;
+   if(!magBeheren()){alert('Geen toegang'); firebase.auth().signOut(); return;}
+   renderGebruikers();
+ } else {
+   $("appInhoud").style.display='none';
+   $("loginScherm").style.display='block';
+ }
+});
+$("loginKnop").addEventListener('click',async()=>{const e=$("loginEmail").value.trim();const p=$("loginWachtwoord").value.trim();const f=$("loginFout"); try{await firebase.auth().signInWithEmailAndPassword(e,p);f.textContent='';}catch(err){f.textContent='Login mislukt: '+(err.message||err);} });
+$("logoutKnop").addEventListener('click',()=>firebase.auth().signOut());
+$("rolForm").addEventListener('submit',async ev=>{ev.preventDefault();const uid=$("userUid").value.trim();const groep=$("userGroep").value;const rol=$("userRol").value; if(!uid) return; await db.collection('gebruikers').doc(uid).set({groep,rol},{merge:true}); alert('Opgeslagen'); renderGebruikers();});
+async function renderGebruikers(){const tbody=$("gebruikersLijstBody"); tbody.innerHTML=''; const snap=await db.collection('gebruikers').get(); snap.docs.forEach(doc=>{const u=doc.data(); const tr=document.createElement('tr'); tr.innerHTML=`<td>${u.email||'-'}</td><td>${doc.id}</td><td>${u.rol||'-'}</td><td>${u.groep||'-'}</td>`; tbody.appendChild(tr);});}
+</script>
+</body>
+</html>
