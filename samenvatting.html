@@ -19,7 +19,13 @@ firebase.initializeApp(firebaseConfig);
 </script>
 </head>
 <body>
-<a href="index.html" style="position:absolute; top:10px; left:10px;">← Terug</a>
+<nav id="mainNav" style="display:none; background:#2c3e50; color:#fff; padding:10px 15px; display:flex; align-items:center; gap:15px;">
+  <span style="font-weight:600;">Chiro Kattenbos</span>
+  <a href="index.html" style="color:#fff; text-decoration:none;">Home</a>
+  <a id="navSamenvatting" href="samenvatting.html" style="color:#fff; text-decoration:none; display:none;">Samenvatting</a>
+  <a id="navBeheer" href="gebruikersbeheer.html" style="color:#fff; text-decoration:none; display:none;">Gebruikersbeheer</a>
+  <button id="navLogout" style="margin-left:auto; background:#e74c3c; color:#fff; border:none; padding:6px 12px; cursor:pointer; display:none;">Uitloggen</button>
+</nav>
 <div id="loginScherm">
   <h2>Inloggen</h2>
   <input type="email" id="loginEmail" placeholder="E-mailadres" required />
@@ -43,7 +49,8 @@ function $(id){return document.getElementById(id);}
 function magBeheren(){return gebruikersData && gebruikersData.rol==='financieel';}
 function haalLedenPerGroep(){return db.collection('config').doc('ledenPerGroep').get().then(d=>d.exists?d.data():{});} 
 async function renderSamenvatting(){const tbody=document.querySelector('#groepSamenvattingTabel tbody'); tbody.innerHTML=''; const groepen=Object.keys(ledenPerGroep||{}); for(const g of groepen){ let totaal=0; const snap=await db.collection('uitgaven').where('groep','==',g).get(); snap.docs.forEach(doc=>{totaal+=parseFloat(doc.data().bedrag)||0;}); const leden=ledenPerGroep[g]||0; const perKind= leden>0 ? (totaal/leden).toFixed(2):'-'; const tr=document.createElement('tr'); tr.innerHTML=`<td>${g}</td><td>${leden}</td><td>€${totaal.toFixed(2)}</td><td>${perKind}</td>`; tbody.appendChild(tr);} }
-firebase.auth().onAuthStateChanged(async user=>{ if(user){ const d=await db.collection('gebruikers').doc(user.uid).get(); gebruikersData=d.exists?d.data():{}; if(!magBeheren()){alert('Geen toegang'); firebase.auth().signOut(); return;} ledenPerGroep=await haalLedenPerGroep(); $("loginScherm").style.display='none'; $("appInhoud").style.display='block'; $("gebruikerInfo").textContent=`Ingelogd als ${gebruikersData.rol||'-'} (${gebruikersData.groep||'-'})`; renderSamenvatting(); } else { $("appInhoud").style.display='none'; $("loginScherm").style.display='block'; } });
+firebase.auth().onAuthStateChanged(async user=>{ if(user){ const d=await db.collection('gebruikers').doc(user.uid).get(); gebruikersData=d.exists?d.data():{}; if(!magBeheren()){alert('Geen toegang'); firebase.auth().signOut(); return;} ledenPerGroep=await haalLedenPerGroep(); $("loginScherm").style.display='none'; $("appInhoud").style.display='block'; document.getElementById('mainNav').style.display='flex'; const navSam=document.getElementById('navSamenvatting'); const navBeh=document.getElementById('navBeheer'); const navLogout=document.getElementById('navLogout'); if(navSam) navSam.style.display='inline'; if(navBeh) navBeh.style.display='inline'; if(navLogout) navLogout.style.display='inline'; $("gebruikerInfo").textContent=`Ingelogd als ${gebruikersData.rol||'-'} (${gebruikersData.groep||'-'})`; renderSamenvatting(); } else { $("appInhoud").style.display='none'; $("loginScherm").style.display='block'; } });
+document.getElementById('navLogout').addEventListener('click',()=>firebase.auth().signOut());
 $("loginKnop").addEventListener('click',async()=>{const e=$("loginEmail").value.trim(); const p=$("loginWachtwoord").value.trim(); const f=$("loginFout"); try{await firebase.auth().signInWithEmailAndPassword(e,p); f.textContent='';}catch(err){f.textContent='Login mislukt: '+(err.message||err);} });
 $("logoutKnop").addEventListener('click',()=>firebase.auth().signOut());
 </script>
