@@ -156,93 +156,77 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // --- Rendering functies (kort) ---
-  function renderTabel(filterGroep = "", filterBetaald = "") {
+  let uitgavenUnsub = null;
+  function attachUitgavenListener(filterGroep = "", filterBetaald = "") {
+    if (uitgavenUnsub) { uitgavenUnsub(); uitgavenUnsub = null; }
     const tbody = document.querySelector("#overzicht tbody");
     if (!tbody) return;
     tbody.innerHTML = "";
-    // basis query
     let q = db.collection("uitgaven");
     if (gebruikersData && gebruikersData.rol === "leiding") {
-      q = q.where("groep", "==", gebruikersData.groep);
+      q = q.where("groep","==",gebruikersData.groep);
     }
-    // extra filters
-    if (filterGroep) q = q.where("groep", "==", filterGroep);
-    // betaald filter kan niet samen met groep direct in 1 where als mix? Kan wel: we voegen als tweede where toe
-    if (filterBetaald !== "") q = q.where("betaald", "==", filterBetaald === "true");
-
-    q.get().then(snap => {
-      const rows = snap.docs.map(d => d.data())
-        .sort((a,b) => (a.nummer||0) - (b.nummer||0));
+    if (filterGroep) q = q.where("groep","==",filterGroep);
+    if (filterBetaald !== "") q = q.where("betaald","==", filterBetaald === "true");
+    uitgavenUnsub = q.onSnapshot(snap => {
+      tbody.innerHTML = "";
+      const rows = snap.docs.map(d=>d.data()).sort((a,b)=>(a.nummer||0)-(b.nummer||0));
       rows.forEach(u => {
-          const rij = tbody.insertRow();
-          rij.style.backgroundColor = groepKleuren[u.groep] || "#ffd5f2";
-          rij.insertCell(0).textContent = u.nummer || "-";
-          rij.insertCell(1).textContent = u.groep || "-";
-          rij.insertCell(2).textContent = u.bedrag ? `€${u.bedrag}` : "-";
-          rij.insertCell(3).textContent = u.activiteit || "-";
-          rij.insertCell(4).textContent = u.datum || "-";
-
-          // Betaald status (vinkje/kruisje)
-          const betaaldStatusCell = rij.insertCell(5);
-          betaaldStatusCell.className = "betaald-status";
-          betaaldStatusCell.textContent = u.betaald ? "✓" : "✗";
-          betaaldStatusCell.style.color = u.betaald ? "#27ae60" : "#e74c3c";
-
-          // Actie: Verwijder-knop
-          const actieCell = rij.insertCell(6);
-          if (magBeheren()) {
-            const verwijderBtn = document.createElement("button");
-            verwijderBtn.textContent = "🗑️";
-            verwijderBtn.title = "Verwijder uitgave";
-            verwijderBtn.style.cursor = "pointer";
-            verwijderBtn.onclick = async () => {
-              if (confirm("Weet je zeker dat je deze uitgave wilt verwijderen?")) {
-                await db.collection("uitgaven").doc(String(u.nummer)).delete();
-                renderTabel(filterGroep, filterBetaald);
-              }
-            };
-            actieCell.appendChild(verwijderBtn);
-          }
-
-          // Betaald aanvinken (checkbox)
-          const betaaldCell = rij.insertCell(7);
-          if (magBeheren()) {
-            const checkbox = document.createElement("input");
-            checkbox.type = "checkbox";
-            checkbox.checked = !!u.betaald;
-            checkbox.title = "Markeer als betaald";
-            checkbox.onchange = async () => {
-              await db.collection("uitgaven").doc(String(u.nummer)).update({ betaald: checkbox.checked });
-              renderTabel(filterGroep, filterBetaald);
-            };
-            betaaldCell.appendChild(checkbox);
-          }
-
-          // Rekeningnummer
-          rij.insertCell(8).textContent = u.rekeningNummer || "-";
-
-          // Bewijsstuk afbeelding/document
-          const bewijsCell = rij.insertCell(9);
-          if (u.bewijsUrl) {
-            const link = document.createElement("a");
-            link.href = u.bewijsUrl;
-            link.target = "_blank";
-            link.rel = "noopener";
-            link.title = "Bekijk bewijsstuk";
-            if (u.bewijsUrl.match(/\.(jpg|jpeg|png|gif)$/i)) {
-              const img = document.createElement("img");
-              img.src = u.bewijsUrl;
-              img.alt = "Bewijs";
-              img.style.maxWidth = "40px";
-              img.style.maxHeight = "40px";
-              link.appendChild(img);
-            } else {
-              link.textContent = "📄";
+        const rij = tbody.insertRow();
+        rij.style.backgroundColor = groepKleuren[u.groep] || "#ffd5f2";
+        rij.insertCell(0).textContent = u.nummer || "-";
+        rij.insertCell(1).textContent = u.groep || "-";
+        rij.insertCell(2).textContent = u.bedrag ? `€${u.bedrag}` : "-";
+        rij.insertCell(3).textContent = u.activiteit || "-";
+        rij.insertCell(4).textContent = u.datum || "-";
+        const betaaldStatusCell = rij.insertCell(5);
+        betaaldStatusCell.className = "betaald-status";
+        betaaldStatusCell.textContent = u.betaald ? "✓" : "✗";
+        betaaldStatusCell.style.color = u.betaald ? "#27ae60" : "#e74c3c";
+        const actieCell = rij.insertCell(6);
+        if (magBeheren()) {
+          const verwijderBtn = document.createElement("button");
+          verwijderBtn.textContent = "🗑️";
+          verwijderBtn.title = "Verwijder uitgave";
+          verwijderBtn.onclick = async () => {
+            if (confirm("Weet je zeker dat je deze uitgave wilt verwijderen?")) {
+              await db.collection("uitgaven").doc(String(u.nummer)).delete();
             }
-            bewijsCell.appendChild(link);
+          };
+          actieCell.appendChild(verwijderBtn);
+        }
+        const betaaldCell = rij.insertCell(7);
+        if (magBeheren()) {
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.checked = !!u.betaald;
+          checkbox.onchange = async () => {
+            await db.collection("uitgaven").doc(String(u.nummer)).update({ betaald: checkbox.checked });
+          };
+          betaaldCell.appendChild(checkbox);
+        }
+        rij.insertCell(8).textContent = u.rekeningNummer || "-";
+        const bewijsCell = rij.insertCell(9);
+        if (u.bewijsUrl) {
+          const link = document.createElement("a");
+          link.href = u.bewijsUrl;
+          link.target = "_blank";
+          link.rel = "noopener";
+          link.title = "Bekijk bewijsstuk";
+          if (u.bewijsUrl.match(/\.(jpg|jpeg|png|gif)$/i)) {
+            const img = document.createElement("img");
+            img.src = u.bewijsUrl;
+            img.alt = "Bewijs";
+            img.style.maxWidth = "40px";
+            img.style.maxHeight = "40px";
+            link.appendChild(img);
+          } else {
+            link.textContent = "📄";
           }
-        });
-    }).catch(err => console.error("Lezen uitgaven mislukt:", err));
+          bewijsCell.appendChild(link);
+        }
+      });
+    }, err => console.error("Realtime uitgaven mislukt:", err));
   }
 
   function renderSamenvatting() {
@@ -300,7 +284,7 @@ document.addEventListener("DOMContentLoaded", () => {
         renderSamenvatting();
       }
 
-      renderTabel();
+  attachUitgavenListener();
       toonLogoutKnop();
     } else {
       // logged out
@@ -351,8 +335,8 @@ document.addEventListener("DOMContentLoaded", () => {
   safeOn($("logoutKnop"), "click", () => firebase.auth().signOut());
 
   // Filters
-  safeOn($("filterGroep"), "change", e => renderTabel(e.target.value, $("filterBetaald")?.value));
-  safeOn($("filterBetaald"), "change", e => renderTabel($("filterGroep")?.value, e.target.value));
+  safeOn($("filterGroep"), "change", e => attachUitgavenListener(e.target.value, $("filterBetaald")?.value));
+  safeOn($("filterBetaald"), "change", e => attachUitgavenListener($("filterGroep")?.value, e.target.value));
 
   // toon/verberg beheerpaneel en financieel features/kolommen
   function toonBeheerPaneel() {
@@ -392,7 +376,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // (Dubbele definitie van setupSummaryToggle verwijderd)
 
-  safeOn($("exportPdfBtn"), "click", async () => {
+  safeOn($("navExportPdf"), "click", async () => {
     const doc = new window.jspdf.jsPDF();
     doc.setFontSize(14);
     doc.text("Uitgavenoverzicht per groep", 10, 10);
@@ -513,6 +497,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Roep deze functie aan na het tonen van het beheerpaneel:
   // (Laatste dubbele toonBeheerPaneel verwijderd - gebruik geconsolideerde versie)
 });
+
 
 
 
