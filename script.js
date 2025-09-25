@@ -486,19 +486,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     allUsers.forEach(user => {
       const tr = document.createElement("tr");
-
-      // Statusbolletje
-      const statusTd = document.createElement("td");
-      const bol = document.createElement("span");
-      bol.style.display = "inline-block";
-      bol.style.width = "14px";
-      bol.style.height = "14px";
-      bol.style.borderRadius = "50%";
-      bol.style.background = user.uid === currentUid ? "#27ae60" : "#e74c3c";
-      bol.title = user.uid === currentUid ? "Online" : "Offline";
-      statusTd.appendChild(bol);
-      tr.appendChild(statusTd);
-
       // E-mail
       const emailTd = document.createElement("td");
       emailTd.textContent = user.email || "-";
@@ -526,7 +513,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // Roep deze functie aan na het tonen van het beheerpaneel:
   // (Laatste dubbele toonBeheerPaneel verwijderd - gebruik geconsolideerde versie)
 });
-
 
 
 
