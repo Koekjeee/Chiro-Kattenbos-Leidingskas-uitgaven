@@ -182,12 +182,43 @@ const firebaseConfig = {
         <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
       </svg>
     </button>
+
+    <!-- Toon gebruikers tabel knop -->
+    <button id="toggleUserTable" class="top-icon-btn info" title="Toon gebruikers" style="display:none; right:60px;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="white" viewBox="0 0 24 24">
+        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+      </svg>
+    </button>
+
+    <!-- Gebruikers tabel sectie -->
+    <div id="userTableSection" style="display:none; margin-top:20px;">
+      <table id="gebruikersLijstTabel">
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>E-mail</th>
+            <th>UID</th>
+            <th>Rol</th>
+            <th>Groep</th>
+          </tr>
+        </thead>
+        <tbody id="gebruikersLijstBody"></tbody>
+      </table>
+    </div>
   </div>
 
   <script src="script.js"></script>
   <!-- Inline script verwijderd; logica zit in script.js -->
+  <script>
+    document.getElementById('toggleUserTable').addEventListener('click', function() {
+      const userTableSection = document.getElementById('userTableSection');
+      const isVisible = userTableSection.style.display === 'block';
+      userTableSection.style.display = isVisible ? 'none' : 'block';
+    });
+  </script>
 </body>
 </html>
+
 
 
 
