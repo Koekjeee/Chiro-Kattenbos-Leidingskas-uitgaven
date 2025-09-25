@@ -265,10 +265,23 @@ document.addEventListener("DOMContentLoaded", () => {
         ledenPerGroep = {};
       }
 
-      // UI: show/hide relevant onderdelen
+  // UI: show/hide relevant onderdelen
       $("loginScherm") && ($("loginScherm").style.display = "none");
       $("appInhoud") && ($("appInhoud").style.display = "block");
       $("gebruikerInfo") && ($("gebruikerInfo").textContent = `Ingelogd als ${gebruikersData.rol || 'onbekend'} (${gebruikersData.groep || 'ALL'})`);
+
+  // Navbar tonen + role based links
+  const nav = document.getElementById('mainNav');
+  if (nav) nav.style.display = 'flex';
+  const navSam = document.getElementById('navSamenvatting');
+  const navBeh = document.getElementById('navBeheer');
+  const navExport = document.getElementById('navExportPdf');
+  const navLogout = document.getElementById('navLogout');
+  const isFin = gebruikersData.rol === 'financieel';
+  if (navSam) navSam.style.display = isFin ? 'inline' : 'none';
+  if (navBeh) navBeh.style.display = isFin ? 'inline' : 'none';
+  if (navExport) navExport.style.display = isFin ? 'inline' : 'none';
+  if (navLogout) navLogout.style.display = 'inline';
 
       // vul selects / render tabelen
       vulGroepSelectie();
@@ -278,11 +291,7 @@ document.addEventListener("DOMContentLoaded", () => {
       toonFinancieelFeatures();
       toonFinancieelKolommen();
 
-      // summary toggle en inhoud (veilig: alleen aanroepen als functie bestaat)
-      setupSummaryToggle();
-      if (typeof renderSamenvatting === "function" && magBeheren()) {
-        renderSamenvatting();
-      }
+      // Samenvatting wordt op aparte pagina geladen; geen toggle meer nodig hier
 
   attachUitgavenListener();
       toonLogoutKnop();
