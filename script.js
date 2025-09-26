@@ -242,10 +242,12 @@ document.addEventListener("DOMContentLoaded", () => {
   // Navbar tonen + role based links
   const nav = document.getElementById('mainNav');
   if (nav) nav.style.display = 'flex';
+  const navSam = document.getElementById('navSamenvatting');
   const navBeh = document.getElementById('navBeheer');
   const navExport = document.getElementById('navExportPdf');
   const navLogout = document.getElementById('navLogout');
   const isFin = gebruikersData.rol === 'financieel';
+  if (navSam) navSam.style.display = isFin ? 'inline' : 'none';
   if (navBeh) navBeh.style.display = isFin ? 'inline' : 'none';
   if (navExport) navExport.style.display = isFin ? 'inline' : 'none';
   if (navLogout) navLogout.style.display = 'inline';
