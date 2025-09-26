@@ -34,7 +34,7 @@
   </nav>
   <div class="container">
     <h1>Evenementen</h1>
-    <p>Selecteer een evenement om kosten en verdiensten te beheren (alleen financieel).</p>
+    <p>Selecteer een evenement om kosten en verdiensten te beheren.</p>
 
     <div class="card-grid">
       <a class="card" href="zomerbar.html">
@@ -49,6 +49,26 @@
         <h3>School's in quiz</h3>
         <p>Beheer kosten en verdiensten</p>
       </a>
+    </div>
+
+    <!-- Alleen zichtbaar voor financieel: evenement-rollen beheren -->
+    <div id="eventRolesPanel" class="card" style="display:none; margin-top: 24px;">
+      <h3>Evenement-rollen beheren (alleen financieel)</h3>
+      <p>Vink aan welke gebruikers toegang hebben tot een specifiek evenement.</p>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>E-mail</th>
+              <th>UID</th>
+              <th>Zomerbar</th>
+              <th>Winterbar</th>
+              <th>School's in quiz</th>
+            </tr>
+          </thead>
+          <tbody id="eventRolesBody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -78,10 +98,15 @@
       const isFin = data && data.rol === 'financieel';
       const navBeheer = document.getElementById('navBeheer');
       if (navBeheer) navBeheer.style.display = isFin ? 'inline' : 'none';
+      // Show financieel-only event roles panel
+      const eventRolesPanel = document.getElementById('eventRolesPanel');
+      if (eventRolesPanel) eventRolesPanel.style.display = isFin ? 'block' : 'none';
       if (nav) nav.style.display = 'flex';
       if (navLogout) navLogout.onclick = ()=> firebase.auth().signOut();
     });
   </script>
+  <script src="evenementen.js?v=20250927"></script>
 </body>
 </html>
+
 
