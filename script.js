@@ -333,12 +333,15 @@ document.addEventListener("DOMContentLoaded", () => {
   if (nav) nav.style.display = 'flex';
   const navSam = document.getElementById('navSamenvatting');
   const navBeh = document.getElementById('navBeheer');
+  const navEven = document.getElementById('navEvenementen');
   const navExport = document.getElementById('navExportPdf');
   const navTheme = document.getElementById('navTheme');
   const navLogout = document.getElementById('navLogout');
   const isFin = gebruikersData.rol === 'financieel';
   if (navSam) navSam.style.display = isFin ? 'inline' : 'none';
   if (navBeh) navBeh.style.display = isFin ? 'inline' : 'none';
+  const hasEventRoles = !!(gebruikersData && gebruikersData.evenementen && Object.values(gebruikersData.evenementen).some(Boolean));
+  if (navEven) navEven.style.display = (isFin || hasEventRoles) ? 'inline' : 'none';
   if (navExport) navExport.style.display = isFin ? 'inline' : 'none';
   if (navLogout) navLogout.style.display = 'inline';
   if (navTheme) { navTheme.style.display = 'inline'; navTheme.textContent = document.body.dataset.theme === 'light' ? '🌞' : '🌙'; }
@@ -377,11 +380,13 @@ document.addEventListener("DOMContentLoaded", () => {
       // Verberg nav-items wanneer uitgelogd
       const navSam = document.getElementById('navSamenvatting');
       const navBeh = document.getElementById('navBeheer');
+  const navEven = document.getElementById('navEvenementen');
       const navExport = document.getElementById('navExportPdf');
       const navLogout = document.getElementById('navLogout');
       const nav = document.getElementById('mainNav');
       if (navSam) navSam.style.display = 'none';
       if (navBeh) navBeh.style.display = 'none';
+  if (navEven) navEven.style.display = 'none';
       if (navExport) navExport.style.display = 'none';
       if (navLogout) navLogout.style.display = 'none';
       if (nav) nav.style.display = 'none';
