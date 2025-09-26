@@ -92,8 +92,13 @@
         const omschrijving = $('k_omschrijving')?.value || '';
         const bedrag = parseFloat($('k_bedrag')?.value || '0');
         if (!datum || !omschrijving || isNaN(bedrag)) return alert('Vul alle velden in.');
-        await refKosten.add({ datum, omschrijving, bedrag, at: firebase.firestore.FieldValue.serverTimestamp() });
-        kostenForm.reset();
+        try {
+          await refKosten.add({ datum, omschrijving, bedrag, at: firebase.firestore.FieldValue.serverTimestamp() });
+          kostenForm.reset();
+        } catch (err) {
+          console.warn('Kosten toevoegen mislukt:', err);
+          alert('Toevoegen mislukt: ' + (err && err.message ? err.message : err));
+        }
       });
       if (verdForm) verdForm.addEventListener('submit', async (e)=>{
         e.preventDefault();
@@ -101,8 +106,13 @@
         const omschrijving = $('v_omschrijving')?.value || '';
         const bedrag = parseFloat($('v_bedrag')?.value || '0');
         if (!datum || !omschrijving || isNaN(bedrag)) return alert('Vul alle velden in.');
-        await refVerdiensten.add({ datum, omschrijving, bedrag, at: firebase.firestore.FieldValue.serverTimestamp() });
-        verdForm.reset();
+        try {
+          await refVerdiensten.add({ datum, omschrijving, bedrag, at: firebase.firestore.FieldValue.serverTimestamp() });
+          verdForm.reset();
+        } catch (err) {
+          console.warn('Verdiensten toevoegen mislukt:', err);
+          alert('Toevoegen mislukt: ' + (err && err.message ? err.message : err));
+        }
       });
 
       // Live lists
@@ -112,7 +122,15 @@
         firebase.firestore().collection('evenementen').doc(eventId).collection('verdiensten').get().then(s2=>{
           const vitems = s2.docs.map(d=>({ id: d.id, ...d.data() }));
           renderTotals(items, vitems);
+        }).catch(err=>{
+          console.warn('Verdiensten ophalen mislukt:', err);
         });
+      }, err => {
+        console.warn('Kosten snapshot fout:', err);
+        const lock = document.createElement('div');
+        lock.className = 'card';
+        lock.innerHTML = `<p>Geen toestemming om kosten te lezen. Controleer Firestore-regels.</p>`;
+        document.querySelector('.container')?.append(lock);
       });
       let unsubVerd = refVerdiensten.orderBy('datum').onSnapshot(s=>{
         const items = s.docs.map(d=>({ id: d.id, ...d.data() }));
@@ -120,11 +138,20 @@
         firebase.firestore().collection('evenementen').doc(eventId).collection('kosten').get().then(s2=>{
           const kitems = s2.docs.map(d=>({ id: d.id, ...d.data() }));
           renderTotals(kitems, items);
+        }).catch(err=>{
+          console.warn('Kosten ophalen mislukt:', err);
         });
+      }, err => {
+        console.warn('Verdiensten snapshot fout:', err);
+        const lock = document.createElement('div');
+        lock.className = 'card';
+        lock.innerHTML = `<p>Geen toestemming om verdiensten te lezen. Controleer Firestore-regels.</p>`;
+        document.querySelector('.container')?.append(lock);
       });
     });
   }
 
   document.addEventListener('DOMContentLoaded', boot);
 })();
+
 
