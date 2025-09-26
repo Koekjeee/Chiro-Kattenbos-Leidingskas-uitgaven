@@ -13,6 +13,21 @@ document.addEventListener("DOMContentLoaded", () => {
     LEIDING: "rgba(148,163,184,0.18)"     // slate-400
   };
 
+  function kleurVoorGroep(g) {
+    const key = (g || "").toString().trim().toLowerCase();
+    const map = {
+      ribbels: groepKleuren.Ribbels,
+      speelclubs: groepKleuren.Speelclubs,
+      rakkers: groepKleuren.Rakkers,
+      kwiks: groepKleuren.Kwiks,
+      tippers: groepKleuren.Tippers,
+      toppers: groepKleuren.Toppers,
+      aspi: groepKleuren.Aspi,
+      leiding: groepKleuren.LEIDING
+    };
+    return map[key] || "rgba(148,163,184,0.12)"; // zachte slate fallback
+  }
+
   // >>> VERVANG HIER je cloud name en preset door jouw waarden <<<
   // Bijvoorbeeld: https://api.cloudinary.com/v1_1/voorbeeldcloud/upload
   const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dxizebpwn/upload";
@@ -167,8 +182,8 @@ document.addEventListener("DOMContentLoaded", () => {
       tbody.innerHTML = "";
       const rows = snap.docs.map(d=>d.data()).sort((a,b)=>(a.nummer||0)-(b.nummer||0));
       rows.forEach(u => {
-        const rij = tbody.insertRow();
-        rij.style.backgroundColor = groepKleuren[u.groep] || "#ffd5f2";
+  const rij = tbody.insertRow();
+  rij.style.backgroundColor = kleurVoorGroep(u.groep);
         rij.insertCell(0).textContent = u.nummer || "-";
         rij.insertCell(1).textContent = u.groep || "-";
         rij.insertCell(2).textContent = u.bedrag ? `€${u.bedrag}` : "-";
