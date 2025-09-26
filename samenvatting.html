@@ -44,138 +44,159 @@ firebase.initializeApp(firebaseConfig);
   <p id="samenvattingStatus" style="font-style:italic; color:#555; margin-top:8px;"></p>
 </div>
 <script>
-// Realtime samenvatting implementatie
+// Samenvatting: bewerkbare leden per groep + realtime totalen en € per kind
 const db = firebase.firestore();
+
+// Config
+const alleGroepen = ["Ribbels","Speelclubs","Rakkers","Kwiks","Tippers","Toppers","Aspi","LEIDING"];
+const groepKleuren = {
+  Ribbels: "#cce5ff", Speelclubs: "#ffe5cc", Rakkers: "#e5ffcc",
+  Kwiks: "#ffccf2", Tippers: "#d5ccff", Toppers: "#ccffd5",
+  Aspi: "#ffd5cc", LEIDING: "#dddddd"
+};
+
+// State
 let gebruikersData = null;
-let ledenPerGroep = {};
-let uitgavenCache = [];
+let ledenMap = {};              // { groep: aantal }
+let totalenPerGroep = {};       // { groep: somBedragen }
 let unsubUitgaven = null;
 let unsubLeden = null;
 
-function $(id){ return document.getElementById(id); }
-function magBeheren(){ return gebruikersData && gebruikersData.rol === 'financieel'; }
+// Helpers
+const $ = id => document.getElementById(id);
+const euro = n => `€${(Number(n)||0).toFixed(2)}`;
+const magBeheren = () => gebruikersData && gebruikersData.rol === 'financieel';
 
-function renderSamenvatting(){
+function bouwTabel(){
   const tbody = document.querySelector('#groepSamenvattingTabel tbody');
-  const statusEl = $('#samenvattingStatus');
   if(!tbody) return;
-  tbody.innerHTML='';
+  tbody.innerHTML = '';
 
-  if(!uitgavenCache.length && Object.keys(ledenPerGroep||{}).length===0){
-    if(statusEl) statusEl.textContent = 'Nog geen data beschikbaar.';
-    return;
-  } else if(statusEl) {
-    statusEl.textContent = '';
-  }
+  alleGroepen.forEach(g => {
+    const leden = Number(ledenMap[g]||0);
+    const totaal = Number(totalenPerGroep[g]||0);
+    const perKind = leden > 0 ? (totaal/leden) : null;
 
-  const groepenSet = new Set([
-    ...Object.keys(ledenPerGroep||{}),
-    ...uitgavenCache.map(u=>u.groep).filter(Boolean)
-  ]);
-  const groepen = Array.from(groepenSet).sort();
-
-  const totalen = {};
-  uitgavenCache.forEach(u => {
-    const g = u.groep || 'UNKNOWN';
-    const bedrag = parseFloat(u.bedrag) || 0;
-    if(!totalen[g]) totalen[g] = 0;
-    totalen[g] += bedrag;
-  });
-
-  groepen.forEach(g => {
-    const leden = ledenPerGroep[g] || 0;
-    const totaal = totalen[g] || 0;
-    const perKind = leden > 0 ? (totaal / leden).toFixed(2) : '-';
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${g}</td><td>${leden}</td><td>€${totaal.toFixed(2)}</td><td>${perKind}</td>`;
+    tr.style.backgroundColor = groepKleuren[g] || '#f2f2f2';
+
+    // Groep
+    const tdGroep = document.createElement('td');
+    tdGroep.textContent = g;
+    tr.appendChild(tdGroep);
+
+    // Leden (editable voor financieel)
+    const tdLeden = document.createElement('td');
+    if (magBeheren()) {
+      const inp = document.createElement('input');
+      inp.type = 'number';
+      inp.min = '0';
+      inp.value = String(leden);
+      inp.style.width = '90px';
+      inp.addEventListener('change', () => slaLedenOp(g, inp.value));
+      inp.addEventListener('blur', () => slaLedenOp(g, inp.value));
+      tdLeden.appendChild(inp);
+    } else {
+      tdLeden.textContent = String(leden);
+    }
+    tr.appendChild(tdLeden);
+
+    // Totaal
+    const tdTotaal = document.createElement('td');
+    tdTotaal.textContent = euro(totaal);
+    tr.appendChild(tdTotaal);
+
+    // € per kind
+    const tdPerKind = document.createElement('td');
+    tdPerKind.textContent = perKind != null ? euro(perKind) : '-';
+    tr.appendChild(tdPerKind);
+
     tbody.appendChild(tr);
   });
 }
 
-function startSamenvattingListeners(){
+async function slaLedenOp(groep, value){
+  if(!magBeheren()) return;
+  const n = Math.max(0, parseInt(value, 10) || 0);
+  try {
+    await db.collection('config').doc('ledenPerGroep').set({ [groep]: n }, { merge: true });
+    // Listener werkt de UI bij; zet lokaal alvast bij voor directe feedback
+    ledenMap[groep] = n;
+    bouwTabel();
+  } catch(err){
+    console.error('Opslaan leden mislukt:', err);
+    const status = $('#samenvattingStatus'); if(status) status.textContent = 'Opslaan mislukt: ' + (err && err.message ? err.message : err);
+  }
+}
+
+function startListeners(){
+  // Leden aantallen
   unsubLeden = db.collection('config').doc('ledenPerGroep').onSnapshot(doc => {
-    ledenPerGroep = doc.exists ? (doc.data()||{}) : {};
-    renderSamenvatting();
+    ledenMap = doc.exists ? (doc.data() || {}) : {};
+    bouwTabel();
   }, err => console.warn('ledenPerGroep listener fout:', err));
 
+  // Alle uitgaven → totalen per groep
   unsubUitgaven = db.collection('uitgaven').onSnapshot(snap => {
-    uitgavenCache = snap.docs.map(d => d.data());
-    renderSamenvatting();
+    const map = {};
+    snap.docs.forEach(d => {
+      const u = d.data() || {};
+      const g = u.groep || 'UNKNOWN';
+      const bedrag = parseFloat(u.bedrag) || 0;
+      map[g] = (map[g] || 0) + bedrag;
+    });
+    totalenPerGroep = map;
+    bouwTabel();
   }, err => console.error('uitgaven listener fout:', err));
 }
 
+// Auth en UI
 firebase.auth().onAuthStateChanged(async user => {
+  const nav = document.getElementById('mainNav'); if(nav) nav.style.display='none';
   if(user){
+    // Haal rol/gruppe
     try {
       const d = await db.collection('gebruikers').doc(user.uid).get();
       gebruikersData = d.exists ? d.data() : {};
-    } catch (err) {
-      console.warn('Gebruikersrechten laden mislukt:', err);
-      const fout = document.getElementById('loginFout');
-      if (fout) fout.textContent = 'Kon gebruikersrechten niet laden (rechten).';
-      // Toon login zichtbaar zodat user kan wisselen account, maar ga niet vastlopen
-      const loginSchermEl = $('#loginScherm'); if(loginSchermEl) loginSchermEl.style.display = 'block';
-      const appInhoudEl = $('#appInhoud'); if(appInhoudEl) appInhoudEl.style.display = 'none';
-      return;
+    } catch (err){
+      console.warn('Gebruikersdoc niet leesbaar:', err);
+      gebruikersData = {};
     }
-    if(!magBeheren()){
-      // Geen auto-signout meer: nette redirect terug naar Home met melding
-      const fout = document.getElementById('loginFout');
-      if(fout) fout.textContent = 'Alleen financieel mag deze pagina bekijken.';
-      window.location.href = 'index.html?msg=geen_toegang_samenvatting';
-      return;
-    }
-    const loginSchermEl = $('#loginScherm');
-    const appInhoudEl = $('#appInhoud');
-    if(loginSchermEl) loginSchermEl.style.display='none';
-    if(appInhoudEl) appInhoudEl.style.display='block';
-    const nav = document.getElementById('mainNav'); if(nav) nav.style.display='flex';
-    const navSam=document.getElementById('navSamenvatting'); const navBeh=document.getElementById('navBeheer'); const navLogout=document.getElementById('navLogout');
-    if(navSam) navSam.style.display='inline'; if(navBeh) navBeh.style.display='inline'; if(navLogout) navLogout.style.display='inline';
-    const infoEl = $('#gebruikerInfo'); if(infoEl) infoEl.textContent = `Ingelogd als ${gebruikersData.rol||'-'} (${gebruikersData.groep||'-'})`;
-    startSamenvattingListeners();
+
+    // UI zichtbaar
+    const login = $('#loginScherm'); if(login) login.style.display='none';
+    const app = $('#appInhoud'); if(app) app.style.display='block';
+    if(nav) nav.style.display='flex';
+    const navSam=$('navSamenvatting'); const navBeh=$('navBeheer'); const navLogout=$('navLogout');
+    if(navSam) navSam.style.display='inline';
+    if(navBeh) navBeh.style.display = magBeheren() ? 'inline' : 'none';
+    if(navLogout) navLogout.style.display='inline';
+    const info = $('#gebruikerInfo'); if(info) info.textContent = `Ingelogd als ${gebruikersData.rol||'-'} (${gebruikersData.groep||'-'})`;
+
+    startListeners();
+    bouwTabel();
   } else {
+    // Cleanup
     if(unsubUitgaven){unsubUitgaven(); unsubUitgaven=null;}
     if(unsubLeden){unsubLeden(); unsubLeden=null;}
-    gebruikersData=null; ledenPerGroep={}; uitgavenCache=[];
-    const appInhoudEl = $('#appInhoud'); if(appInhoudEl) appInhoudEl.style.display='none';
-    const loginSchermEl = $('#loginScherm'); if(loginSchermEl) loginSchermEl.style.display='block';
-    const tbody = document.querySelector('#groepSamenvattingTabel tbody'); if(tbody) tbody.innerHTML='';
-    const statusEl = $('#samenvattingStatus'); if(statusEl) statusEl.textContent='';
-  }
-});
-// Veilige event listeners (null-checks)
-const navLogoutBtn = document.getElementById('navLogout');
-if(navLogoutBtn) navLogoutBtn.addEventListener('click', ()=> firebase.auth().signOut());
-
-const loginBtnEl = $('#loginKnop');
-if(loginBtnEl) loginBtnEl.addEventListener('click', async () => {
-  const emailEl = $('#loginEmail');
-  const passEl = $('#loginWachtwoord');
-  const foutEl = $('#loginFout');
-  const e = emailEl ? emailEl.value.trim() : '';
-  const p = passEl ? passEl.value.trim() : '';
-  if(!e || !p){ if(foutEl) foutEl.textContent='Vul e-mail en wachtwoord in.'; return; }
-  try {
-    await firebase.auth().signInWithEmailAndPassword(e,p);
-    if(foutEl) foutEl.textContent='';
-  } catch(err){
-    let msg = (err && err.message) ? err.message : String(err);
-    const code = err && err.code ? err.code : '';
-    switch(code){
-      case 'auth/invalid-email': msg = 'Ongeldig e-mailadres'; break;
-      case 'auth/user-not-found': msg = 'Geen account met dit e-mailadres'; break;
-      case 'auth/wrong-password': msg = 'Onjuist wachtwoord'; break;
-      case 'auth/too-many-requests': msg = 'Te veel pogingen, probeer later opnieuw'; break;
-      case 'auth/invalid-login-credentials': msg = 'Combinatie e-mail/wachtwoord ongeldig'; break;
-      case 'auth/unauthorized-domain': msg = 'Domein niet geautoriseerd. Voeg koekjeee.github.io toe bij Firebase Authentication → Settings → Authorized domains.'; break;
-    }
-    if(foutEl) foutEl.textContent = 'Login mislukt: ' + msg;
+    gebruikersData = null; ledenMap = {}; totalenPerGroep = {};
+    const app = $('#appInhoud'); if(app) app.style.display='none';
+    const login = $('#loginScherm'); if(login) login.style.display='block';
   }
 });
 
-const logoutKnopEl = $('#logoutKnop');
-if(logoutKnopEl) logoutKnopEl.addEventListener('click', ()=> firebase.auth().signOut());
+// Buttons
+const navLogoutBtn = $('navLogout'); if(navLogoutBtn) navLogoutBtn.addEventListener('click', ()=> firebase.auth().signOut());
+const loginBtn = $('loginKnop'); if(loginBtn) loginBtn.addEventListener('click', async () => {
+  const email = ($('loginEmail')?.value || '').trim();
+  const pass = ($('loginWachtwoord')?.value || '').trim();
+  const fout = $('loginFout');
+  if(!email || !pass){ if(fout) fout.textContent='Vul e-mail en wachtwoord in.'; return; }
+  try { await firebase.auth().signInWithEmailAndPassword(email, pass); if(fout) fout.textContent=''; }
+  catch(err){ if(fout) fout.textContent = 'Login mislukt: ' + (err && err.message ? err.message : err); }
+});
+const logoutBtn = $('logoutKnop'); if(logoutBtn) logoutBtn.addEventListener('click', ()=> firebase.auth().signOut());
 </script>
 </body>
 </html>
+
