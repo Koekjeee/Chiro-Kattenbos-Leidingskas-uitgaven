@@ -3,102 +3,176 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Zomerbar</title>
+  <title>Chiro Kattenbos – Uitgavenbeheer</title>
   <link rel="stylesheet" href="style.css?v=20250926" />
+
+  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-auth-compat.js"></script>
+  <!-- Verwijderd: realtime database compat (oude) -->
+  <!-- <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-database-compat.js"></script> -->
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-firestore-compat.js"></script>
   <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyC-UaXhh5juhV4raXWnzku9fSZZD75-y9w",
-      authDomain: "uitgavebeheerch.firebaseapp.com",
-      databaseURL: "https://uitgavebeheerch-default-rtdb.europe-west1.firebasedatabase.app",
-      projectId: "uitgavebeheerch",
-      storageBucket: "uitgavebeheerch.firebasestorage.app",
-      messagingSenderId: "461673562296",
-      appId: "1:461673562296:web:d90a026cd685400139f44d",
-      measurementId: "G-K8NYLSE5EF"
-    };
-    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const firebaseConfig = {
+  apiKey: "AIzaSyC-UaXhh5juhV4raXWnzku9fSZZD75-y9w",
+  authDomain: "uitgavebeheerch.firebaseapp.com",
+  databaseURL: "https://uitgavebeheerch-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "uitgavebeheerch",
+  storageBucket: "uitgavebeheerch.firebasestorage.app",
+  messagingSenderId: "461673562296",
+  appId: "1:461673562296:web:d90a026cd685400139f44d",
+  measurementId: "G-K8NYLSE5EF"
+};
+    firebase.initializeApp(firebaseConfig);
   </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
   <nav id="mainNav">
     <span>Chiro Kattenbos</span>
     <a href="index.html">Home</a>
-  <a id="navEvenementen" href="evenementen.html">Evenementen</a>
+    <a id="navSamenvatting" href="samenvatting.html" target="_blank">Samenvatting</a>
+    <a id="navEvenementen" href="evenementen.html">Evenementen</a>
     <a id="navBeheer" href="gebruikersbeheer.html">Gebruikersbeheer</a>
     <button id="navTheme" title="Schakel thema" style="display:none;">🌙</button>
+    <button id="navExportPdf" class="push-right">Export PDF</button>
     <button id="navLogout">Uitloggen</button>
   </nav>
-  <div class="container" data-event-id="zomerbar" data-event-name="Zomerbar">
-    <h1>Zomerbar</h1>
-
-    <div class="card">
-      <h3>Kosten toevoegen</h3>
-      <form id="kostenForm" class="fin-only">
-        <div class="form-row">
-          <label>Datum</label>
-          <input type="date" id="k_datum" required />
-        </div>
-        <div class="form-row">
-          <label>Omschrijving</label>
-          <input type="text" id="k_omschrijving" required />
-        </div>
-        <div class="form-row">
-          <label>Bedrag (€)</label>
-          <input type="number" step="0.01" id="k_bedrag" required />
-        </div>
-        <button type="submit">Toevoegen</button>
-      </form>
-    </div>
-
-    <div class="card">
-      <h3>Verdiensten toevoegen</h3>
-      <form id="verdForm" class="fin-only">
-        <div class="form-row">
-          <label>Datum</label>
-          <input type="date" id="v_datum" required />
-        </div>
-        <div class="form-row">
-          <label>Omschrijving</label>
-          <input type="text" id="v_omschrijving" required />
-        </div>
-        <div class="form-row">
-          <label>Bedrag (€)</label>
-          <input type="number" step="0.01" id="v_bedrag" required />
-        </div>
-        <button type="submit">Toevoegen</button>
-      </form>
-    </div>
-
-    <div class="card">
-      <h3>Overzicht</h3>
-      <div class="grid-2">
-        <div>
-          <h4>Kosten</h4>
-          <table>
-            <thead><tr><th>Datum</th><th>Omschrijving</th><th>Bedrag</th><th>Acties</th></tr></thead>
-            <tbody id="kostenBody"></tbody>
-          </table>
-        </div>
-        <div>
-          <h4>Verdiensten</h4>
-          <table>
-            <thead><tr><th>Datum</th><th>Omschrijving</th><th>Bedrag</th><th>Acties</th></tr></thead>
-            <tbody id="verdienstenBody"></tbody>
-          </table>
-        </div>
-      </div>
-      <div class="totals">
-        <p>Totaal kosten: <strong id="totalKosten">€0.00</strong></p>
-        <p>Totaal verdiensten: <strong id="totalVerdiensten">€0.00</strong></p>
-        <p>Winst: <strong id="totalWinst">€0.00</strong></p>
-      </div>
-    </div>
+  <div class="container">
+  <div id="loginScherm">
+    <h2>Inloggen</h2>
+    <input type="email" id="loginEmail" placeholder="E-mailadres" required />
+    <input type="password" id="loginWachtwoord" placeholder="Wachtwoord" required />
+    <button id="loginKnop">Inloggen</button>
+    <p id="loginFout" style="color: red;"></p>
   </div>
-  <script src="events.js?v=20250927"></script>
+
+  <div id="appInhoud" style="display: none;">
+    <h1>Chiro Kattenbos – Uitgavenbeheer</h1>
+    <p id="gebruikerInfo"></p>
+    <!-- Actieknoppen rechtsboven: verwijderd (logout moved to navbar) -->
+
+    <!-- Gebruikersbeheer paneel (inclusief gebruikerslijst) -->
+    <div id="beheerPaneel" style="display:none;">
+      <h3>Gebruikersbeheer</h3>
+      <form id="rolForm" style="margin-bottom:1rem;">
+        <div class="form-row">
+          <label for="userUid">Gebruiker UID:</label>
+          <input type="text" id="userUid" required />
+        </div>
+        <div class="form-row">
+          <label for="userGroep">Groep:</label>
+          <select id="userGroep">
+            <option value="Ribbels">Ribbels</option>
+            <option value="Speelclubs">Speelclubs</option>
+            <option value="Rakkers">Rakkers</option>
+            <option value="Kwiks">Kwiks</option>
+            <option value="Tippers">Tippers</option>
+            <option value="Toppers">Toppers</option>
+            <option value="Aspi">Aspi</option>
+            <option value="LEIDING">LEIDING</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label for="userRol">Rol:</label>
+          <select id="userRol">
+            <option value="leiding">Leiding</option>
+            <option value="financieel">Financieel</option>
+          </select>
+        </div>
+        <button type="submit">Opslaan</button>
+      </form>
+      <h3 style="margin-top:1.5rem;">Gebruikers</h3>
+      <table id="gebruikersLijstTabel">
+        <thead>
+          <tr>
+            <th>E-mail</th>
+            <th>UID</th>
+            <th>Rol</th>
+            <th>Groep</th>
+          </tr>
+        </thead>
+        <tbody id="gebruikersLijstBody"></tbody>
+      </table>
+    </div>
+
+
+    <form id="uitgaveForm">
+      <label for="groep">Groep:</label>
+      <select id="groep" required></select>
+      <label for="bedrag">Bedrag (€):</label>
+      <input type="number" id="bedrag" step="0.01" required />
+      <label for="activiteit">Activiteit/Omschrijving:</label>
+      <input type="text" id="activiteit" required />
+      <label for="datum">Datum:</label>
+      <input type="date" id="datum" required />
+      <label for="rekeningNummer">Rekeningnummer:</label>
+      <input type="text" id="rekeningNummer" required placeholder="BE00 0000 0000 0000" />
+      <label for="bewijsUpload">Upload bewijsstuk (verplicht):</label>
+      <input type="file" id="bewijsUpload" accept="image/*,application/pdf" required />
+      <button type="submit">Toevoegen</button>
+    </form>
+
+    <div class="filter">
+      <label for="filterGroep">Filter op groep:</label>
+      <select id="filterGroep">
+        <option value="">Alle groepen</option>
+        <option value="Ribbels">Ribbels</option>
+        <option value="Speelclubs">Speelclubs</option>
+        <option value="Rakkers">Rakkers</option>
+        <option value="Kwiks">Kwiks</option>
+        <option value="Tippers">Tippers</option>
+        <option value="Toppers">Toppers</option>
+        <option value="Aspi">Aspi</option>
+        <option value="LEIDING">LEIDING</option>
+      </select>
+    </div>
+    <div class="filter">
+      <label for="filterBetaald">Filter op betaald:</label>
+      <select id="filterBetaald">
+        <option value="">Alles</option>
+        <option value="true">Betaald</option>
+        <option value="false">Niet betaald</option>
+      </select>
+    </div>
+
+    <div class="table-scroll">
+    <table id="overzicht">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Groep</th>
+          <th>Bedrag</th>
+          <th>Activiteit</th>
+          <th>Datum</th>
+          <th>Betaald</th>
+          <th>Actie</th>
+          <th>Terug betaald?</th>
+          <th>Rekeningnummer</th>
+          <th>Bewijs</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    </div>
+
+    <!-- Samenvatting sectie verwijderd; aparte pagina is ook verwijderd -->
+
+    <!-- oude icon knoppen verwijderd; vervallen door navbar -->
+
+    <!-- Verwijderd: losse gebruikers toggle & aparte sectie, zit nu in beheerPaneel -->
+  </div>
+  </div>
+
+  <script src="script.js?v=20250926"></script>
+  <!-- Inline script voor oude toggleUserTable verwijderd -->
 </body>
 </html>
+
+
+
+
+
+
 
 
