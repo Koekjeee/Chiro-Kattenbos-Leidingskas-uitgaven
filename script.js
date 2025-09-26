@@ -32,15 +32,30 @@ document.addEventListener("DOMContentLoaded", () => {
   // Bijvoorbeeld: https://api.cloudinary.com/v1_1/voorbeeldcloud/upload
   const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dxizebpwn/upload";
   const CLOUDINARY_PRESET = "chiro_upload_fotos";
+  // Optional: Discord webhook proxy (SECURITY: do NOT put a real webhook URL in frontend)
+  const DISCORD_WEBHOOK_URL = ""; // leave empty unless proxied via backend
+  const ALLOW_CLIENT_DISCORD = false; // keep false unless you proxy securely
 
   // --- State ---
   let huidigeGebruiker = null;
   let gebruikersData = null;
   let ledenPerGroep = {};
+  let clientIP = null;
 
   // --- Helpers ---
   const $ = id => document.getElementById(id);
   function safeOn(el, ev, fn) { if (el) el.addEventListener(ev, fn); }
+  function nameFromEmail(email){
+    if(!email) return "-";
+    const i = email.indexOf("@");
+    return (i>0? email.slice(0,i): email).trim();
+  }
+
+  // Apply theme early from localStorage
+  (function initThemeEarly(){
+    const ls = (typeof localStorage!=="undefined")? localStorage.getItem("theme") : null;
+    if(ls){ document.body.dataset.theme = ls; }
+  })();
 
   // --- Firebase helpers ---
   // --- Firestore helpers ---
@@ -49,6 +64,77 @@ document.addEventListener("DOMContentLoaded", () => {
     return db.collection("gebruikers").doc(uid).get().then(d => d.exists ? d.data() : null);
   }
   function haalLedenPerGroep() {
+  function kleurVoorGroep(g) {
+    const key = (g || "").toString().trim().toLowerCase();
+    const map = {
+      ribbels: groepKleuren.Ribbels,
+      speelclubs: groepKleuren.Speelclubs,
+      rakkers: groepKleuren.Rakkers,
+      kwiks: groepKleuren.Kwiks,
+      tippers: groepKleuren.Tippers,
+      toppers: groepKleuren.Toppers,
+      aspi: groepKleuren.Aspi,
+      leiding: groepKleuren.LEIDING
+    };
+    return map[key] || "rgba(148,163,184,0.12)"; // zachte slate fallback
+  }
+
+  // --- Theme helpers ---
+  function applyTheme(theme){
+    document.body.dataset.theme = theme;
+  }
+  async function saveThemePreference(theme){
+    try {
+      localStorage.setItem("theme", theme);
+      if(huidigeGebruiker){
+        await db.collection("gebruikers").doc(huidigeGebruiker.uid).set({ theme }, { merge: true });
+      }
+    } catch { /* ignore */ }
+  }
+
+  // --- IP + Audit log helpers ---
+  async function resolveClientIP(){
+    try {
+      const cached = localStorage.getItem("clientIP");
+      if(cached){ clientIP = cached; return cached; }
+      const r = await fetch("https://api.ipify.org?format=json");
+      const j = await r.json();
+      clientIP = j && j.ip ? j.ip : null;
+      if(clientIP) localStorage.setItem("clientIP", clientIP);
+      return clientIP;
+    } catch { return null; }
+  }
+
+  async function logActie(action, details){
+    try {
+      const user = firebase.auth().currentUser;
+      const email = user?.email || gebruikersData?.email || "-";
+      const rol = gebruikersData?.rol || "-";
+      const naam = nameFromEmail(email);
+      const isAdmin = (rol === "financieel");
+      const emoji = isAdmin ? "🛡️" : "👤";
+      const ip = clientIP || await resolveClientIP();
+      const entry = {
+        action,
+        details: details || {},
+        uid: user?.uid || null,
+        email,
+        naam,
+        rol,
+        isAdmin,
+        emoji,
+        ip: ip || null,
+        ua: navigator.userAgent,
+        at: firebase.firestore.FieldValue.serverTimestamp(),
+      };
+      await db.collection("auditLogs").add(entry);
+      if (ALLOW_CLIENT_DISCORD && DISCORD_WEBHOOK_URL){
+        const content = `${emoji} ${naam} (${rol}) -> ${action} ${details && Object.keys(details).length? "`"+JSON.stringify(details).slice(0,400)+"`" : ""}`;
+        fetch(DISCORD_WEBHOOK_URL, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ content }) }).catch(()=>{});
+      }
+    } catch(err){ console.warn("audit log faalde", err); }
+  }
+
     // opslaan als 1 document 'meta/ledenPerGroep' of collection 'ledenPerGroep'
     // We kiezen hier een enkel doc in collection 'config'
     return db.collection("config").doc("ledenPerGroep").get().then(d => d.exists ? d.data() : {});
@@ -156,6 +242,7 @@ document.addEventListener("DOMContentLoaded", () => {
         aangemaaktOp: firebase.firestore.FieldValue.serverTimestamp()
       };
       await db.collection("uitgaven").doc(String(nieuwNummer)).set(entry);
+      logActie("uitgave_toegevoegd", { nummer: nieuwNummer, groep: g, bedrag: b.toFixed(2), activiteit: a, datum: d });
       // reset formulier en herlaad tabel
         $("uitgaveForm")?.reset();
         attachUitgavenListener($("filterGroep")?.value || "", $("filterBetaald")?.value || "");
@@ -201,6 +288,7 @@ document.addEventListener("DOMContentLoaded", () => {
           verwijderBtn.onclick = async () => {
             if (confirm("Weet je zeker dat je deze uitgave wilt verwijderen?")) {
               await db.collection("uitgaven").doc(String(u.nummer)).delete();
+              logActie("uitgave_verwijderd", { nummer: u.nummer, groep: u.groep, bedrag: u.bedrag });
             }
           };
           actieCell.appendChild(verwijderBtn);
@@ -212,6 +300,7 @@ document.addEventListener("DOMContentLoaded", () => {
           checkbox.checked = !!u.betaald;
           checkbox.onchange = async () => {
             await db.collection("uitgaven").doc(String(u.nummer)).update({ betaald: checkbox.checked });
+            logActie("uitgave_betaald_toggle", { nummer: u.nummer, betaald: checkbox.checked });
           };
           betaaldCell.appendChild(checkbox);
         }
@@ -266,12 +355,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const navSam = document.getElementById('navSamenvatting');
   const navBeh = document.getElementById('navBeheer');
   const navExport = document.getElementById('navExportPdf');
+  const navTheme = document.getElementById('navTheme');
   const navLogout = document.getElementById('navLogout');
   const isFin = gebruikersData.rol === 'financieel';
   if (navSam) navSam.style.display = isFin ? 'inline' : 'none';
   if (navBeh) navBeh.style.display = isFin ? 'inline' : 'none';
   if (navExport) navExport.style.display = isFin ? 'inline' : 'none';
   if (navLogout) navLogout.style.display = 'inline';
+  if (navTheme) { navTheme.style.display = 'inline'; navTheme.textContent = document.body.dataset.theme === 'light' ? '🌞' : '🌙'; }
 
       // vul selects / render tabelen
       vulGroepSelectie();
@@ -286,7 +377,16 @@ document.addEventListener("DOMContentLoaded", () => {
   attachUitgavenListener();
   // Logout knop zit in de navbar; geen floating knop meer
   // Koppel de uitlog-actie aan de navbar knop
-  safeOn($("navLogout"), "click", () => firebase.auth().signOut());
+  safeOn($("navLogout"), "click", async () => { await logActie("logout", {}); firebase.auth().signOut(); });
+  // Theme toggle
+  safeOn($("navTheme"), "click", async () => {
+    const current = document.body.dataset.theme || localStorage.getItem('theme') || 'dark';
+    const next = current === 'dark' ? 'light' : 'dark';
+    applyTheme(next);
+    if (document.getElementById('navTheme')) document.getElementById('navTheme').textContent = next==='light' ? '🌞' : '🌙';
+    await saveThemePreference(next);
+    logActie("theme_changed", { theme: next });
+  });
     } else {
       // logged out
       $("appInhoud") && ($("appInhoud").style.display = "none");
@@ -326,6 +426,7 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       console.debug("Attempt login", { email, projectId: firebase.app().options.projectId });
       await firebase.auth().signInWithEmailAndPassword(email, wachtwoord);
+  logActie("login", {});
       if (fout) fout.textContent = "";
     } catch (err) {
       let msg = (err && err.message) ? err.message : String(err);
