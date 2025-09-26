@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Samenvatting – Chiro Kattenbos</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-firestore-compat.js"></script>
+  <script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyC-UaXhh5juhV4raXWnzku9fSZZD75-y9w",
+    authDomain: "uitgavebeheerch.firebaseapp.com",
+    projectId: "uitgavebeheerch",
+    storageBucket: "uitgavebeheerch.firebasestorage.app"
+  };
+  firebase.initializeApp(firebaseConfig);
+  </script>
+</head>
+<body>
+  <nav id="mainNav" style="display:none; background:#2c3e50; color:#fff; padding:10px 15px; display:flex; align-items:center; gap:15px;">
+    <span style="font-weight:600;">Chiro Kattenbos</span>
+    <a href="index.html" style="color:#fff; text-decoration:none;">Home</a>
+    <a id="navBeheer" href="gebruikersbeheer.html" style="color:#fff; text-decoration:none; display:none;">Gebruikersbeheer</a>
+    <button id="navLogout" style="margin-left:auto; background:#e74c3c; color:#fff; border:none; padding:6px 12px; cursor:pointer; display:none;">Uitloggen</button>
+  </nav>
+
+  <div id="loginScherm">
+    <h2>Inloggen</h2>
+    <input type="email" id="loginEmail" placeholder="E-mailadres" required />
+    <input type="password" id="loginWachtwoord" placeholder="Wachtwoord" required />
+    <button id="loginKnop">Inloggen</button>
+    <p id="loginFout" style="color:red;"></p>
+  </div>
+
+  <div id="appInhoud" style="display:none;">
+    <h1>Samenvatting per groep</h1>
+    <p id="gebruikerInfo"></p>
+    <table id="groepSamenvattingTabel">
+      <thead>
+        <tr>
+          <th>Groep</th>
+          <th>Leden</th>
+          <th>Totaal (€)</th>
+          <th>€ per kind</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <p id="samenvattingStatus" style="font-style:italic; color:#555; margin-top:8px;"></p>
+  </div>
+
+  <script>
+  const db = firebase.firestore();
+  const alleGroepen = ["Ribbels","Speelclubs","Rakkers","Kwiks","Tippers","Toppers","Aspi","LEIDING"];
+  const groepKleuren = {
+    Ribbels: "#cce5ff", Speelclubs: "#ffe5cc", Rakkers: "#e5ffcc",
+    Kwiks: "#ffccf2", Tippers: "#d5ccff", Toppers: "#ccffd5",
+    Aspi: "#ffd5cc", LEIDING: "#dddddd"
+  };
+
+  let gebruikersData = null;
+  let ledenMap = {};        // { groep: aantal }
+  let totalenPerGroep = {}; // { groep: somBedragen }
+  let unsubUitgaven = null, unsubLeden = null;
+
+  const $ = (id) => document.getElementById(id);
+  const euro = (n) => `€${(Number(n)||0).toFixed(2)}`;
+  const magBeheren = () => gebruikersData && gebruikersData.rol === 'financieel';
+
+  function bouwTabel(){
+    const tbody = document.querySelector('#groepSamenvattingTabel tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    alleGroepen.forEach(g => {
+      const leden = Number(ledenMap[g] || 0);
+      const totaal = Number(totalenPerGroep[g] || 0);
+      const perKind = leden > 0 ? (totaal / leden) : null;
+
+      const tr = document.createElement('tr');
+      tr.style.backgroundColor = groepKleuren[g] || '#f2f2f2';
+
+      const tdGroep = document.createElement('td');
+      tdGroep.textContent = g; tr.appendChild(tdGroep);
+
+      const tdLeden = document.createElement('td');
+      if (magBeheren()){
+        const inp = document.createElement('input');
+        inp.type = 'number'; inp.min = '0';
+        inp.value = String(leden);
+        inp.style.width = '90px';
+        const save = () => slaLedenOp(g, inp.value);
+        inp.addEventListener('change', save);
+        inp.addEventListener('blur', save);
+        tdLeden.appendChild(inp);
+      } else {
+        tdLeden.textContent = String(leden);
+      }
+      tr.appendChild(tdLeden);
+
+      const tdTotaal = document.createElement('td');
+      tdTotaal.textContent = euro(totaal); tr.appendChild(tdTotaal);
+
+      const tdPerKind = document.createElement('td');
+      tdPerKind.textContent = perKind != null ? euro(perKind) : '-'; tr.appendChild(tdPerKind);
+
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function slaLedenOp(groep, value){
+    if (!magBeheren()) return;
+    const n = Math.max(0, parseInt(value, 10) || 0);
+    try {
+      await db.collection('config').doc('ledenPerGroep').set({ [groep]: n }, { merge: true });
+      ledenMap[groep] = n; // directe feedback
+      bouwTabel();
+    } catch (err){
+      console.error('Opslaan leden mislukt:', err);
+      const status = $('samenvattingStatus'); if(status) status.textContent = 'Opslaan mislukt: ' + (err?.message || err);
+    }
+  }
+
+  function startListeners(){
+    if (unsubLeden) { unsubLeden(); unsubLeden = null; }
+    if (unsubUitgaven) { unsubUitgaven(); unsubUitgaven = null; }
+
+    unsubLeden = db.collection('config').doc('ledenPerGroep').onSnapshot(doc => {
+      ledenMap = doc.exists ? (doc.data() || {}) : {};
+      bouwTabel();
+    }, err => console.warn('ledenPerGroep listener fout:', err));
+
+    unsubUitgaven = db.collection('uitgaven').onSnapshot(snap => {
+      const map = {};
+      snap.docs.forEach(d => {
+        const u = d.data() || {};
+        const g = u.groep || 'UNKNOWN';
+        const bedrag = parseFloat(u.bedrag) || 0;
+        map[g] = (map[g] || 0) + bedrag;
+      });
+      totalenPerGroep = map;
+      bouwTabel();
+    }, err => console.error('uitgaven listener fout:', err));
+  }
+
+  firebase.auth().onAuthStateChanged(async user => {
+    const nav = document.getElementById('mainNav');
+    if (nav) nav.style.display = 'none';
+    if (user){
+      try {
+        const d = await db.collection('gebruikers').doc(user.uid).get();
+        gebruikersData = d.exists ? d.data() : {};
+      } catch { gebruikersData = {}; }
+
+      const login = $('loginScherm'); if(login) login.style.display='none';
+      const app = $('appInhoud'); if(app) app.style.display='block';
+      if (nav) nav.style.display='flex';
+      const navBeh = $('navBeheer'); const navLogout=$('navLogout');
+      if (navBeh) navBeh.style.display = (gebruikersData.rol === 'financieel') ? 'inline' : 'none';
+      if (navLogout) navLogout.style.display = 'inline';
+      const info = $('gebruikerInfo'); if(info) info.textContent = `Ingelogd als ${gebruikersData.rol||'-'} (${gebruikersData.groep||'-'})`;
+
+      startListeners();
+      bouwTabel();
+    } else {
+      if (unsubLeden) { unsubLeden(); unsubLeden=null; }
+      if (unsubUitgaven) { unsubUitgaven(); unsubUitgaven=null; }
+      gebruikersData=null; ledenMap={}; totalenPerGroep={};
+      const app=$('appInhoud'); if(app) app.style.display='none';
+      const login=$('loginScherm'); if(login) login.style.display='block';
+    }
+  });
+
+  const loginBtn = $('loginKnop'); if (loginBtn) loginBtn.addEventListener('click', async () => {
+    const email = ($('loginEmail')?.value||'').trim();
+    const pass = ($('loginWachtwoord')?.value||'').trim();
+    const fout = $('loginFout');
+    if(!email || !pass){ if(fout) fout.textContent='Vul e-mail en wachtwoord in.'; return; }
+    try {
+      await firebase.auth().signInWithEmailAndPassword(email, pass);
+      if (fout) fout.textContent='';
+    } catch(err){ if(fout) fout.textContent = 'Login mislukt: ' + (err?.message || err); }
+  });
+  const navLogoutBtn = $('navLogout'); if (navLogoutBtn) navLogoutBtn.addEventListener('click', ()=> firebase.auth().signOut());
+  </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="refresh" content="0; url=index.html" />
+  <title>Samenvatting verwijderd</title>
+  <style>
+    body { font-family: Segoe UI, sans-serif; margin: 2rem; }
+    .box { max-width: 600px; margin: 10vh auto; padding: 1rem 1.25rem; border: 1px solid #eee; border-radius: 8px; background:#fff; box-shadow: 0 2px 6px rgba(0,0,0,.06); }
+    a { color: #007bff; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>Samenvatting is verwijderd</h2>
+    <p>Je wordt direct doorgestuurd naar de startpagina.</p>
+    <p><a href="index.html">Klik hier</a> als je niet automatisch wordt doorgestuurd.</p>
+  </div>
+</body>
+</html>
