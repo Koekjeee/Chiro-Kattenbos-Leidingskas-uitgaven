@@ -219,6 +219,7 @@ td {
   z-index: 20;
   display: none; /* shown via JS after login */
   align-items: center;
+  flex-wrap: wrap;
   gap: 16px;
   padding: 12px 20px;
   background: linear-gradient(180deg, rgba(11,18,36,.95), rgba(8,14,28,.92));
@@ -228,6 +229,7 @@ td {
 #mainNav a { color: #e5e7eb; text-decoration: none; font-weight: 600; opacity: .9; }
 #mainNav a:hover { opacity: 1; }
 #mainNav button { width: auto; padding: 8px 12px; border-radius: 10px; font-size: 0.9rem; }
+#mainNav a, #mainNav button { white-space: nowrap; }
 /* Keep button colors aligned */
 #navExportPdf { background: linear-gradient(180deg, #22c55e, #16a34a); }
 #navLogout { background: linear-gradient(180deg, #ef4444, #dc2626); }
@@ -306,8 +308,12 @@ a.card::after {
 a.card:hover::after { opacity: 1; }
 
 /* Roles panel table wrapper */
-.table-scroll { overflow: auto; border-radius: var(--radius); }
-.table-scroll table { margin: 0; }
+.table-scroll { overflow-x: auto; overflow-y: hidden; border-radius: var(--radius); }
+.table-scroll table { margin: 0; min-width: 640px; }
+
+/* Simple 2-column grid helper used in event pages */
+.grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+@media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
 
 
 
