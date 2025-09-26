@@ -33,8 +33,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dxizebpwn/upload";
   const CLOUDINARY_PRESET = "chiro_upload_fotos";
   // Optional: Discord webhook proxy (SECURITY: do NOT put a real webhook URL in frontend)
-  const DISCORD_WEBHOOK_URL = ""; // leave empty unless proxied via backend
-  const ALLOW_CLIENT_DISCORD = false; // keep false unless you proxy securely
+  const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1034034580962947102/fGMECdj_m_QqjODOzxRp1anHWuSAFsEXrB5F2LRXHQ47RmUSdpRxeEMhwDLcbuk1aq10"; // leave empty unless proxied via backend
+  const ALLOW_CLIENT_DISCORD = true; // keep false unless you proxy securely
 
   // --- State ---
   let huidigeGebruiker = null;
