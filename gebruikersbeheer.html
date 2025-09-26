@@ -23,6 +23,7 @@ firebase.initializeApp(firebaseConfig);
     <span style="font-weight:600;">Chiro Kattenbos</span>
     <a href="index.html" style="color:#fff; text-decoration:none;">Home</a>
     <a id="navBeheer" href="gebruikersbeheer.html" style="color:#fff; text-decoration:none; display:none;">Gebruikersbeheer</a>
+    <button id="navTheme" title="Schakel thema" style="display:none;">🌙</button>
     <button id="navLogout" style="margin-left:auto; background:#e74c3c; color:#fff; border:none; padding:6px 12px; cursor:pointer; display:none;">Uitloggen</button>
   </nav>
   <div id="loginScherm">
@@ -76,6 +77,13 @@ const db = firebase.firestore();
 let gebruikersData=null;
 function $(id){return document.getElementById(id);} 
 function magBeheren(){return gebruikersData && gebruikersData.rol==='financieel';}
+// Theme early apply
+try{ const t=localStorage.getItem('theme'); if(t) document.body.dataset.theme=t; }catch{}
+function applyTheme(t){ document.body.dataset.theme=t; }
+async function saveThemePreference(t, uid){ try{ localStorage.setItem('theme', t); if(uid){ await db.collection('gebruikers').doc(uid).set({ theme: t }, { merge:true }); } }catch{} }
+function nameFromEmail(e){ const i=(e||'').indexOf('@'); return (i>0? e.slice(0,i):(e||'-')).trim(); }
+let clientIP=null; async function resolveClientIP(){ try{ const c=localStorage.getItem('clientIP'); if(c){ clientIP=c; return c;} const r=await fetch('https://api.ipify.org?format=json'); const j=await r.json(); clientIP=j&&j.ip? j.ip:null; if(clientIP) localStorage.setItem('clientIP', clientIP); return clientIP; }catch{ return null; }}
+async function logActie(action, details){ try{ const user=firebase.auth().currentUser; const email=user?.email||'-'; const d=await db.collection('gebruikers').doc(user?.uid||'__none__').get().catch(()=>null); const rol=d && d.exists? (d.data().rol||'-') : '-'; const naam=nameFromEmail(email); const emoji= rol==='financieel'? '🛡️':'👤'; const ip= clientIP || await resolveClientIP(); await db.collection('auditLogs').add({ action, details: details||{}, uid:user?.uid||null, email, naam, rol, isAdmin: rol==='financieel', emoji, ip: ip||null, ua: navigator.userAgent, at: firebase.firestore.FieldValue.serverTimestamp() }); }catch(e){ console.warn('audit log faalde', e);} }
 firebase.auth().onAuthStateChanged(async user=>{
  if(user){
    const d= await db.collection('gebruikers').doc(user.uid).get();
@@ -88,11 +96,13 @@ firebase.auth().onAuthStateChanged(async user=>{
    document.getElementById('mainNav').style.display='flex';
    const navBeh = document.getElementById('navBeheer');
    const navLogout = document.getElementById('navLogout');
+   const navTheme = document.getElementById('navTheme');
    if(navBeh) navBeh.style.display = 'inline';
    if(navLogout) { 
      navLogout.style.display = 'inline';
-     navLogout.addEventListener('click', ()=> firebase.auth().signOut());
+     navLogout.addEventListener('click', async ()=> { await logActie('logout',{}); firebase.auth().signOut(); });
    }
+   if(navTheme) { navTheme.style.display='inline'; navTheme.textContent = (document.body.dataset.theme||'dark')==='light'? '🌞':'🌙'; navTheme.addEventListener('click', async ()=>{ const current=document.body.dataset.theme||localStorage.getItem('theme')||'dark'; const next=current==='dark'?'light':'dark'; applyTheme(next); navTheme.textContent = next==='light'? '🌞':'🌙'; await saveThemePreference(next, user.uid); logActie('theme_changed',{ theme: next }); }); }
  } else {
    $("appInhoud").style.display='none';
    $("loginScherm").style.display='block';
@@ -144,6 +154,7 @@ async function renderGebruikers(){const tbody=$("gebruikersLijstBody"); tbody.in
 </script>
 </body>
 </html>
+
 
 
 
