@@ -1,15 +1,4 @@
 document.addEventListener("DOMContentLoaded", () => {
-  // --- UI INIT HELPERS ---
-  function setupSummaryToggle() {
-    const btn = document.getElementById("toggleSummary");
-    const summary = document.getElementById("summaryContent");
-    if (!btn || !summary) return;
-    btn.onclick = () => {
-      const open = summary.style.display === "none" || summary.style.display === "";
-      summary.style.display = open ? "block" : "none";
-      btn.setAttribute("aria-expanded", open ? "true" : "false");
-    };
-  }
   // --- Config / constants ---
   const alleGroepen = ["Ribbels","Speelclubs","Rakkers","Kwiks","Tippers","Toppers","Aspi","LEIDING"];
   const groepKleuren = {
@@ -229,27 +218,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }, err => console.error("Realtime uitgaven mislukt:", err));
   }
 
-  function renderSamenvatting() {
-    const tbody = document.querySelector("#groepSamenvattingTabel tbody");
-    if (!tbody) return;
-    tbody.innerHTML = "";
-
-    const groepen = Object.keys(ledenPerGroep || {});
-    groepen.forEach(groep => {
-      let totaal = 0;
-      db.collection("uitgaven").where("groep","==",groep).get().then(snap => {
-        snap.docs.forEach(doc => { totaal += parseFloat((doc.data().bedrag)||0); });
-        const leden = ledenPerGroep[groep] || 0;
-        const perKind = leden > 0 ? (totaal / leden).toFixed(2) : "-";
-        const rij = tbody.insertRow();
-        rij.style.backgroundColor = groepKleuren[groep] || "#ffd5f2";
-        rij.insertCell(0).textContent = groep;
-        rij.insertCell(1).textContent = leden;
-        rij.insertCell(2).textContent = `€${totaal.toFixed(2)}`;
-        rij.insertCell(3).textContent = perKind;
-      });
-    });
-  }
+  // Samenvatting UI en code verwijderd
 
   // --- Auth state & init (kort) ---
   firebase.auth().onAuthStateChanged(async user => {
@@ -273,12 +242,10 @@ document.addEventListener("DOMContentLoaded", () => {
   // Navbar tonen + role based links
   const nav = document.getElementById('mainNav');
   if (nav) nav.style.display = 'flex';
-  const navSam = document.getElementById('navSamenvatting');
   const navBeh = document.getElementById('navBeheer');
   const navExport = document.getElementById('navExportPdf');
   const navLogout = document.getElementById('navLogout');
   const isFin = gebruikersData.rol === 'financieel';
-  if (navSam) navSam.style.display = isFin ? 'inline' : 'none';
   if (navBeh) navBeh.style.display = isFin ? 'inline' : 'none';
   if (navExport) navExport.style.display = isFin ? 'inline' : 'none';
   if (navLogout) navLogout.style.display = 'inline';
@@ -291,10 +258,10 @@ document.addEventListener("DOMContentLoaded", () => {
       toonFinancieelFeatures();
       toonFinancieelKolommen();
 
-      // Samenvatting wordt op aparte pagina geladen; geen toggle meer nodig hier
+  // Samenvatting is verwijderd
 
   attachUitgavenListener();
-      toonLogoutKnop();
+  // Logout knop zit in de navbar; geen floating knop meer
     } else {
       // logged out
       $("appInhoud") && ($("appInhoud").style.display = "none");
@@ -341,7 +308,6 @@ document.addEventListener("DOMContentLoaded", () => {
       if (loginBtn) loginBtn.disabled = false;
     }
   });
-  safeOn($("logoutKnop"), "click", () => firebase.auth().signOut());
 
   // Filters
   safeOn($("filterGroep"), "change", e => attachUitgavenListener(e.target.value, $("filterBetaald")?.value));
@@ -455,10 +421,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Zorg dat de knop zichtbaar is voor financieel
   // (Dubbele toonBeheerPaneel definitie verwijderd bovenaan geconsolideerd)
 
-  function toonLogoutKnop() {
-    const logoutBtn = $("logoutKnop");
-    if (logoutBtn) logoutBtn.style.display = "block";
-  }
+  // Floating logout knop verwijderd
 
   // Toon gebruikerslijst met statusbolletjes
   async function renderGebruikersLijst() {
