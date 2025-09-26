@@ -1,70 +1,34 @@
 document.addEventListener("DOMContentLoaded", () => {
-  // --- Config / constants ---
+  // --- Config ---
   const alleGroepen = ["Ribbels","Speelclubs","Rakkers","Kwiks","Tippers","Toppers","Aspi","LEIDING"];
   const groepKleuren = {
-    // Donkere, transparante tinten voor betere leesbaarheid met lichte tekst
-    Ribbels: "rgba(59,130,246,0.18)",      // blue-500
-    Speelclubs: "rgba(234,179,8,0.18)",   // amber-500
-    Rakkers: "rgba(34,197,94,0.18)",      // green-500
-    Kwiks: "rgba(244,114,182,0.18)",      // pink-400
-    Tippers: "rgba(99,102,241,0.18)",     // indigo-500
-    Toppers: "rgba(16,185,129,0.18)",     // emerald-500
-    Aspi: "rgba(249,115,22,0.18)",        // orange-500
-    LEIDING: "rgba(148,163,184,0.18)"     // slate-400
+    Ribbels: "rgba(59,130,246,0.18)",
+    Speelclubs: "rgba(234,179,8,0.18)",
+    Rakkers: "rgba(34,197,94,0.18)",
+    Kwiks: "rgba(244,114,182,0.18)",
+    Tippers: "rgba(99,102,241,0.18)",
+    Toppers: "rgba(16,185,129,0.18)",
+    Aspi: "rgba(249,115,22,0.18)",
+    LEIDING: "rgba(148,163,184,0.18)"
   };
 
-  function kleurVoorGroep(g) {
-    const key = (g || "").toString().trim().toLowerCase();
-    const map = {
-      ribbels: groepKleuren.Ribbels,
-      speelclubs: groepKleuren.Speelclubs,
-      rakkers: groepKleuren.Rakkers,
-      kwiks: groepKleuren.Kwiks,
-      tippers: groepKleuren.Tippers,
-      toppers: groepKleuren.Toppers,
-      aspi: groepKleuren.Aspi,
-      leiding: groepKleuren.LEIDING
-    };
-    return map[key] || "rgba(148,163,184,0.12)"; // zachte slate fallback
-  }
-
-  // >>> VERVANG HIER je cloud name en preset door jouw waarden <<<
-  // Bijvoorbeeld: https://api.cloudinary.com/v1_1/voorbeeldcloud/upload
-  const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dxizebpwn/upload";
-  const CLOUDINARY_PRESET = "chiro_upload_fotos";
-  // Optional: Discord webhook proxy (SECURITY: do NOT put a real webhook URL in frontend)
-  const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1034034580962947102/fGMECdj_m_QqjODOzxRp1anHWuSAFsEXrB5F2LRXHQ47RmUSdpRxeEMhwDLcbuk1aq10"; // leave empty unless proxied via backend
-  const ALLOW_CLIENT_DISCORD = true; // keep false unless you proxy securely
-
-  // --- State ---
+  // --- Globals ---
   let huidigeGebruiker = null;
-  let gebruikersData = null;
+  let gebruikersData = null; // { rol, groep, email, theme? }
   let ledenPerGroep = {};
   let clientIP = null;
 
-  // --- Helpers ---
-  const $ = id => document.getElementById(id);
-  function safeOn(el, ev, fn) { if (el) el.addEventListener(ev, fn); }
+  // --- Utility DOM helpers ---
+  const $ = (id) => document.getElementById(id);
+  const safeOn = (el, ev, fn) => { if (el) el.addEventListener(ev, fn); };
+
+  // --- Small helpers ---
   function nameFromEmail(email){
-    if(!email) return "-";
-    const i = email.indexOf("@");
-    return (i>0? email.slice(0,i): email).trim();
+    if (!email) return "-";
+    const [left] = email.split("@");
+    return left ? left.replace(/[._-]+/g, " ").replace(/\b\w/g, c=>c.toUpperCase()) : email;
   }
-
-  // Apply theme early from localStorage
-  (function initThemeEarly(){
-    const ls = (typeof localStorage!=="undefined")? localStorage.getItem("theme") : null;
-    if(ls){ document.body.dataset.theme = ls; }
-  })();
-
-  // --- Firebase helpers ---
-  // --- Firestore helpers ---
-  const db = firebase.firestore();
-  function haalGebruikersData(uid) {
-    return db.collection("gebruikers").doc(uid).get().then(d => d.exists ? d.data() : null);
-  }
-  function haalLedenPerGroep() {
-  function kleurVoorGroep(g) {
+  function kleurVoorGroep(g){
     const key = (g || "").toString().trim().toLowerCase();
     const map = {
       ribbels: groepKleuren.Ribbels,
@@ -76,7 +40,7 @@ document.addEventListener("DOMContentLoaded", () => {
       aspi: groepKleuren.Aspi,
       leiding: groepKleuren.LEIDING
     };
-    return map[key] || "rgba(148,163,184,0.12)"; // zachte slate fallback
+    return map[key] || "transparent";
   }
 
   // --- Theme helpers ---
@@ -86,24 +50,29 @@ document.addEventListener("DOMContentLoaded", () => {
   async function saveThemePreference(theme){
     try {
       localStorage.setItem("theme", theme);
-      if(huidigeGebruiker){
-        await db.collection("gebruikers").doc(huidigeGebruiker.uid).set({ theme }, { merge: true });
+      if (huidigeGebruiker) {
+        await firebase.firestore().collection("gebruikers").doc(huidigeGebruiker.uid).set({ theme }, { merge: true });
       }
-    } catch { /* ignore */ }
+    } catch {}
   }
+  // Apply theme ASAP from localStorage (before auth)
+  applyTheme(localStorage.getItem("theme") || "dark");
 
   // --- IP + Audit log helpers ---
   async function resolveClientIP(){
     try {
       const cached = localStorage.getItem("clientIP");
-      if(cached){ clientIP = cached; return cached; }
+      if (cached) { clientIP = cached; return cached; }
       const r = await fetch("https://api.ipify.org?format=json");
       const j = await r.json();
       clientIP = j && j.ip ? j.ip : null;
-      if(clientIP) localStorage.setItem("clientIP", clientIP);
+      if (clientIP) localStorage.setItem("clientIP", clientIP);
       return clientIP;
     } catch { return null; }
   }
+
+  const ALLOW_CLIENT_DISCORD = false; // laat op false, gebruik backend proxy indien gewenst
+  const DISCORD_WEBHOOK_URL = ""; // NIET client-side gebruiken zonder proxy
 
   async function logActie(action, details){
     try {
@@ -127,7 +96,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ua: navigator.userAgent,
         at: firebase.firestore.FieldValue.serverTimestamp(),
       };
-      await db.collection("auditLogs").add(entry);
+      await firebase.firestore().collection("auditLogs").add(entry);
       if (ALLOW_CLIENT_DISCORD && DISCORD_WEBHOOK_URL){
         const content = `${emoji} ${naam} (${rol}) -> ${action} ${details && Object.keys(details).length? "`"+JSON.stringify(details).slice(0,400)+"`" : ""}`;
         fetch(DISCORD_WEBHOOK_URL, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ content }) }).catch(()=>{});
@@ -135,9 +104,25 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch(err){ console.warn("audit log faalde", err); }
   }
 
-    // opslaan als 1 document 'meta/ledenPerGroep' of collection 'ledenPerGroep'
-    // We kiezen hier een enkel doc in collection 'config'
-    return db.collection("config").doc("ledenPerGroep").get().then(d => d.exists ? d.data() : {});
+  // --- Permissions ---
+  function magZien(groep){
+    return gebruikersData && (gebruikersData.rol === "financieel" || gebruikersData.groep === groep);
+  }
+  function magIndienen(groep){
+    return gebruikersData && (gebruikersData.rol === "financieel" || gebruikersData.groep === groep);
+  }
+  function magBeheren(){
+    return gebruikersData && gebruikersData.rol === "financieel";
+  }
+
+  // --- Data helpers ---
+  async function haalGebruikersData(uid){
+    const d = await firebase.firestore().collection("gebruikers").doc(uid).get();
+    return d.exists ? d.data() : null;
+  }
+  async function haalLedenPerGroep(){
+    const d = await firebase.firestore().collection("config").doc("ledenPerGroep").get();
+    return d.exists ? d.data() : {};
   }
 
   // --- Permissions ---
@@ -151,8 +136,8 @@ document.addEventListener("DOMContentLoaded", () => {
     return gebruikersData && gebruikersData.rol === "financieel";
   }
 
-  // --- UI helpers (kort gehouden) ---
-  function vulGroepSelectie() {
+  // --- UI helpers ---
+  function vulGroepSelectie(){
     const select = $("groep");
     if (!select || !gebruikersData) return;
     select.innerHTML = `<option value="">-- Kies een groep --</option>`;
@@ -160,36 +145,30 @@ document.addEventListener("DOMContentLoaded", () => {
     toegestane.forEach(g => { select.innerHTML += `<option value="${g}">${g}</option>`; });
   }
 
-  // --- Upload bewijsstuk (Cloudinary) ---
-  async function uploadBewijs(file) {
-    // Basischecks en duidelijke foutmeldingen
+  // --- Cloudinary upload ---
+  const CLOUDINARY_URL = ""; // bijv. https://api.cloudinary.com/v1_1/<cloud-name>/upload
+  const CLOUDINARY_PRESET = ""; // unsigned upload preset
+  async function uploadBewijs(file){
     if (!file) throw new Error("Geen bestand opgegeven voor upload.");
     if (!CLOUDINARY_URL || CLOUDINARY_URL.includes("<") || CLOUDINARY_URL.toLowerCase().includes("your")) {
-      throw new Error("Cloudinary niet ingesteld: zet je CLOUDINARY_URL (vervang <jouw-cloud-name>) en CLOUDINARY_PRESET in script.js");
+      throw new Error("Cloudinary niet ingesteld: zet je CLOUDINARY_URL en CLOUDINARY_PRESET in script.js");
     }
     if (!CLOUDINARY_PRESET || CLOUDINARY_PRESET.includes("<")) {
       throw new Error("Cloudinary preset niet ingesteld: controleer CLOUDINARY_PRESET in script.js");
     }
-
     const formData = new FormData();
     formData.append("file", file);
     formData.append("upload_preset", CLOUDINARY_PRESET);
-
     const res = await fetch(CLOUDINARY_URL, { method: "POST", body: formData });
-    // Check op HTTP success; bij 401/403/4xx geef duidelijke instructie
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      // als 401 Unauthorized, geef gerichte tip
       if (res.status === 401 || res.status === 403) {
-        throw new Error(`Upload geweigerd (HTTP ${res.status}). Controleer CLOUDINARY_URL (cloud name) en preset. Server says: ${text}`);
+        throw new Error(`Upload geweigerd (HTTP ${res.status}). Controleer CLOUDINARY_URL en preset. Server zegt: ${text}`);
       }
       throw new Error(`Upload naar Cloudinary mislukt (HTTP ${res.status}). Response: ${text}`);
     }
-
     const data = await res.json().catch(() => null);
-    if (!data || !data.secure_url) {
-      throw new Error("Cloudinary-respons bevat geen secure_url. Controleer preset en account.");
-    }
+    if (!data || !data.secure_url) throw new Error("Cloudinary-respons bevat geen secure_url.");
     return data.secure_url;
   }
 
@@ -225,7 +204,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Schrijf uitgave naar Firebase: gebruik veilige waarden (nooit undefined)
     try {
       // Genereer nummer (uniek) via query op bestaande nummers
-      const uitgavenSnap = await db.collection("uitgaven").get();
+  const uitgavenSnap = await firebase.firestore().collection("uitgaven").get();
       const bestaandeNummers = uitgavenSnap.docs.map(d => (d.data().nummer)||0);
       let nieuwNummer;
       do { nieuwNummer = Math.floor(1000 + Math.random() * 9000); } while (bestaandeNummers.includes(nieuwNummer));
@@ -241,7 +220,7 @@ document.addEventListener("DOMContentLoaded", () => {
         rekeningNummer: rekeningNummer,
         aangemaaktOp: firebase.firestore.FieldValue.serverTimestamp()
       };
-      await db.collection("uitgaven").doc(String(nieuwNummer)).set(entry);
+  await firebase.firestore().collection("uitgaven").doc(String(nieuwNummer)).set(entry);
       logActie("uitgave_toegevoegd", { nummer: nieuwNummer, groep: g, bedrag: b.toFixed(2), activiteit: a, datum: d });
       // reset formulier en herlaad tabel
         $("uitgaveForm")?.reset();
@@ -252,14 +231,14 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // --- Rendering functies (kort) ---
+  // --- Rendering / realtime ---
   let uitgavenUnsub = null;
   function attachUitgavenListener(filterGroep = "", filterBetaald = "") {
     if (uitgavenUnsub) { uitgavenUnsub(); uitgavenUnsub = null; }
     const tbody = document.querySelector("#overzicht tbody");
     if (!tbody) return;
     tbody.innerHTML = "";
-    let q = db.collection("uitgaven");
+    let q = firebase.firestore().collection("uitgaven");
     if (gebruikersData && gebruikersData.rol === "leiding") {
       q = q.where("groep","==",gebruikersData.groep);
     }
@@ -287,7 +266,7 @@ document.addEventListener("DOMContentLoaded", () => {
           verwijderBtn.title = "Verwijder uitgave";
           verwijderBtn.onclick = async () => {
             if (confirm("Weet je zeker dat je deze uitgave wilt verwijderen?")) {
-              await db.collection("uitgaven").doc(String(u.nummer)).delete();
+              await firebase.firestore().collection("uitgaven").doc(String(u.nummer)).delete();
               logActie("uitgave_verwijderd", { nummer: u.nummer, groep: u.groep, bedrag: u.bedrag });
             }
           };
@@ -299,7 +278,7 @@ document.addEventListener("DOMContentLoaded", () => {
           checkbox.type = "checkbox";
           checkbox.checked = !!u.betaald;
           checkbox.onchange = async () => {
-            await db.collection("uitgaven").doc(String(u.nummer)).update({ betaald: checkbox.checked });
+            await firebase.firestore().collection("uitgaven").doc(String(u.nummer)).update({ betaald: checkbox.checked });
             logActie("uitgave_betaald_toggle", { nummer: u.nummer, betaald: checkbox.checked });
           };
           betaaldCell.appendChild(checkbox);
@@ -328,14 +307,14 @@ document.addEventListener("DOMContentLoaded", () => {
     }, err => console.error("Realtime uitgaven mislukt:", err));
   }
 
-  // Samenvatting UI en code verwijderd
+  // Samenvatting UI en code verwijderd (eigen pagina)
 
   // --- Auth state & init (kort) ---
   firebase.auth().onAuthStateChanged(async user => {
     if (user) {
       huidigeGebruiker = user;
       try { gebruikersData = (await haalGebruikersData(user.uid)) || {}; }
-      catch (err) { gebruikersData = {}; console.warn("haalGebruikersData faalde:", err); }
+      catch { gebruikersData = {}; }
 
       if (gebruikersData.rol === "financieel") {
         try { ledenPerGroep = await haalLedenPerGroep(); }
@@ -492,7 +471,7 @@ document.addEventListener("DOMContentLoaded", () => {
     doc.text("Uitgavenoverzicht per groep", 10, 10);
 
     // Haal alle uitgaven op
-  const uitgavenSnap = await db.collection("uitgaven").get();
+  const uitgavenSnap = await firebase.firestore().collection("uitgaven").get();
   const uitgaven = uitgavenSnap.docs.map(d => d.data());
 
     // Groepeer per groep
@@ -538,7 +517,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!uid || !groep || !rol) return alert("Vul alle velden in.");
 
     try {
-      await db.collection("gebruikers").doc(uid).set({ groep, rol }, { merge: true });
+      await firebase.firestore().collection("gebruikers").doc(uid).set({ groep, rol }, { merge: true });
       alert("Gebruiker succesvol aangepast!");
       $("rolForm").reset();
     } catch (err) {
@@ -568,7 +547,7 @@ document.addEventListener("DOMContentLoaded", () => {
     tbody.innerHTML = "";
 
     // Haal alle gebruikers uit Firebase
-    const gebruikersSnap = await db.collection("gebruikers").get();
+  const gebruikersSnap = await firebase.firestore().collection("gebruikers").get();
     const allUsers = gebruikersSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
 
     // Haal online status op via presence (of alleen huidige user als je geen presence gebruikt)
