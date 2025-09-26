@@ -56,12 +56,16 @@
 
     firebase.auth().onAuthStateChanged(async (user)=>{
       if (!user) { window.location.href = 'index.html'; return; }
-      const prof = await getUserProfile(user.uid).catch(()=>null) || {};
-      const isFin = prof.rol === 'financieel';
-      const nav = document.getElementById('mainNav');
-      const navBeheer = document.getElementById('navBeheer');
+  const prof = await getUserProfile(user.uid).catch(()=>null) || {};
+  const isFin = prof.rol === 'financieel';
+  const hasEventRole = !!(prof && prof.evenementen && (prof.evenementen[eventId] === true));
+  const nav = document.getElementById('mainNav');
+  const navBeheer = document.getElementById('navBeheer');
+  const navEven = document.getElementById('navEvenementen');
       if (nav) nav.style.display = 'flex';
-      if (navBeheer) navBeheer.style.display = isFin ? 'inline' : 'none';
+  if (navBeheer) navBeheer.style.display = isFin ? 'inline' : 'none';
+  const hasAnyEventRole = !!(prof && prof.evenementen && Object.values(prof.evenementen).some(Boolean));
+  if (navEven) navEven.style.display = (isFin || hasAnyEventRole) ? 'inline' : 'none';
       const navLogout = document.getElementById('navLogout');
       if (navLogout) navLogout.onclick = ()=> firebase.auth().signOut();
 
@@ -70,12 +74,12 @@
       const kostenOnly = document.querySelectorAll('.fin-only');
 
       // Financieel only gate: if not financieel, show message and block forms/tables
-      if (!isFin) {
+      if (!(isFin || hasEventRole)) {
         if (kostenForm) kostenForm.style.display = 'none';
         if (verdForm) verdForm.style.display = 'none';
         const lock = document.createElement('div');
         lock.className = 'card';
-        lock.innerHTML = `<p>Alleen financieel kan dit evenement beheren.</p>`;
+  lock.innerHTML = `<p>Je hebt geen toegang tot dit evenement. Alleen financieel of gebruikers met een toegewezen evenementenrol kunnen dit beheren.</p>`;
         document.querySelector('.container')?.prepend(lock);
         return;
       }
@@ -153,5 +157,6 @@
 
   document.addEventListener('DOMContentLoaded', boot);
 })();
+
 
 
