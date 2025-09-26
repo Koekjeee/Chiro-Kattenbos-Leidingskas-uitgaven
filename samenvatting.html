@@ -19,7 +19,7 @@ firebase.initializeApp(firebaseConfig);
 </script>
 </head>
 <body>
-<nav id="mainNav" style="display:none; background:#2c3e50; color:#fff; padding:10px 15px; display:flex; align-items:center; gap:15px;">
+<nav id="mainNav" style="display:none; background:#2c3e50; color:#fff; padding:10px 15px; align-items:center; gap:15px;">
   <span style="font-weight:600;">Chiro Kattenbos</span>
   <a href="index.html" style="color:#fff; text-decoration:none;">Home</a>
   <a id="navSamenvatting" href="samenvatting.html" style="color:#fff; text-decoration:none; display:none;">Samenvatting</a>
@@ -106,11 +106,23 @@ function startSamenvattingListeners(){
 
 firebase.auth().onAuthStateChanged(async user => {
   if(user){
-    const d = await db.collection('gebruikers').doc(user.uid).get();
-    gebruikersData = d.exists ? d.data() : {};
+    try {
+      const d = await db.collection('gebruikers').doc(user.uid).get();
+      gebruikersData = d.exists ? d.data() : {};
+    } catch (err) {
+      console.warn('Gebruikersrechten laden mislukt:', err);
+      const fout = document.getElementById('loginFout');
+      if (fout) fout.textContent = 'Kon gebruikersrechten niet laden (rechten).';
+      // Toon login zichtbaar zodat user kan wisselen account, maar ga niet vastlopen
+      const loginSchermEl = $('#loginScherm'); if(loginSchermEl) loginSchermEl.style.display = 'block';
+      const appInhoudEl = $('#appInhoud'); if(appInhoudEl) appInhoudEl.style.display = 'none';
+      return;
+    }
     if(!magBeheren()){
-      alert('Geen toegang tot deze pagina.');
-      firebase.auth().signOut();
+      // Geen auto-signout meer: nette redirect terug naar Home met melding
+      const fout = document.getElementById('loginFout');
+      if(fout) fout.textContent = 'Alleen financieel mag deze pagina bekijken.';
+      window.location.href = 'index.html?msg=geen_toegang_samenvatting';
       return;
     }
     const loginSchermEl = $('#loginScherm');
@@ -144,8 +156,22 @@ if(loginBtnEl) loginBtnEl.addEventListener('click', async () => {
   const e = emailEl ? emailEl.value.trim() : '';
   const p = passEl ? passEl.value.trim() : '';
   if(!e || !p){ if(foutEl) foutEl.textContent='Vul e-mail en wachtwoord in.'; return; }
-  try { await firebase.auth().signInWithEmailAndPassword(e,p); if(foutEl) foutEl.textContent=''; }
-  catch(err){ if(foutEl) foutEl.textContent = 'Login mislukt: ' + (err && err.message ? err.message : err); }
+  try {
+    await firebase.auth().signInWithEmailAndPassword(e,p);
+    if(foutEl) foutEl.textContent='';
+  } catch(err){
+    let msg = (err && err.message) ? err.message : String(err);
+    const code = err && err.code ? err.code : '';
+    switch(code){
+      case 'auth/invalid-email': msg = 'Ongeldig e-mailadres'; break;
+      case 'auth/user-not-found': msg = 'Geen account met dit e-mailadres'; break;
+      case 'auth/wrong-password': msg = 'Onjuist wachtwoord'; break;
+      case 'auth/too-many-requests': msg = 'Te veel pogingen, probeer later opnieuw'; break;
+      case 'auth/invalid-login-credentials': msg = 'Combinatie e-mail/wachtwoord ongeldig'; break;
+      case 'auth/unauthorized-domain': msg = 'Domein niet geautoriseerd. Voeg koekjeee.github.io toe bij Firebase Authentication → Settings → Authorized domains.'; break;
+    }
+    if(foutEl) foutEl.textContent = 'Login mislukt: ' + msg;
+  }
 });
 
 const logoutKnopEl = $('#logoutKnop');
@@ -153,5 +179,3 @@ if(logoutKnopEl) logoutKnopEl.addEventListener('click', ()=> firebase.auth().sig
 </script>
 </body>
 </html>
-
-
