@@ -1,100 +1,119 @@
+/* Base */
+:root {
+  --bg: #0f172a;           /* slate-900 */
+  --bg-soft: #111827;      /* gray-900 */
+  --card: #0b1222;         /* deep navy */
+  --card-2: #0e1528;
+  --text: #e5e7eb;         /* gray-200 */
+  --muted: #9ca3af;        /* gray-400 */
+  --primary: #60a5fa;      /* blue-400 */
+  --primary-2: #3b82f6;    /* blue-500 */
+  --accent: #22d3ee;       /* cyan-400 */
+  --success: #22c55e;      /* green-500 */
+  --danger: #ef4444;       /* red-500 */
+  --warning: #f59e0b;      /* amber-500 */
+  --radius: 12px;
+  --shadow: 0 12px 30px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.02);
+  --glow: 0 0 0 0 rgba(96,165,250,.0);
+  --glow-active: 0 0 0 6px rgba(96,165,250,.12);
+}
+
+* { box-sizing: border-box; }
+
 body {
-  font-family: 'Segoe UI', sans-serif;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
   margin: 0;
-  padding: 20px;
-  background-color: #fcfafa;
+  padding: 0;
+  color: var(--text);
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(59,130,246,.15), transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, rgba(34,211,238,.12), transparent 50%),
+    linear-gradient(180deg, #0b1220, #0a0f1d 35%, #0a0f1d);
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 20px 40px;
 }
 
 h1, h2, h3 {
   color: #333;
 }
 
-#appInhoud {
-  position: relative;
-}
+#appInhoud { position: relative; }
 
-.pdf-export-btn {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  width: 36px;
-  height: 36px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-}
-.pdf-export-btn:hover {
-  background-color: #0069d9;
-}
-
+/* Cardy container look for forms, filters, login, beheer */
 form, .filter, #loginScherm, #beheerPaneel {
-  background: #fff;
-  padding: 15px;
-  border-radius: 8px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-  margin-bottom: 20px;
+  background: linear-gradient(180deg, rgba(14,21,40,.92), rgba(11,18,34,.9));
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  padding: 18px 16px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1px solid rgba(255,255,255,.05);
+  margin: 18px 0 20px;
+  transition: transform .2s ease, box-shadow .2s ease;
 }
+form:hover, .filter:hover, #loginScherm:hover, #beheerPaneel:hover { transform: translateY(-1px); }
 
-label {
-  display: block;
-  margin-top: 10px;
-  font-weight: bold;
-}
+label { display: block; margin-top: 10px; font-weight: 600; color: var(--muted); }
 
 input, select, button {
   width: 100%;
-  padding: 8px;
-  margin-top: 5px;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-  box-sizing: border-box;
+  padding: 10px 12px;
+  margin-top: 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(148,163,184,.25);
+  background: #0a1326;
+  color: var(--text);
+  outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease, transform .05s ease;
+}
+input:focus, select:focus {
+  border-color: var(--primary);
+  box-shadow: var(--glow-active);
 }
 
-input[type="checkbox"] {
-  width: auto;
-  margin-right: 8px;
-  vertical-align: middle;
-  transform: scale(1.2);
-  cursor: pointer;
-}
+input[type="checkbox"] { width: auto; margin-right: 8px; vertical-align: middle; transform: scale(1.2); cursor: pointer; }
 
 button {
-  background-color: #28a745;
-  color: white;
+  background: linear-gradient(180deg, #2a6efc, #215ee0);
+  color: #fff;
   border: none;
-  margin-top: 15px;
+  margin-top: 14px;
   cursor: pointer;
+  font-weight: 600;
+  letter-spacing: .2px;
+  border: 1px solid rgba(255,255,255,.08);
 }
-button:hover {
-  background-color: #218838;
-}
+button:hover { filter: brightness(1.05); }
+button:active { transform: translateY(1px); }
+button:disabled { opacity:.6; cursor: not-allowed; }
 
 table {
   width: 100%;
-  border-collapse: collapse;
-  background: #fff;
-  border-radius: 8px;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: linear-gradient(180deg, rgba(14,21,40,.92), rgba(11,18,34,.9));
+  border-radius: var(--radius);
   overflow: hidden;
   margin-top: 20px;
+  box-shadow: var(--shadow);
+  border: 1px solid rgba(255,255,255,.05);
 }
 
 th {
-  background-color: #007bff;
-  color: white;
+  background: linear-gradient(180deg, rgba(34,52,85,.95), rgba(22,35,63,.95));
+  color: #dbeafe;
   padding: 12px;
   text-align: left;
 }
 
 td {
   padding: 12px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid rgba(255,255,255,.06);
   text-align: left;
 }
 
@@ -107,31 +126,23 @@ td {
   font-family: inherit;
 }
 
+/* Overzicht table specifics */
 #overzicht th {
-  background: #0084ff;
-  color: #fff;
-  font-weight: bold;
+  background: linear-gradient(180deg, rgba(45,72,125,.95), rgba(24,39,73,.95));
+  color: #e5f0ff;
+  font-weight: 700;
   padding: 12px 8px;
   text-align: center;
-  border-radius: 8px 8px 0 0;
 }
 
-#overzicht td {
-  padding: 10px 8px;
-  text-align: center;
-  font-size: 1rem;
-}
+#overzicht td { padding: 10px 8px; text-align: center; font-size: 1rem; }
 
 #overzicht tr {
   border-radius: 0 0 8px 8px;
 }
 
 /* Betaald status */
-.betaald-status {
-  font-size: 1.5em;
-  color: #e74c3c;
-  font-weight: bold;
-}
+.betaald-status { font-size: 1.2em; font-weight: 700; }
 
 /* Betaald vinkje */
 .betaald-toggle input[type="checkbox"] {
@@ -139,27 +150,19 @@ td {
 }
 
 /* Verwijder knop */
-.verwijder {
-  background: #e74c3c;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  padding: 8px 24px;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.verwijder:disabled {
-  background: #aaa;
-  cursor: not-allowed;
-}
+.verwijder { background: linear-gradient(180deg, #ef4444, #db2e2e); color:#fff; border:none; border-radius: 8px; padding: 8px 16px; font-size: .95rem; cursor: pointer; transition: filter .2s; }
+.verwijder:hover { filter: brightness(1.05); }
+.verwijder:disabled { background: #6b7280; cursor: not-allowed; }
 
 /* Verwijderd: zwevende icon-knoppen (nu alleen navbar-knoppen) */
 
 /* Gebruikerslijst paneel */
-#gebruikersLijstTabel th { background:#555; }
+#gebruikersLijstTabel th { background: linear-gradient(180deg, rgba(43,67,118,.95), rgba(28,48,92,.95)); }
 #gebruikersLijstTabel td, #gebruikersLijstTabel th { text-align:center; }
+
+/* Premium zebra/hover */
+table tr:nth-child(even) td { background: rgba(255,255,255,.02); }
+table tr:hover td { background: rgba(96,165,250,.06); }
 
 /* Responsiviteit */
 @media (max-width: 700px) {
@@ -169,32 +172,40 @@ td {
   th, td { padding: 8px 6px; }
 }
 
-/* Navbar overrides: make nav buttons small and right-aligned */
+/* Premium sticky navbar */
 #mainNav {
-  /* In case inline style is missing flex */
-  display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: none; /* shown via JS after login */
   align-items: center;
-  gap: 15px;
+  gap: 16px;
+  padding: 12px 20px;
+  background: linear-gradient(180deg, rgba(11,18,36,.95), rgba(8,14,28,.92));
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  box-shadow: 0 6px 18px rgba(0,0,0,.25);
 }
-#mainNav a {
-  color: #fff;
-  text-decoration: none;
-}
-#mainNav button {
-  /* Override global form button width */
-  width: auto;
-  padding: 6px 10px;
-  border-radius: 4px;
-  font-size: 0.9rem;
-}
-/* Keep colors consistent */
-#navExportPdf { background: #27ae60; }
-#navLogout { background: #e74c3c; }
+#mainNav a { color: #e5e7eb; text-decoration: none; font-weight: 600; opacity: .9; }
+#mainNav a:hover { opacity: 1; }
+#mainNav button { width: auto; padding: 8px 12px; border-radius: 10px; font-size: 0.9rem; }
+/* Keep button colors aligned */
+#navExportPdf { background: linear-gradient(180deg, #22c55e, #16a34a); }
+#navLogout { background: linear-gradient(180deg, #ef4444, #dc2626); }
+
+/* Align export button to the right */
+#mainNav .push-right { margin-left: auto; }
 
 @media (max-width: 700px) {
-  #mainNav { gap: 10px; }
-  #mainNav button { padding: 5px 8px; font-size: 0.85rem; }
+  #mainNav { gap: 10px; padding: 10px 14px; }
+  #mainNav button { padding: 6px 10px; font-size: 0.85rem; }
 }
+
+/* Utility: make headings pop slightly */
+h1, h2, h3 { color: #e5e7eb; letter-spacing: .2px; }
+
+/* Subtle fade-in for main sections */
+#appInhoud, #loginScherm, #beheerPaneel, form, .filter, table { animation: fadeIn .25s ease both; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(2px);} to { opacity: 1; transform: translateY(0);} }
 
 
 
