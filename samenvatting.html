@@ -23,6 +23,7 @@
     <span>Chiro Kattenbos</span>
     <a href="index.html">Home</a>
     <a id="navBeheer" href="gebruikersbeheer.html">Gebruikersbeheer</a>
+    <button id="navTheme" title="Schakel thema" style="display:none;">🌙</button>
     <button id="navLogout" class="push-right">Uitloggen</button>
   </nav>
 
@@ -54,6 +55,11 @@
   </div>
 
   <script>
+  // Early theme from localStorage
+  (function initThemeEarly(){
+    try { const t = localStorage.getItem('theme'); if(t) document.body.dataset.theme = t; } catch {}
+  })();
+
   const db = firebase.firestore();
   const alleGroepen = ["Ribbels","Speelclubs","Rakkers","Kwiks","Tippers","Toppers","Aspi","LEIDING"];
   const groepKleuren = {
@@ -81,6 +87,14 @@
     };
     return map[key] || 'rgba(148,163,184,0.12)';
   }
+
+  // Helpers: name/email, theme, IP, audit
+  function nameFromEmail(email){ const i=(email||'').indexOf('@'); return (i>0? email.slice(0,i): (email||'-')).trim(); }
+  function applyTheme(theme){ document.body.dataset.theme = theme; }
+  async function saveThemePreference(theme, uid){ try { localStorage.setItem('theme', theme); if(uid){ await db.collection('gebruikers').doc(uid).set({ theme }, { merge:true }); } } catch {}
+  }
+  let clientIP=null; async function resolveClientIP(){ try { const c=localStorage.getItem('clientIP'); if(c){ clientIP=c; return c; } const r=await fetch('https://api.ipify.org?format=json'); const j=await r.json(); clientIP=j&&j.ip? j.ip:null; if(clientIP) localStorage.setItem('clientIP', clientIP); return clientIP; } catch { return null; } }
+  async function logActie(action, details){ try { const user=firebase.auth().currentUser; const email=user?.email||'-'; const d=await db.collection('gebruikers').doc(user?.uid||'__none__').get().catch(()=>null); const rol=d && d.exists? (d.data().rol||'-') : '-'; const naam=nameFromEmail(email); const emoji= rol==='financieel'? '🛡️':'👤'; const ip = clientIP || await resolveClientIP(); await db.collection('auditLogs').add({ action, details: details||{}, uid:user?.uid||null, email, naam, rol, isAdmin: rol==='financieel', emoji, ip: ip||null, ua: navigator.userAgent, at: firebase.firestore.FieldValue.serverTimestamp() }); } catch(e) { console.warn('audit log faalde', e);} }
 
   let gebruikersData = null;
   let ledenMap = {};        // { groep: aantal }
@@ -137,6 +151,7 @@
     try {
       await db.collection('config').doc('ledenPerGroep').set({ [groep]: n }, { merge: true });
       ledenMap[groep] = n; // directe feedback
+      logActie('leden_aangepast', { groep, leden: n });
       bouwTabel();
     } catch (err){
       console.error('Opslaan leden mislukt:', err);
@@ -173,18 +188,22 @@
       try {
         const d = await db.collection('gebruikers').doc(user.uid).get();
         gebruikersData = d.exists ? d.data() : {};
+        // Apply persisted theme if present
+        if(gebruikersData && gebruikersData.theme){ applyTheme(gebruikersData.theme); try{localStorage.setItem('theme', gebruikersData.theme);}catch{} }
       } catch { gebruikersData = {}; }
 
       const login = $('loginScherm'); if(login) login.style.display='none';
       const app = $('appInhoud'); if(app) app.style.display='block';
       if (nav) nav.style.display='flex';
-      const navBeh = $('navBeheer'); const navLogout=$('navLogout');
+      const navBeh = $('navBeheer'); const navLogout=$('navLogout'); const navTheme=$('navTheme');
       if (navBeh) navBeh.style.display = (gebruikersData.rol === 'financieel') ? 'inline' : 'none';
       if (navLogout) navLogout.style.display = 'inline';
+      if (navTheme) { navTheme.style.display='inline'; navTheme.textContent = (document.body.dataset.theme||'dark')==='light'? '🌞':'🌙'; }
       const info = $('gebruikerInfo'); if(info) info.textContent = `Ingelogd als ${gebruikersData.rol||'-'} (${gebruikersData.groep||'-'})`;
 
       startListeners();
       bouwTabel();
+      logActie('login', {});
     } else {
       if (unsubLeden) { unsubLeden(); unsubLeden=null; }
       if (unsubUitgaven) { unsubUitgaven(); unsubUitgaven=null; }
@@ -204,11 +223,13 @@
       if (fout) fout.textContent='';
     } catch(err){ if(fout) fout.textContent = 'Login mislukt: ' + (err?.message || err); }
   });
-  const navLogoutBtn = $('navLogout'); if (navLogoutBtn) navLogoutBtn.addEventListener('click', ()=> firebase.auth().signOut());
+  const navLogoutBtn = $('navLogout'); if (navLogoutBtn) navLogoutBtn.addEventListener('click', async ()=> { await logActie('logout',{}); firebase.auth().signOut(); });
+  const navThemeBtn = $('navTheme'); if(navThemeBtn) navThemeBtn.addEventListener('click', async ()=>{ const current=document.body.dataset.theme||localStorage.getItem('theme')||'dark'; const next = current==='dark'?'light':'dark'; applyTheme(next); navThemeBtn.textContent = next==='light'? '🌞':'🌙'; const uid=firebase.auth().currentUser?.uid; await saveThemePreference(next, uid); logActie('theme_changed',{ theme: next }); });
   </script>
 </body>
 </html>
  
+
 
 
 
