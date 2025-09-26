@@ -160,9 +160,9 @@ td {
 #gebruikersLijstTabel th { background: linear-gradient(180deg, rgba(43,67,118,.95), rgba(28,48,92,.95)); }
 #gebruikersLijstTabel td, #gebruikersLijstTabel th { text-align:center; }
 
-/* Premium zebra/hover */
-table tr:nth-child(even) td { background: rgba(255,255,255,.02); }
-table tr:hover td { background: rgba(96,165,250,.06); }
+/* Premium zebra/hover (opt-in via .zebra) */
+.zebra tr:nth-child(even) td { background: rgba(255,255,255,.02); }
+.zebra tr:hover td { background: rgba(96,165,250,.06); }
 
 /* Responsiviteit */
 @media (max-width: 700px) {
