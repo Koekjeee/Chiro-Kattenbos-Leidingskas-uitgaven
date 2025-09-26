@@ -155,32 +155,7 @@ td {
   cursor: not-allowed;
 }
 
-/* Icon buttons rechtsboven */
-.top-icon-btn {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  width: 40px;
-  height: 40px;
-  background: #555;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform .15s ease, box-shadow .2s ease, background .25s ease;
-  color: #fff;
-}
-.top-icon-btn svg { pointer-events: none; }
-.top-icon-btn:hover { transform: translateY(-2px); box-shadow:0 4px 10px rgba(0,0,0,.15); }
-.top-icon-btn.danger { background:#e74c3c; }
-.top-icon-btn.danger:hover { background:#c0392b; }
-.top-icon-btn.success { background:#27ae60; }
-.top-icon-btn.success:hover { background:#1e874c; }
-.top-icon-btn.info { background:#2980b9; }
-.top-icon-btn.info:hover { background:#1f6390; }
+/* Verwijderd: zwevende icon-knoppen (nu alleen navbar-knoppen) */
 
 /* Gebruikerslijst paneel */
 #gebruikersLijstTabel th { background:#555; }
@@ -189,7 +164,7 @@ td {
 /* Responsiviteit */
 @media (max-width: 700px) {
   body { padding: 10px; }
-  .top-icon-btn { width: 36px; height: 36px; }
+  /* zwevende knoppen niet meer in gebruik */
   table, #overzicht { font-size: .85rem; }
   th, td { padding: 8px 6px; }
 }
