@@ -22,7 +22,8 @@
     if (elWinst) elWinst.textContent = `€${winst.toFixed(2)}`;
   }
 
-  function renderRows(tbodyId, items){
+  function renderRows(tbodyId, items, options){
+    const { canManage = false, ref = null } = options || {};
     const tbody = $(tbodyId);
     if (!tbody) return;
     tbody.innerHTML = '';
@@ -34,6 +35,23 @@
         const c1 = document.createElement('td'); c1.textContent = it.datum || '-'; tr.appendChild(c1);
         const c2 = document.createElement('td'); c2.textContent = it.omschrijving || '-'; tr.appendChild(c2);
         const c3 = document.createElement('td'); c3.textContent = `€${(parseFloat(it.bedrag)||0).toFixed(2)}`; tr.appendChild(c3);
+        if (canManage) {
+          const c4 = document.createElement('td');
+          const btn = document.createElement('button');
+          btn.textContent = 'Verwijderen';
+          btn.className = 'verwijder';
+          btn.addEventListener('click', async ()=>{
+            if (!ref || !it.id) return;
+            if (!confirm('Weet je zeker dat je dit item wilt verwijderen?')) return;
+            try {
+              await ref.doc(it.id).delete();
+            } catch(err){
+              console.warn('Verwijderen mislukt:', err);
+              alert('Verwijderen mislukt: ' + (err && err.message ? err.message : err));
+            }
+          });
+          c4.appendChild(btn); tr.appendChild(c4);
+        }
         tbody.appendChild(tr);
       });
   }
@@ -73,13 +91,13 @@
       const verdForm = $('verdForm');
       const kostenOnly = document.querySelectorAll('.fin-only');
 
-      // Financieel only gate: if not financieel, show message and block forms/tables
+      // Access gate: financieel OR event-role holders
       if (!(isFin || hasEventRole)) {
         if (kostenForm) kostenForm.style.display = 'none';
         if (verdForm) verdForm.style.display = 'none';
         const lock = document.createElement('div');
         lock.className = 'card';
-  lock.innerHTML = `<p>Je hebt geen toegang tot dit evenement. Alleen financieel of gebruikers met een toegewezen evenementenrol kunnen dit beheren.</p>`;
+        lock.innerHTML = `<p>Je hebt geen toegang tot dit evenement. Alleen financieel of gebruikers met een toegewezen evenementenrol kunnen dit beheren.</p>`;
         document.querySelector('.container')?.prepend(lock);
         return;
       }
@@ -120,9 +138,10 @@
       });
 
       // Live lists
+      const canManage = (isFin || hasEventRole);
       let unsubKosten = refKosten.orderBy('datum').onSnapshot(s=>{
         const items = s.docs.map(d=>({ id: d.id, ...d.data() }));
-        renderRows('kostenBody', items);
+        renderRows('kostenBody', items, { canManage, ref: refKosten });
         firebase.firestore().collection('evenementen').doc(eventId).collection('verdiensten').get().then(s2=>{
           const vitems = s2.docs.map(d=>({ id: d.id, ...d.data() }));
           renderTotals(items, vitems);
@@ -138,7 +157,7 @@
       });
       let unsubVerd = refVerdiensten.orderBy('datum').onSnapshot(s=>{
         const items = s.docs.map(d=>({ id: d.id, ...d.data() }));
-        renderRows('verdienstenBody', items);
+        renderRows('verdienstenBody', items, { canManage, ref: refVerdiensten });
         firebase.firestore().collection('evenementen').doc(eventId).collection('kosten').get().then(s2=>{
           const kitems = s2.docs.map(d=>({ id: d.id, ...d.data() }));
           renderTotals(kitems, items);
@@ -157,6 +176,7 @@
 
   document.addEventListener('DOMContentLoaded', boot);
 })();
+
 
 
 
