@@ -22,7 +22,6 @@ firebase.initializeApp(firebaseConfig);
   <nav id="mainNav" style="display:none; background:#2c3e50; color:#fff; padding:10px 15px; display:flex; align-items:center; gap:15px;">
     <span style="font-weight:600;">Chiro Kattenbos</span>
     <a href="index.html" style="color:#fff; text-decoration:none;">Home</a>
-    <a id="navSamenvatting" href="samenvatting.html" style="color:#fff; text-decoration:none; display:none;">Samenvatting</a>
     <a id="navBeheer" href="gebruikersbeheer.html" style="color:#fff; text-decoration:none; display:none;">Gebruikersbeheer</a>
     <button id="navLogout" style="margin-left:auto; background:#e74c3c; color:#fff; border:none; padding:6px 12px; cursor:pointer; display:none;">Uitloggen</button>
   </nav>
@@ -36,7 +35,7 @@ firebase.initializeApp(firebaseConfig);
   <div id="appInhoud" style="display:none;">
     <h1>Gebruikersbeheer</h1>
     <p id="gebruikerInfo"></p>
-    <button id="logoutKnop" class="top-icon-btn danger" style="display:none;">Uitloggen</button>
+  <!-- Floating logout knop verwijderd: we gebruiken de navbar knop -->
     <div id="beheerPaneel">
       <!-- Nieuw: Account aanmaken -->
       <form id="createAccountForm" style="margin-bottom:1rem;">
@@ -87,10 +86,8 @@ firebase.auth().onAuthStateChanged(async user=>{
    if(!magBeheren()){alert('Geen toegang'); firebase.auth().signOut(); return;}
    renderGebruikers();
    document.getElementById('mainNav').style.display='flex';
-   const navSam = document.getElementById('navSamenvatting');
    const navBeh = document.getElementById('navBeheer');
    const navLogout = document.getElementById('navLogout');
-   if(navSam) navSam.style.display = 'inline';
    if(navBeh) navBeh.style.display = 'inline';
    if(navLogout) navLogout.style.display = 'inline';
  } else {
@@ -99,7 +96,7 @@ firebase.auth().onAuthStateChanged(async user=>{
  }
 });
 $("loginKnop").addEventListener('click',async()=>{const e=$("loginEmail").value.trim();const p=$("loginWachtwoord").value.trim();const f=$("loginFout"); try{await firebase.auth().signInWithEmailAndPassword(e,p);f.textContent='';}catch(err){f.textContent='Login mislukt: '+(err.message||err);} });
-$("logoutKnop").addEventListener('click',()=>firebase.auth().signOut());
+// Floating logout knop bestond niet meer
 // Bestaande gebruiker updaten
 $("rolForm").addEventListener('submit',async ev=>{ev.preventDefault();const uid=$("userUid").value.trim();const groep=$("userGroep").value;const rol=$("userRol").value; if(!uid) return; await db.collection('gebruikers').doc(uid).set({groep,rol},{merge:true}); alert('Opgeslagen'); renderGebruikers();});
 
@@ -144,3 +141,4 @@ async function renderGebruikers(){const tbody=$("gebruikersLijstBody"); tbody.in
 </script>
 </body>
 </html>
+
