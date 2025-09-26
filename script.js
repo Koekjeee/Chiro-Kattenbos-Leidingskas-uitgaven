@@ -136,8 +136,8 @@ document.addEventListener("DOMContentLoaded", () => {
       };
       await db.collection("uitgaven").doc(String(nieuwNummer)).set(entry);
       // reset formulier en herlaad tabel
-      $("uitgaveForm")?.reset();
-      renderTabel($("filterGroep")?.value, $("filterBetaald")?.value);
+        $("uitgaveForm")?.reset();
+        attachUitgavenListener($("filterGroep")?.value || "", $("filterBetaald")?.value || "");
     } catch (err) {
       console.error("Opslaan uitgave mislukt:", err);
       alert("Opslaan mislukt: " + (err && err.message ? err.message : err));
