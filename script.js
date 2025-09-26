@@ -264,6 +264,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   attachUitgavenListener();
   // Logout knop zit in de navbar; geen floating knop meer
+  // Koppel de uitlog-actie aan de navbar knop
+  safeOn($("navLogout"), "click", () => firebase.auth().signOut());
     } else {
       // logged out
       $("appInhoud") && ($("appInhoud").style.display = "none");
@@ -272,6 +274,17 @@ document.addEventListener("DOMContentLoaded", () => {
       huidigeGebruiker = null;
       gebruikersData = null;
       ledenPerGroep = {};
+      // Verberg nav-items wanneer uitgelogd
+      const navSam = document.getElementById('navSamenvatting');
+      const navBeh = document.getElementById('navBeheer');
+      const navExport = document.getElementById('navExportPdf');
+      const navLogout = document.getElementById('navLogout');
+      const nav = document.getElementById('mainNav');
+      if (navSam) navSam.style.display = 'none';
+      if (navBeh) navBeh.style.display = 'none';
+      if (navExport) navExport.style.display = 'none';
+      if (navLogout) navLogout.style.display = 'none';
+      if (nav) nav.style.display = 'none';
     }
   });
 
