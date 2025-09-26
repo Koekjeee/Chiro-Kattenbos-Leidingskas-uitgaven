@@ -1,1 +1,103 @@
 
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Zomerbar</title>
+  <link rel="stylesheet" href="style.css?v=20250926" />
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-firestore-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyC-UaXhh5juhV4raXWnzku9fSZZD75-y9w",
+      authDomain: "uitgavebeheerch.firebaseapp.com",
+      databaseURL: "https://uitgavebeheerch-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "uitgavebeheerch",
+      storageBucket: "uitgavebeheerch.firebasestorage.app",
+      messagingSenderId: "461673562296",
+      appId: "1:461673562296:web:d90a026cd685400139f44d",
+      measurementId: "G-K8NYLSE5EF"
+    };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  </script>
+</head>
+<body>
+  <nav id="mainNav">
+    <span>Chiro Kattenbos</span>
+    <a href="index.html">Home</a>
+    <a href="evenementen.html">Evenementen</a>
+    <a id="navBeheer" href="gebruikersbeheer.html">Gebruikersbeheer</a>
+    <button id="navTheme" title="Schakel thema" style="display:none;">🌙</button>
+    <button id="navLogout">Uitloggen</button>
+  </nav>
+  <div class="container" data-event-id="zomerbar" data-event-name="Zomerbar">
+    <h1>Zomerbar</h1>
+
+    <div class="card">
+      <h3>Kosten toevoegen</h3>
+      <form id="kostenForm" class="fin-only">
+        <div class="form-row">
+          <label>Datum</label>
+          <input type="date" id="k_datum" required />
+        </div>
+        <div class="form-row">
+          <label>Omschrijving</label>
+          <input type="text" id="k_omschrijving" required />
+        </div>
+        <div class="form-row">
+          <label>Bedrag (€)</label>
+          <input type="number" step="0.01" id="k_bedrag" required />
+        </div>
+        <button type="submit">Toevoegen</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3>Verdiensten toevoegen</h3>
+      <form id="verdForm" class="fin-only">
+        <div class="form-row">
+          <label>Datum</label>
+          <input type="date" id="v_datum" required />
+        </div>
+        <div class="form-row">
+          <label>Omschrijving</label>
+          <input type="text" id="v_omschrijving" required />
+        </div>
+        <div class="form-row">
+          <label>Bedrag (€)</label>
+          <input type="number" step="0.01" id="v_bedrag" required />
+        </div>
+        <button type="submit">Toevoegen</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3>Overzicht</h3>
+      <div class="grid-2">
+        <div>
+          <h4>Kosten</h4>
+          <table>
+            <thead><tr><th>Datum</th><th>Omschrijving</th><th>Bedrag</th></tr></thead>
+            <tbody id="kostenBody"></tbody>
+          </table>
+        </div>
+        <div>
+          <h4>Verdiensten</h4>
+          <table>
+            <thead><tr><th>Datum</th><th>Omschrijving</th><th>Bedrag</th></tr></thead>
+            <tbody id="verdienstenBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="totals">
+        <p>Totaal kosten: <strong id="totalKosten">€0.00</strong></p>
+        <p>Totaal verdiensten: <strong id="totalVerdiensten">€0.00</strong></p>
+        <p>Winst: <strong id="totalWinst">€0.00</strong></p>
+      </div>
+    </div>
+  </div>
+  <script src="events.js?v=20250927"></script>
+</body>
+</html>
