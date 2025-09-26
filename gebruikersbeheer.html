@@ -38,6 +38,23 @@ firebase.initializeApp(firebaseConfig);
     <p id="gebruikerInfo"></p>
     <button id="logoutKnop" class="top-icon-btn danger" style="display:none;">Uitloggen</button>
     <div id="beheerPaneel">
+      <!-- Nieuw: Account aanmaken -->
+      <form id="createAccountForm" style="margin-bottom:1rem;">
+        <h3>Nieuw account aanmaken</h3>
+        <label for="newEmail">E-mailadres:</label>
+        <input type="email" id="newEmail" required />
+        <label for="newPassword">Wachtwoord:</label>
+        <input type="password" id="newPassword" required />
+        <label for="newGroep">Groep:</label>
+        <select id="newGroep">
+          <option value="Ribbels">Ribbels</option><option value="Speelclubs">Speelclubs</option><option value="Rakkers">Rakkers</option><option value="Kwiks">Kwiks</option><option value="Tippers">Tippers</option><option value="Toppers">Toppers</option><option value="Aspi">Aspi</option><option value="LEIDING">LEIDING</option>
+        </select>
+        <label for="newRol">Rol:</label>
+        <select id="newRol"><option value="leiding">Leiding</option><option value="financieel">Financieel</option></select>
+        <button type="submit">Account aanmaken</button>
+        <p id="createInfo" style="color:#555; font-style:italic; margin-top:6px;"></p>
+      </form>
+
       <form id="rolForm" style="margin-bottom:1rem;">
         <label for="userUid">Gebruiker UID:</label>
         <input type="text" id="userUid" required />
@@ -83,9 +100,47 @@ firebase.auth().onAuthStateChanged(async user=>{
 });
 $("loginKnop").addEventListener('click',async()=>{const e=$("loginEmail").value.trim();const p=$("loginWachtwoord").value.trim();const f=$("loginFout"); try{await firebase.auth().signInWithEmailAndPassword(e,p);f.textContent='';}catch(err){f.textContent='Login mislukt: '+(err.message||err);} });
 $("logoutKnop").addEventListener('click',()=>firebase.auth().signOut());
+// Bestaande gebruiker updaten
 $("rolForm").addEventListener('submit',async ev=>{ev.preventDefault();const uid=$("userUid").value.trim();const groep=$("userGroep").value;const rol=$("userRol").value; if(!uid) return; await db.collection('gebruikers').doc(uid).set({groep,rol},{merge:true}); alert('Opgeslagen'); renderGebruikers();});
+
+// Nieuw account aanmaken via Firebase Identity (REST), zodat huidige admin sessie behouden blijft
+$("createAccountForm").addEventListener('submit', async ev => {
+  ev.preventDefault();
+  if(!magBeheren()) return alert('Geen toegang');
+  const email = ($('newEmail')?.value || '').trim();
+  const password = ($('newPassword')?.value || '').trim();
+  const groep = $('newGroep')?.value || 'LEIDING';
+  const rol = $('newRol')?.value || 'leiding';
+  const info = $('createInfo');
+  if(!email || !password) { if(info) info.textContent = 'Geef e-mail en wachtwoord in.'; return; }
+
+  try {
+    if(info) info.textContent = 'Bezig met aanmaken...';
+    // Gebruik Firebase Identity Toolkit REST API signUp endpoint
+    const apiKey = firebase.app().options.apiKey;
+    const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`,{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ email, password, returnSecureToken: true })
+    });
+    const data = await res.json();
+    if(!res.ok){
+      let msg = data && data.error && data.error.message ? data.error.message : 'Onbekende fout';
+      // Vertaal enkele bekende codes
+      if(msg === 'EMAIL_EXISTS') msg = 'E-mailadres bestaat al';
+      if(info) info.textContent = 'Aanmaken mislukt: ' + msg; return;
+    }
+    const newUid = data.localId;
+    // Sla profiel in Firestore
+    await db.collection('gebruikers').doc(newUid).set({ email, groep, rol }, { merge: true });
+    if(info) info.textContent = 'Account aangemaakt. UID: ' + newUid;
+    // Reset formulier en refresh lijst
+    $('createAccountForm').reset();
+    renderGebruikers();
+  } catch(err){
+    if(info) info.textContent = 'Aanmaken mislukt: ' + (err && err.message ? err.message : err);
+  }
+});
 async function renderGebruikers(){const tbody=$("gebruikersLijstBody"); tbody.innerHTML=''; const snap=await db.collection('gebruikers').get(); snap.docs.forEach(doc=>{const u=doc.data(); const tr=document.createElement('tr'); tr.innerHTML=`<td>${u.email||'-'}</td><td>${doc.id}</td><td>${u.rol||'-'}</td><td>${u.groep||'-'}</td>`; tbody.appendChild(tr);});}
 </script>
 </body>
 </html>
-
