@@ -19,13 +19,14 @@
   </script>
 </head>
 <body>
-  <nav id="mainNav" style="display:none; background:#2c3e50; color:#fff; padding:10px 15px; display:flex; align-items:center; gap:15px;">
-    <span style="font-weight:600;">Chiro Kattenbos</span>
-    <a href="index.html" style="color:#fff; text-decoration:none;">Home</a>
-    <a id="navBeheer" href="gebruikersbeheer.html" style="color:#fff; text-decoration:none; display:none;">Gebruikersbeheer</a>
-    <button id="navLogout" style="margin-left:auto; background:#e74c3c; color:#fff; border:none; padding:6px 12px; cursor:pointer; display:none;">Uitloggen</button>
+  <nav id="mainNav">
+    <span>Chiro Kattenbos</span>
+    <a href="index.html">Home</a>
+    <a id="navBeheer" href="gebruikersbeheer.html">Gebruikersbeheer</a>
+    <button id="navLogout" class="push-right">Uitloggen</button>
   </nav>
 
+  <div class="container">
   <div id="loginScherm">
     <h2>Inloggen</h2>
     <input type="email" id="loginEmail" placeholder="E-mailadres" required />
@@ -49,6 +50,7 @@
       <tbody></tbody>
     </table>
     <p id="samenvattingStatus" style="font-style:italic; color:#555; margin-top:8px;"></p>
+  </div>
   </div>
 
   <script>
@@ -186,11 +188,6 @@
   </script>
 </body>
 </html>
-  <div class="box">
-    <h2></h2>
-    <p></p>
-    <p><a href="index.html">Klik hier</a> als je niet automatisch wordt doorgestuurd.</p>
-  </div>
-</body>
-</html>
+ 
+
 
