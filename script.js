@@ -146,7 +146,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // --- Cloudinary upload ---
-  const CLOUDINARY_URL = "CLOUDINARY_URL=cloudinary://<your_api_key>:<your_api_secret>@dxizebpwn"; // bijv. https://api.cloudinary.com/v1_1/<cloud-name>/upload
+  const CLOUDINARY_URL = "CLOUDINARY_URL=cloudinary://<898556692854989>:<HRSOh967ZGDddEFtz3ZzWoNzQVw>@dxizebpwn"; // bijv. https://api.cloudinary.com/v1_1/<cloud-name>/upload
   const CLOUDINARY_PRESET = "dxizebpwn"; // unsigned upload preset
   async function uploadBewijs(file){
     if (!file) throw new Error("Geen bestand opgegeven voor upload.");
@@ -588,6 +588,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Roep deze functie aan na het tonen van het beheerpaneel:
   // (Laatste dubbele toonBeheerPaneel verwijderd - gebruik geconsolideerde versie)
 });
+
 
 
 
