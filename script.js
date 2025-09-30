@@ -1,4 +1,4 @@
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", () => { 
   // --- Config ---
   const alleGroepen = ["Ribbels","Speelclubs","Rakkers","Kwiks","Tippers","Toppers","Aspi","LEIDING"];
   const groepKleuren = {
@@ -147,7 +147,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --- Cloudinary upload ---
   const CLOUDINARY_URL = "CLOUDINARY_URL=cloudinary://<898556692854989>:<HRSOh967ZGDddEFtz3ZzWoNzQVw>@dxizebpwn"; // bijv. https://api.cloudinary.com/v1_1/<cloud-name>/upload
-  const CLOUDINARY_PRESET = "dxizebpwn"; // unsigned upload preset
+  const CLOUDINARY_PRESET = "chiro_upload_fotos"; // unsigned upload preset
   async function uploadBewijs(file){
     if (!file) throw new Error("Geen bestand opgegeven voor upload.");
     if (!CLOUDINARY_URL || CLOUDINARY_URL.includes("<") || CLOUDINARY_URL.toLowerCase().includes("your")) {
@@ -588,6 +588,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Roep deze functie aan na het tonen van het beheerpaneel:
   // (Laatste dubbele toonBeheerPaneel verwijderd - gebruik geconsolideerde versie)
 });
+
 
 
 
