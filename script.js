@@ -1,4 +1,4 @@
-document.addEventListener("DOMContentLoaded", () => { 
+document.addEventListener("DOMContentLoaded", () => {
   // --- Config ---
   const alleGroepen = ["Ribbels","Speelclubs","Rakkers","Kwiks","Tippers","Toppers","Aspi","LEIDING"];
   const groepKleuren = {
@@ -41,6 +41,17 @@ document.addEventListener("DOMContentLoaded", () => {
       leiding: groepKleuren.LEIDING
     };
     return map[key] || "transparent";
+  }
+
+  // --- Number helpers (comma/point) ---
+  function parseEuro(input){
+    if (typeof input === 'number') return input;
+    const s = String(input || '').trim().replace(/\s/g,'');
+    if (!s) return NaN;
+    // replace comma with dot, strip thousands separators
+    const norm = s.replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.');
+    const v = Number(norm);
+    return isNaN(v) ? NaN : v;
   }
 
   // --- Theme helpers ---
@@ -178,8 +189,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Lees en valideer velden
     const g = $("groep")?.value;
-    const bRaw = $("bedrag")?.value;
-    const b = parseFloat(bRaw);
+  const bRaw = $("bedrag")?.value;
+  const b = parseEuro(bRaw);
     const a = $("activiteit")?.value;
     const d = $("datum")?.value;
     const rekeningNummer = $("rekeningNummer")?.value.trim();
@@ -211,7 +222,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const entry = {
         nummer: nieuwNummer,
         groep: g,
-        bedrag: b.toFixed(2),
+  bedrag: b.toFixed(2),
         activiteit: a,
         datum: d,
         betaald: false,
@@ -588,9 +599,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // Roep deze functie aan na het tonen van het beheerpaneel:
   // (Laatste dubbele toonBeheerPaneel verwijderd - gebruik geconsolideerde versie)
 });
-
-
-
 
 
 
