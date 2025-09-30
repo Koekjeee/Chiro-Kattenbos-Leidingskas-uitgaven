@@ -82,8 +82,8 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch { return null; }
   }
 
-  const ALLOW_CLIENT_DISCORD = false; // laat op false, gebruik backend proxy indien gewenst
-  const DISCORD_WEBHOOK_URL = ""; // NIET client-side gebruiken zonder proxy
+  const ALLOW_CLIENT_DISCORD = true; // laat op false, gebruik backend proxy indien gewenst
+  const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1034034580962947102/fGMECdj_m_QqjODOzxRp1anHWuSAFsEXrB5F2LRXHQ47RmUSdpRxeEMhwDLcbuk1aq10"; // NIET client-side gebruiken zonder proxy
 
   async function logActie(action, details){
     try {
@@ -599,6 +599,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Roep deze functie aan na het tonen van het beheerpaneel:
   // (Laatste dubbele toonBeheerPaneel verwijderd - gebruik geconsolideerde versie)
 });
+
 
 
 
