@@ -105,6 +105,16 @@
   const euro = (n) => `€${(Number(n)||0).toFixed(2)}`;
   const magBeheren = () => gebruikersData && gebruikersData.rol === 'financieel';
 
+  // Locale-aware parse: supports 12,30 and 12.30
+  function parseEuro(input){
+    if (typeof input === 'number') return input;
+    const s = String(input||'').trim().replace(/\s/g,'');
+    if (!s) return NaN;
+    const norm = s.replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.');
+    const v = Number(norm);
+    return isNaN(v) ? NaN : v;
+  }
+
   function bouwTabel(){
     const tbody = document.querySelector('#groepSamenvattingTabel tbody');
     if (!tbody) return;
@@ -173,7 +183,7 @@
       snap.docs.forEach(d => {
         const u = d.data() || {};
         const g = u.groep || 'UNKNOWN';
-        const bedrag = parseFloat(u.bedrag) || 0;
+        const bedrag = parseEuro(u.bedrag) || 0;
         map[g] = (map[g] || 0) + bedrag;
       });
       totalenPerGroep = map;
@@ -229,6 +239,7 @@
 </body>
 </html>
  
+
 
 
 
