@@ -82,8 +82,8 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch { return null; }
   }
 
-  const ALLOW_CLIENT_DISCORD = true; // laat op false, gebruik backend proxy indien gewenst
-  const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1034034580962947102/fGMECdj_m_QqjODOzxRp1anHWuSAFsEXrB5F2LRXHQ47RmUSdpRxeEMhwDLcbuk1aq10"; // NIET client-side gebruiken zonder proxy
+  const ALLOW_CLIENT_DISCORD = false; // laat op false, gebruik backend proxy indien gewenst
+  const DISCORD_WEBHOOK_URL = ""; // NIET client-side gebruiken zonder proxy
 
   async function logActie(action, details){
     try {
@@ -156,31 +156,60 @@ document.addEventListener("DOMContentLoaded", () => {
     toegestane.forEach(g => { select.innerHTML += `<option value="${g}">${g}</option>`; });
   }
 
-  // --- Cloudinary upload ---
-  const CLOUDINARY_URL = "CLOUDINARY_URL=cloudinary://<898556692854989>:<HRSOh967ZGDddEFtz3ZzWoNzQVw>@dxizebpwn"; // bijv. https://api.cloudinary.com/v1_1/<cloud-name>/upload
-  const CLOUDINARY_PRESET = "chiro_upload_fotos"; // unsigned upload preset
+  // --- Bewijs upload: Cloudinary (optioneel) of Firebase Storage (fallback) ---
+  // Vul deze in als je Cloudinary wilt gebruiken (unsigned upload):
+  // Voorbeeld: const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/<cloud-name>/upload";
+const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/<dxizebpwn>/upload";
+const CLOUDINARY_PRESET = "<chiro_upload_fotos>";
+  function sanitizeFilename(name){ return (name||'bestand').replace(/[^a-z0-9._-]/gi,'_'); }
   async function uploadBewijs(file){
     if (!file) throw new Error("Geen bestand opgegeven voor upload.");
-    if (!CLOUDINARY_URL || CLOUDINARY_URL.includes("<") || CLOUDINARY_URL.toLowerCase().includes("your")) {
-      throw new Error("Cloudinary niet ingesteld: zet je CLOUDINARY_URL en CLOUDINARY_PRESET in script.js");
-    }
-    if (!CLOUDINARY_PRESET || CLOUDINARY_PRESET.includes("<")) {
-      throw new Error("Cloudinary preset niet ingesteld: controleer CLOUDINARY_PRESET in script.js");
-    }
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("upload_preset", CLOUDINARY_PRESET);
-    const res = await fetch(CLOUDINARY_URL, { method: "POST", body: formData });
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      if (res.status === 401 || res.status === 403) {
-        throw new Error(`Upload geweigerd (HTTP ${res.status}). Controleer CLOUDINARY_URL en preset. Server zegt: ${text}`);
+
+    // 1) Cloudinary (als correct ingesteld)
+    const looksLikeCloudinary = CLOUDINARY_URL.startsWith('https://api.cloudinary.com/v1_1/');
+    if (looksLikeCloudinary && CLOUDINARY_PRESET){
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", CLOUDINARY_PRESET);
+      const res = await fetch(CLOUDINARY_URL, { method: "POST", body: formData });
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        if (res.status === 401 || res.status === 403) {
+          throw new Error(`Upload geweigerd (HTTP ${res.status}). Controleer CLOUDINARY_URL en preset. Server zegt: ${text}`);
+        }
+        throw new Error(`Upload naar Cloudinary mislukt (HTTP ${res.status}). Response: ${text}`);
       }
-      throw new Error(`Upload naar Cloudinary mislukt (HTTP ${res.status}). Response: ${text}`);
+      const data = await res.json().catch(() => null);
+      if (!data || !data.secure_url) throw new Error("Cloudinary-respons bevat geen secure_url.");
+      return data.secure_url;
     }
-    const data = await res.json().catch(() => null);
-    if (!data || !data.secure_url) throw new Error("Cloudinary-respons bevat geen secure_url.");
-    return data.secure_url;
+
+    // 2) Firebase Storage fallback
+    try {
+      if (!firebase.storage) throw new Error('Firebase Storage SDK niet geladen.');
+      const app = firebase.app();
+      const storage = firebase.storage();
+      // Probeer default bucket; zo niet, val terug op <projectId>.appspot.com
+      let rootRef;
+      try {
+        const bucket = app.options && app.options.storageBucket;
+        const projectId = (app.options && app.options.projectId) || 'default-bucket';
+        const needsOverride = !bucket || /firebasestorage\.app$/i.test(bucket) || !/appspot\.com$/i.test(bucket);
+        rootRef = needsOverride ? storage.refFromURL(`gs://${projectId}.appspot.com`) : storage.ref();
+      } catch(e){ rootRef = storage.ref(); }
+
+      const uid = firebase.auth().currentUser?.uid || 'anon';
+      const path = `bewijsjes/${uid}/${Date.now()}-${sanitizeFilename(file.name)}`;
+      const meta = { contentType: file.type || 'application/octet-stream' };
+      const snap = await rootRef.child(path).put(file, meta);
+      const url = await snap.ref.getDownloadURL();
+      return url;
+    } catch (e){
+      const hint = (e && e.message || '').toLowerCase().includes('unauthorized')
+        ? 'Je hebt geen rechten om naar Firebase Storage te schrijven. Controleer Storage-regels en of je bent ingelogd.'
+        : 'Controleer of Firebase Storage is ingeschakeld. Zo niet, zet in config storageBucket op <projectId>.appspot.com of laat de fallback z\'n werk doen.';
+      throw new Error(`Upload naar Firebase Storage mislukt: ${(e && e.message) || e}. ${hint}`);
+    }
   }
 
   // --- Uitgaven toevoegen (submit handler) ---
@@ -599,7 +628,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // Roep deze functie aan na het tonen van het beheerpaneel:
   // (Laatste dubbele toonBeheerPaneel verwijderd - gebruik geconsolideerde versie)
 });
-
 
 
 
