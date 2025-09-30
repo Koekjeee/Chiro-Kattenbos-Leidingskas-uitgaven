@@ -4,13 +4,23 @@
   function applyTheme(theme){ document.body.dataset.theme = theme; }
   applyTheme(localStorage.getItem('theme') || 'dark');
 
+  // Locale-aware number parsing (supports 12,30 and 12.30)
+  function parseEuro(input){
+    if (typeof input === 'number') return input;
+    const s = String(input||'').trim().replace(/\s/g,'');
+    if (!s) return NaN;
+    const norm = s.replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.');
+    const v = Number(norm);
+    return isNaN(v) ? NaN : v;
+  }
+
   async function getUserProfile(uid){
     const d = await firebase.firestore().collection('gebruikers').doc(uid).get();
     return d.exists ? d.data() : null;
   }
 
   function renderTotals(kosten, verdiensten){
-    const sum = (arr)=>arr.reduce((acc,x)=>acc + (parseFloat(x.bedrag)||0), 0);
+    const sum = (arr)=>arr.reduce((acc,x)=>acc + (parseEuro(x.bedrag)||0), 0);
     const tKosten = sum(kosten);
     const tVerdiensten = sum(verdiensten);
     const winst = tVerdiensten - tKosten;
@@ -34,7 +44,7 @@
         const tr = document.createElement('tr');
         const c1 = document.createElement('td'); c1.textContent = it.datum || '-'; tr.appendChild(c1);
         const c2 = document.createElement('td'); c2.textContent = it.omschrijving || '-'; tr.appendChild(c2);
-        const c3 = document.createElement('td'); c3.textContent = `€${(parseFloat(it.bedrag)||0).toFixed(2)}`; tr.appendChild(c3);
+  const c3 = document.createElement('td'); c3.textContent = `€${(parseEuro(it.bedrag)||0).toFixed(2)}`; tr.appendChild(c3);
         if (canManage) {
           const c4 = document.createElement('td');
           const btn = document.createElement('button');
@@ -112,7 +122,7 @@
         e.preventDefault();
         const datum = $('k_datum')?.value || '';
         const omschrijving = $('k_omschrijving')?.value || '';
-        const bedrag = parseFloat($('k_bedrag')?.value || '0');
+  const bedrag = parseEuro($('k_bedrag')?.value || '0');
         if (!datum || !omschrijving || isNaN(bedrag)) return alert('Vul alle velden in.');
         try {
           await refKosten.add({ datum, omschrijving, bedrag, at: firebase.firestore.FieldValue.serverTimestamp() });
@@ -126,7 +136,7 @@
         e.preventDefault();
         const datum = $('v_datum')?.value || '';
         const omschrijving = $('v_omschrijving')?.value || '';
-        const bedrag = parseFloat($('v_bedrag')?.value || '0');
+  const bedrag = parseEuro($('v_bedrag')?.value || '0');
         if (!datum || !omschrijving || isNaN(bedrag)) return alert('Vul alle velden in.');
         try {
           await refVerdiensten.add({ datum, omschrijving, bedrag, at: firebase.firestore.FieldValue.serverTimestamp() });
@@ -176,6 +186,7 @@
 
   document.addEventListener('DOMContentLoaded', boot);
 })();
+
 
 
 
