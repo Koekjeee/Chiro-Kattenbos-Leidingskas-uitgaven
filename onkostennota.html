@@ -34,7 +34,12 @@
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // Helpers
+  // Theme helpers
+  function applyTheme(theme){ document.body.dataset.theme = theme; }
+  async function saveThemePreference(theme){ try { localStorage.setItem('theme', theme); } catch {} }
+  applyTheme(localStorage.getItem('theme') || 'dark');
+
+  // Helpers
     function parseEuro(str){
       if (typeof str !== 'string') return NaN;
       const clean = str.trim().replace(/\s/g,'').replace(/\.(?=\d{3}(\D|$))/g,'').replace(',', '.');
@@ -51,7 +56,7 @@
     async function allocateReference(){
       const jaar = new Date().getFullYear();
       const docRef = db.collection('refs').doc(String(jaar));
-      let refStr = `${jaar}-TEMP`;
+      let refStr = `${jaar}-${Math.floor(1000 + Math.random()*9000)}`; // fallback: JJJJ-####
       try {
         await db.runTransaction(async (tx)=>{
           const snap = await tx.get(docRef);
@@ -60,7 +65,7 @@
           tx.set(docRef, { last: next }, { merge: true });
           refStr = `${jaar}-${String(next).padStart(4,'0')}`;
         });
-      } catch(e){ console.warn('Kon referentie niet alloceren, gebruik TEMP', e); }
+      } catch(e){ console.warn('Kon referentie niet alloceren, gebruik random fallback', e); }
       const el = document.getElementById('referentie');
       if (el) el.value = refStr;
       return refStr;
@@ -77,6 +82,8 @@
       const keuze = document.querySelector('input[name="rekeningKeuze"]:checked')?.value || 'leidingskas';
       const customWrap = document.getElementById('ibanCustomWrap');
       if (customWrap) customWrap.style.display = (keuze === 'custom') ? 'block' : 'none';
+      const custom = document.getElementById('ibanCustom');
+      if (custom) custom.required = (keuze === 'custom');
     }
 
     // Auth guard: alleen financieel
@@ -101,6 +108,27 @@
         if (r) r.checked = true; updateIbanUI();
         // Allocatie referentie (readonly)
         await allocateReference();
+        // Navbar tonen + role-based links consistent met index
+        const nav = document.getElementById('mainNav');
+        if (nav) nav.style.display = 'flex';
+        const navSam = document.getElementById('navSamenvatting');
+        const navBeh = document.getElementById('navBeheer');
+        const navEven = document.getElementById('navEvenementen');
+        const navOnk = document.getElementById('navOnkostennota');
+        const navExport = document.getElementById('navExportPdf');
+        const navTheme = document.getElementById('navTheme');
+        const navLogout = document.getElementById('navLogout');
+        const isFin = data.rol === 'financieel';
+        if (navSam) navSam.style.display = isFin ? 'inline' : 'none';
+        if (navBeh) navBeh.style.display = isFin ? 'inline' : 'none';
+        const hasEventRoles = !!(data && data.evenementen && Object.values(data.evenementen).some(Boolean));
+        if (navEven) navEven.style.display = (isFin || hasEventRoles) ? 'inline' : 'none';
+  // Deze pagina heeft geen export handler; verberg exportknop hier
+  if (navExport) navExport.style.display = 'none';
+        if (navOnk) navOnk.style.display = isFin ? 'inline' : 'none';
+        if (navLogout) navLogout.style.display = 'inline';
+        if (navTheme) { navTheme.style.display = 'inline'; navTheme.textContent = document.body.dataset.theme === 'light' ? '🌞' : '🌙'; }
+
         login.style.display='none'; page.style.display='block';
       } catch (e){ console.error(e); alert('Kon gebruikersrechten niet laden.'); location.href='index.html'; }
     });
@@ -127,6 +155,10 @@
       } catch(e){ console.warn('Logo niet toegevoegd:', e); }
     }
 
+    function formatDateNL(iso){
+      try { const d = new Date(iso); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; } catch { return iso; }
+    }
+
     async function generatePdf(){
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
@@ -142,38 +174,61 @@
       const oms  = document.getElementById('omschrijving').value.trim();
       const bedragRaw = document.getElementById('bedrag').value.trim();
       const bedrag = parseEuro(bedragRaw);
-      const dnota = document.getElementById('datumNota').value || new Date().toISOString().slice(0,10);
+  const dnota = document.getElementById('datumNota').value || new Date().toISOString().slice(0,10);
       const iban  = selectedIban();
       const email = document.getElementById('contactEmail').value.trim();
       const phone = document.getElementById('contactPhone').value.trim();
 
-      if (!naam || !oms || isNaN(bedrag) || !dnota || !iban){ alert('Vul Naam, Omschrijving, Bedrag, Datum en Rekeningnummer in.'); return; }
+  // custom IBAN vereist indien gekozen
+  const keuze = document.querySelector('input[name="rekeningKeuze"]:checked')?.value || 'leidingskas';
+  if (keuze === 'custom' && !(iban && iban.length >= 12)) { alert('Vul een geldig eigen rekeningnummer (IBAN) in.'); return; }
+  if (!naam || !oms || isNaN(bedrag) || !dnota || !iban){ alert('Vul Naam, Omschrijving, Bedrag, Datum en Rekeningnummer in.'); return; }
 
       // Due date: 14 dagen na dnota
       const d = new Date(dnota);
       const verval = new Date(d.getTime() + 14*24*60*60*1000);
-      const vervalStr = verval.toISOString().slice(0,10);
+      const vervalStrISO = verval.toISOString().slice(0,10);
+      const dnotaNL = formatDateNL(dnota);
+      const vervalNL = formatDateNL(vervalStrISO);
 
-      let y=38; const line=(l,v)=>{ doc.setFont('helvetica','bold'); doc.text(l+':',12,y); doc.setFont('helvetica','normal'); doc.text(v||'-',48,y); y+=6; };
-      line('Referentie', ref);
-      line('Naam betaler', naam);
-      line('Omschrijving', oms);
-      line('Bedrag', formatEuro(bedrag));
-      line('Datum', dnota);
-      line('IBAN bestemming', iban);
-      if (email) line('Contact e-mail', email);
-      if (phone) line('Contact telefoon', phone);
+      // Info blok (zoals voorbeeld): Referentie, Factuurdatum, Vervaldatum
+      let y = 38;
+      doc.autoTable({
+        startY: y,
+        theme: 'plain',
+        styles: { font: 'helvetica', fontSize: 10, cellPadding: 2 },
+        columnStyles: { 0: { fontStyle: 'bold', cellWidth: 38 }, 1: { cellWidth: 60 }, 2: { fontStyle: 'bold', cellWidth: 38 }, 3: { cellWidth: 60 } },
+        body: [
+          ['Referentie', ref, 'Factuurdatum', dnotaNL],
+          ['Vervaldatum', vervalNL, 'Betaling naar', iban]
+        ]
+      });
+      y = (doc.lastAutoTable && doc.lastAutoTable.finalY) ? doc.lastAutoTable.finalY + 8 : y + 20;
 
-      y += 2;
+      // Items tabel (#, Omschrijving, Bedrag)
+      doc.autoTable({
+        startY: y,
+        head: [['#','Omschrijving','Bedrag']],
+        body: [[ '1', oms, formatEuro(bedrag) ]],
+        theme: 'grid',
+        styles: { font: 'helvetica', fontSize: 11 },
+        headStyles: { fillColor: [40,40,40] },
+        columnStyles: { 0: { cellWidth: 12 }, 1: { cellWidth: 130 }, 2: { halign: 'right' } }
+      });
+      y = (doc.lastAutoTable && doc.lastAutoTable.finalY) ? doc.lastAutoTable.finalY + 6 : y + 24;
+
+      // Totaal blok
       doc.setFont('helvetica','bold');
-      doc.text(`Gelieve uiterlijk binnen 14 dagen (vóór ${vervalStr}) te betalen.`, 12, y);
-      y += 6;
-      doc.setFont('helvetica','normal');
-      doc.text(`Overschrijving naar ${iban} met vermelding van referentie ${ref}.`, 12, y);
+      doc.text('Totaal', 150, y);
+      doc.text(formatEuro(bedrag), 198 - 12, y, { align: 'right' });
       y += 12;
-      doc.text('Met vriendelijke groet,', 12, y); y += 6;
-      doc.text(CHIRO_NAAM, 12, y); y += 6;
-      doc.text(CHIRO_ADRES, 12, y);
+
+      // Betaalopmerking
+      doc.setFont('helvetica','normal');
+      doc.text(`Gelieve binnen 14 dagen te betalen op ${iban} met vermelding van referentie ${ref}.`, 12, y);
+      y += 10;
+      if (email) { doc.text(`Contact e-mail: ${email}`, 12, y); y += 6; }
+      if (phone) { doc.text(`Contact telefoon: ${phone}`, 12, y); y += 6; }
 
       const fname = `Onkostennota-${ref}.pdf`;
       doc.save(fname);
@@ -188,7 +243,7 @@
       const d = new Date(dnota); const verval = new Date(d.getTime() + 14*24*60*60*1000); const vervalStr = verval.toISOString().slice(0,10);
       const iban = selectedIban();
 
-      const subject = encodeURIComponent(`Onkostennota ${ref} – ${CHIRO_NAAM}`);
+  const subject = encodeURIComponent(`Onkostennota ${ref} – ${CHIRO_NAAM}`);
       const lines = [
         `Beste ${naam || ''},`,
         '',
@@ -214,6 +269,16 @@
       // Init rekening UI
       updateIbanUI();
       document.getElementById('btnEmail').addEventListener('click', openEmailDraft);
+      // Default datum = vandaag
+      const dn = document.getElementById('datumNota');
+      if (dn && !dn.value) dn.value = new Date().toISOString().slice(0,10);
+      // Theme toggle
+      const navTheme = document.getElementById('navTheme');
+      if (navTheme) navTheme.addEventListener('click', async ()=>{
+        const current = document.body.dataset.theme || localStorage.getItem('theme') || 'dark';
+        const next = current === 'dark' ? 'light' : 'dark';
+        applyTheme(next); await saveThemePreference(next); navTheme.textContent = next==='light' ? '🌞' : '🌙';
+      });
     });
   </script>
 
@@ -231,10 +296,16 @@
   </style>
 </head>
 <body>
-  <nav id="mainNav">
+  <nav id="mainNav" style="display:none;">
     <span>Chiro Kattenbos</span>
     <a href="index.html">Home</a>
-    <button id="navLogout" style="margin-left:auto;">Uitloggen</button>
+    <a id="navSamenvatting" href="samenvatting.html" target="_blank">Samenvatting</a>
+    <a id="navEvenementen" href="evenementen.html">Evenementen</a>
+    <a id="navBeheer" href="gebruikersbeheer.html">Gebruikersbeheer</a>
+    <a id="navOnkostennota" href="onkostennota.html" style="display:none;">Onkostennota</a>
+    <button id="navTheme" title="Schakel thema" style="display:none;">🌙</button>
+    <button id="navExportPdf" class="push-right">Export PDF</button>
+    <button id="navLogout">Uitloggen</button>
   </nav>
 
   <div class="container">
@@ -256,7 +327,7 @@
           <img id="logo" src="chiro-logo.png" alt="Chiro logo" style="width:32px; height:32px; object-fit:contain;" />
           Onkostennota
         </h1>
-        <p>Vul de gegevens in en klik op Genereren. Deze kostennota vermeldt automatisch dat we {CHIRO_NAAM} zijn, het adres en een betaaltermijn van 14 dagen.</p>
+  <p>Vul de gegevens in en klik op Genereren. De kostennota vermeldt automatisch dat we Chiro Kattenbos zijn, ons adres en een betaaltermijn van 14 dagen.</p>
       </div>
 
       <div class="card" style="margin-bottom:1rem;">
@@ -269,7 +340,7 @@
 
           <div class="full" style="display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
             <label style="margin-right:10px;">Rekeningnummer:</label>
-            <label><input type="radio" name="rekeningKeuze" value="leidingskas" checked> Leidingskas (${LEIDINGSKAS_IBAN})</label>
+            <label><input type="radio" name="rekeningKeuze" value="leidingskas" checked> BE38 7350 3401 6672</label>
             <label><input type="radio" name="rekeningKeuze" value="custom"> Eigen rekeningnummer</label>
           </div>
           <div id="ibanCustomWrap" class="full" style="display:none;">
@@ -295,5 +366,6 @@
 </body>
 <script src="sw-register.js"></script>
 </html>
+
 
 
