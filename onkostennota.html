@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Onkostennota – Chiro Kattenbos</title>
+  <link rel="stylesheet" href="style.css?v=20250926" />
+  <meta name="theme-color" content="#111827" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="favicon.ico" sizes="any" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+
+  <!-- Firebase SDKs (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-firestore-compat.js"></script>
+
+  <!-- jsPDF + autotable -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+  <script>
+    // Zelfde Firebase config als index.html
+    const firebaseConfig = {
+      apiKey: "AIzaSyC-UaXhh5juhV4raXWnzku9fSZZD75-y9w",
+      authDomain: "uitgavebeheerch.firebaseapp.com",
+      databaseURL: "https://uitgavebeheerch-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "uitgavebeheerch",
+      storageBucket: "uitgavebeheerch.firebasestorage.app",
+      messagingSenderId: "461673562296",
+      appId: "1:461673562296:web:d90a026cd685400139f44d",
+      measurementId: "G-K8NYLSE5EF"
+    };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // Helpers
+    function parseEuro(str){
+      if (typeof str !== 'string') return NaN;
+      const clean = str.trim().replace(/\s/g,'').replace(/\.(?=\d{3}(\D|$))/g,'').replace(',', '.');
+      return Number(clean);
+    }
+    function formatEuro(v){
+      return new Intl.NumberFormat('nl-BE',{ style:'currency', currency:'EUR' }).format(+v || 0);
+    }
+
+    // Auth guard: alleen financieel
+    firebase.auth().onAuthStateChanged(async (user)=>{
+      const login = document.getElementById('loginBlock');
+      const page  = document.getElementById('page');
+      if (!user){ login.style.display='block'; page.style.display='none'; return; }
+      try {
+        const snap = await db.collection('gebruikers').doc(user.uid).get();
+        const data = snap.exists ? snap.data() : {};
+        if (data.rol !== 'financieel'){
+          alert('Deze pagina is enkel voor financieel.');
+          location.href = 'index.html';
+          return;
+        }
+        // Prefill
+        document.getElementById('email').value = user.email || '';
+        if (data.groep) document.getElementById('groep').value = data.groep;
+        if (data.naam) document.getElementById('naam').value = data.naam;
+        login.style.display='none'; page.style.display='block';
+      } catch (e){ console.error(e); alert('Kon gebruikersrechten niet laden.'); location.href='index.html'; }
+    });
+
+    async function handleLogin(){
+      const em = document.getElementById('loginEmail').value.trim();
+      const pw = document.getElementById('loginPass').value;
+      const fout = document.getElementById('loginFout');
+      fout.textContent = '';
+      try { await firebase.auth().signInWithEmailAndPassword(em, pw); }
+      catch(err){ fout.textContent = err?.message || 'Login mislukt.'; }
+    }
+
+    function addRow(pref={}){
+      const body = document.getElementById('regelsBody');
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input type="date" class="r-datum" value="${pref.datum || ''}" required></td>
+        <td><input type="text" class="r-oms" placeholder="Omschrijving" value="${pref.omschrijving || ''}" required></td>
+        <td><input type="text" class="r-bedrag" inputmode="decimal" pattern="^\\d+(?:[\\.,]\\d{1,2})?$" placeholder="bv. 12,30" value="${pref.bedrag || ''}" required></td>
+        <td><button type="button" class="btn sm del">Verwijder</button></td>`;
+      tr.querySelector('.del').addEventListener('click', ()=> tr.remove());
+      body.appendChild(tr);
+    }
+
+    async function addLogo(doc){
+      try {
+        const res = await fetch('chiro-logo.png');
+        if (!res.ok) return;
+        const blob = await res.blob();
+        const dataUrl = await new Promise((resolve, reject)=>{
+          const fr = new FileReader(); fr.onload=()=>resolve(fr.result); fr.onerror=reject; fr.readAsDataURL(blob);
+        });
+        doc.addImage(dataUrl, 'PNG', 15, 10, 28, 28);
+        doc.setFontSize(12); doc.text('Chiro Kattenbos', 48, 20);
+      } catch(e){ console.warn('Logo niet toegevoegd:', e); }
+    }
+
+    async function generatePdf(){
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      // Header
+      await addLogo(doc);
+      doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.text('Onkostennota', 105, 18, { align:'center' });
+      doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.text('Chiro Kattenbos', 105, 26, { align:'center' });
+
+      // Gegevens
+      const naam = document.getElementById('naam').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const groep = document.getElementById('groep').value.trim();
+      const iban  = document.getElementById('iban').value.trim();
+      const dnota = document.getElementById('datumNota').value || new Date().toISOString().slice(0,10);
+
+      let y=38; const line=(l,v)=>{ doc.setFont('helvetica','bold'); doc.text(l+':',12,y); doc.setFont('helvetica','normal'); doc.text(v||'-',45,y); y+=6; };
+      line('Naam', naam); line('E-mail', email); line('Groep', groep); line('IBAN', iban); line('Datum nota', dnota);
+
+      // Regels verzamelen
+      const rows=[]; let totaal=0;
+      document.querySelectorAll('#regelsBody tr').forEach(tr=>{
+        const d = tr.querySelector('.r-datum').value||'-';
+        const o = (tr.querySelector('.r-oms').value||'').trim();
+        const b = parseEuro(tr.querySelector('.r-bedrag').value||'');
+        if (!o || isNaN(b)) return; totaal+=b; rows.push([d,o,formatEuro(b)]);
+      });
+      if (!rows.length){ alert('Voeg minstens één regel toe.'); return; }
+
+      doc.autoTable({ startY: y+4, head: [["Datum","Omschrijving","Bedrag"]], body: rows, theme:'grid', styles:{ font:'helvetica', fontSize:10 }, headStyles:{ fillColor:[40,40,40] } });
+
+      const afterY = doc.lastAutoTable.finalY || (y+10);
+      doc.setFont('helvetica','bold'); doc.text(`Totaal: ${formatEuro(totaal)}`, 198-12, afterY+10, { align:'right' });
+      doc.setFont('helvetica','normal'); doc.text('Handtekening:', 12, afterY+22); doc.line(40, afterY+22, 120, afterY+22);
+
+      const fname = `Onkostennota-${(naam||'onbekend')}-${dnota}.pdf`.replace(/\s+/g,'_');
+      doc.save(fname);
+    }
+
+    document.addEventListener('DOMContentLoaded', ()=>{
+      // UI handlers
+      document.getElementById('addRow').addEventListener('click', ()=> addRow());
+  document.getElementById('genPdf').addEventListener('click', ()=>{ generatePdf(); });
+      document.getElementById('navLogout').addEventListener('click', ()=> firebase.auth().signOut().then(()=> location.href='index.html'));
+      // Start met 1 regel
+      addRow();
+    });
+  </script>
+
+  <style>
+    .container { max-width: 1000px; margin: 0 auto; padding: 1rem; }
+    .card { background: var(--card-bg, rgba(255,255,255,0.04)); border-radius: 12px; padding: 1rem; box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-grid .full { grid-column: 1 / -1; }
+    .btn { padding: 10px 14px; border: 0; border-radius: 8px; background: #2563eb; color: #fff; cursor: pointer; }
+    .btn.sm { padding: 6px 10px; font-size: 0.9rem; background: #4b5563; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border-bottom: 1px solid rgba(255,255,255,0.08); padding: 8px; }
+    .actions { display: flex; gap: 8px; }
+    @media (max-width: 800px) { .form-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <nav id="mainNav">
+    <span>Chiro Kattenbos</span>
+    <a href="index.html">Home</a>
+    <button id="navLogout" style="margin-left:auto;">Uitloggen</button>
+  </nav>
+
+  <div class="container">
+    <!-- Login fallback -->
+    <div id="loginBlock" class="card" style="display:none;">
+      <h2>Inloggen</h2>
+      <div class="form-grid">
+        <input type="email" id="loginEmail" placeholder="E-mailadres" />
+        <input type="password" id="loginPass" placeholder="Wachtwoord" />
+        <button class="btn" onclick="handleLogin()">Inloggen</button>
+        <p id="loginFout" class="full" style="color:#ef4444;"></p>
+      </div>
+    </div>
+
+    <!-- Pagina -->
+    <div id="page" style="display:none;">
+      <div class="card" style="margin-bottom:1rem;">
+        <h1 style="margin:0 0 .5rem 0; display:flex; align-items:center; gap:10px;">
+          <img id="logo" src="chiro-logo.png" alt="Chiro logo" style="width:32px; height:32px; object-fit:contain;" />
+          Onkostennota
+        </h1>
+        <p>Vul de gegevens in en voeg één of meerdere regels toe. Klik vervolgens op Genereren.</p>
+      </div>
+
+      <div class="card" style="margin-bottom:1rem;">
+        <div class="form-grid">
+          <input type="text" id="naam" class="full" placeholder="Naam" />
+          <input type="email" id="email" class="full" placeholder="E-mail" />
+          <input type="text" id="groep" placeholder="Groep (bv. Ribbels)" />
+          <input type="text" id="iban" placeholder="IBAN (BE00 0000 0000 0000)" />
+          <input type="date" id="datumNota" />
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:1rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.5rem;">
+          <h3 style="margin:0;">Regels</h3>
+          <div class="actions">
+            <button class="btn sm" id="addRow">+ Regel</button>
+            <button class="btn" id="genPdf">Genereren</button>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr><th>Datum</th><th>Omschrijving</th><th>Bedrag (€)</th><th>Actie</th></tr>
+            </thead>
+            <tbody id="regelsBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+<script src="sw-register.js"></script>
+</html>
