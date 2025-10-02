@@ -12,6 +12,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-storage-compat.js"></script>
 
   <!-- jsPDF + autotable -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -164,7 +165,28 @@
       try { const d = new Date(iso); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; } catch { return iso; }
     }
 
-    async function generatePdf(){
+    function collectRows(){
+      const rows = [];
+      document.querySelectorAll('#regelsBody tr').forEach((tr, i)=>{
+        const oms = (tr.querySelector('.r-oms')?.value || '').trim();
+        const b = parseEuro((tr.querySelector('.r-bedrag')?.value || '').trim());
+        if (oms && !isNaN(b)) rows.push({ nr: i+1, omschrijving: oms, bedrag: b });
+      });
+      return rows;
+    }
+
+    function addRow(pref={}){
+      const body = document.getElementById('regelsBody');
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input type="text" class="r-oms" placeholder="Omschrijving" value="${pref.omschrijving || ''}" required></td>
+        <td><input type="text" class="r-bedrag" inputmode="decimal" pattern="^\\d+(?:[\\.,]\\d{1,2})?$" placeholder="bv. 12,30" value="${pref.bedrag || ''}" required></td>
+        <td><button type="button" class="btn sm del">🗑️</button></td>`;
+      tr.querySelector('.del').addEventListener('click', ()=> tr.remove());
+      body.appendChild(tr);
+    }
+
+    async function buildPdfBlob({ref, dnota, iban, email, phone, rows}){
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
 
@@ -173,21 +195,9 @@
       doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.text('Onkostennota', 105, 18, { align:'center' });
       doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.text(`${CHIRO_NAAM} — ${CHIRO_ADRES}`, 105, 26, { align:'center' });
 
-      // Gegevens
-      const ref = document.getElementById('referentie').value || await allocateReference();
+      // Gegevens (naam wordt onderaan vermeld, items in tabel)
       const naam = document.getElementById('betaler').value.trim();
-      const oms  = document.getElementById('omschrijving').value.trim();
-      const bedragRaw = document.getElementById('bedrag').value.trim();
-      const bedrag = parseEuro(bedragRaw);
-  const dnota = document.getElementById('datumNota').value || new Date().toISOString().slice(0,10);
-      const iban  = selectedIban();
-      const email = document.getElementById('contactEmail').value.trim();
-      const phone = document.getElementById('contactPhone').value.trim();
-
-  // custom IBAN vereist indien gekozen
-  const keuze = document.querySelector('input[name="rekeningKeuze"]:checked')?.value || 'leidingskas';
-  if (keuze === 'custom' && !(iban && iban.length >= 12)) { alert('Vul een geldig eigen rekeningnummer (IBAN) in.'); return; }
-  if (!naam || !oms || isNaN(bedrag) || !dnota || !iban){ alert('Vul Naam, Omschrijving, Bedrag, Datum en Rekeningnummer in.'); return; }
+      if (!naam) throw new Error('Vul de naam van de betaler in.');
 
       // Due date: 14 dagen na dnota
       const d = new Date(dnota);
@@ -211,10 +221,12 @@
       y = (doc.lastAutoTable && doc.lastAutoTable.finalY) ? doc.lastAutoTable.finalY + 8 : y + 20;
 
       // Items tabel (#, Omschrijving, Bedrag)
+      const bodyRows = rows.map((r,i)=> [String(i+1), r.omschrijving, formatEuro(r.bedrag)]);
+      const totaal = rows.reduce((s,r)=> s + (r.bedrag||0), 0);
       doc.autoTable({
         startY: y,
         head: [['#','Omschrijving','Bedrag']],
-        body: [[ '1', oms, formatEuro(bedrag) ]],
+        body: bodyRows,
         theme: 'grid',
         styles: { font: 'helvetica', fontSize: 11 },
         headStyles: { fillColor: [40,40,40] },
@@ -225,7 +237,7 @@
       // Totaal blok
       doc.setFont('helvetica','bold');
       doc.text('Totaal', 150, y);
-      doc.text(formatEuro(bedrag), 198 - 12, y, { align: 'right' });
+      doc.text(formatEuro(totaal), 198 - 12, y, { align: 'right' });
       y += 12;
 
       // Betaalopmerking
@@ -234,34 +246,84 @@
       y += 10;
       if (email) { doc.text(`Contact e-mail: ${email}`, 12, y); y += 6; }
       if (phone) { doc.text(`Contact telefoon: ${phone}`, 12, y); y += 6; }
+      doc.text(`Naam betaler: ${naam}`, 12, y);
 
-      const fname = `Onkostennota-${ref}.pdf`;
-      doc.save(fname);
+      const blob = doc.output('blob');
+      return blob;
     }
 
-    function openEmailDraft(){
-      const ref = document.getElementById('referentie').value;
-      const email = document.getElementById('contactEmail').value.trim();
+    async function saveKostennotaAndUpload({download=false}={}){
+      const ref = document.getElementById('referentie').value || await allocateReference();
       const naam = document.getElementById('betaler').value.trim();
-      const bedrag = parseEuro(document.getElementById('bedrag').value.trim());
       const dnota = document.getElementById('datumNota').value || new Date().toISOString().slice(0,10);
-      const d = new Date(dnota); const verval = new Date(d.getTime() + 14*24*60*60*1000); const vervalStr = verval.toISOString().slice(0,10);
+      const email = document.getElementById('contactEmail').value.trim();
+      const phone = document.getElementById('contactPhone').value.trim();
       const iban = selectedIban();
+      const rows = collectRows();
+      if (!rows.length) throw new Error('Voeg minstens één kostregel toe.');
+      const totaal = rows.reduce((s,r)=> s + (r.bedrag||0), 0);
 
-  const subject = encodeURIComponent(`Onkostennota ${ref} – ${CHIRO_NAAM}`);
+      // Validaties
+      const keuze = document.querySelector('input[name="rekeningKeuze"]:checked')?.value || 'leidingskas';
+      if (keuze === 'custom' && !(iban && iban.length >= 12)) throw new Error('Vul een geldig eigen rekeningnummer (IBAN) in.');
+      if (!naam || !dnota || !iban) throw new Error('Vul Naam, Datum en Rekeningnummer in.');
+
+      // PDF maken (blob)
+      const blob = await buildPdfBlob({ref, dnota, iban, email, phone, rows});
+
+      // Uploaden naar Storage
+      const storageRef = firebase.storage().ref().child(`kostennota/${ref}.pdf`);
+      const snap = await storageRef.put(blob, { contentType: 'application/pdf' });
+      const pdfUrl = await snap.ref.getDownloadURL();
+
+      // Opslaan naar Firestore
+      const uid = firebase.auth().currentUser?.uid || null;
+      const data = {
+        ref, naam, dnota, iban,
+        email: email || null,
+        phone: phone || null,
+        rows,
+        totaal: Number(totaal.toFixed(2)),
+        createdBy: uid,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        pdfUrl
+      };
+      await firebase.firestore().collection('kostennota').doc(ref).set(data, { merge: true });
+
+      if (download){
+        // download client-side ook
+        const a = document.createElement('a');
+        a.href = pdfUrl; a.download = `Onkostennota-${ref}.pdf`; a.target = '_blank';
+        document.body.appendChild(a); a.click(); a.remove();
+      }
+      return { ref, pdfUrl, totaal, dnota, iban };
+    }
+
+    async function openEmailDraft(){
+      // Zorg dat pdf geüpload en opgeslagen is
+      let saved;
+      try { saved = await saveKostennotaAndUpload({ download: false }); }
+      catch(e){ alert(e.message || String(e)); return; }
+      const { ref, pdfUrl, totaal, dnota, iban } = saved;
+      const naam = document.getElementById('betaler').value.trim();
+      const emailTo = document.getElementById('contactEmail').value.trim();
+      const d = new Date(dnota); const verval = new Date(d.getTime() + 14*24*60*60*1000); const vervalStr = verval.toISOString().slice(0,10);
+      const subject = encodeURIComponent(`Onkostennota ${ref} – ${CHIRO_NAAM}`);
       const lines = [
         `Beste ${naam || ''},`,
         '',
-        `In bijlage vindt u de onkostennota met referentie ${ref}.`,
-        `Gelieve ${formatEuro(bedrag)} over te schrijven naar ${iban} met vermelding van de referentie ${ref}.`,
+        `Hierbij de onkostennota met referentie ${ref}.`,
+        `Gelieve ${formatEuro(totaal)} over te schrijven naar ${iban} met vermelding van referentie ${ref}.`,
         `Betaaltermijn: uiterlijk ${vervalStr} (14 dagen na ${dnota}).`,
+        '',
+        `Je kan de kostennota hier downloaden: ${pdfUrl}`,
         '',
         `Met vriendelijke groet,`,
         `${CHIRO_NAAM}`,
         `${CHIRO_ADRES}`
       ];
       const body = encodeURIComponent(lines.join('\n'));
-      const to = email || '';
+      const to = emailTo || '';
       const mailto = `mailto:${to}?subject=${subject}&body=${body}`;
       window.location.href = mailto;
     }
@@ -270,7 +332,10 @@
       // Ensure theme applied when DOM is ready
       applyTheme(localStorage.getItem('theme') || 'dark');
       // UI handlers
-      document.getElementById('genPdf').addEventListener('click', ()=>{ generatePdf(); });
+      document.getElementById('genPdf').addEventListener('click', async ()=>{
+        try { await saveKostennotaAndUpload({ download: true }); }
+        catch(e){ alert(e.message || String(e)); }
+      });
       document.querySelectorAll('input[name="rekeningKeuze"]').forEach(el=> el.addEventListener('change', updateIbanUI));
       document.getElementById('navLogout').addEventListener('click', ()=> firebase.auth().signOut().then(()=> location.href='index.html'));
       // Init rekening UI
@@ -286,6 +351,10 @@
         const next = current === 'dark' ? 'light' : 'dark';
         applyTheme(next); await saveThemePreference(next); navTheme.textContent = next==='light' ? '🌞' : '🌙';
       });
+      // Start met één lege regel
+      addRow();
+      const btnAdd = document.getElementById('btnAddRow');
+      if (btnAdd) btnAdd.addEventListener('click', ()=> addRow());
     });
   </script>
 
@@ -340,8 +409,7 @@
       <div class="card" style="margin-bottom:1rem;">
         <div class="form-grid">
           <input type="text" id="betaler" class="full" placeholder="Voor- en achternaam betaler" />
-          <input type="text" id="omschrijving" class="full" placeholder="Reden / omschrijving" />
-          <input type="text" id="bedrag" inputmode="decimal" pattern="^\d+(?:[\.,]\d{1,2})?$" placeholder="Bedrag, bv. 12,30" />
+          <input type="text" id="omschrijving" class="full" placeholder="Algemene reden / omschrijving (optioneel)" />
           <input type="date" id="datumNota" />
           <input type="text" id="referentie" class="full" placeholder="Referentie (automatisch)" readonly />
 
@@ -353,6 +421,25 @@
           <div id="ibanCustomWrap" class="full" style="display:none;">
             <input type="text" id="ibanCustom" placeholder="IBAN (BE00 0000 0000 0000)" />
           </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:1rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.5rem;">
+          <h3 style="margin:0;">Kosten</h3>
+          <button class="btn sm" type="button" id="btnAddRow">+ Regel</button>
+        </div>
+        <div class="table-scroll">
+          <table style="width:100%;">
+            <thead>
+              <tr>
+                <th style="text-align:left;">Omschrijving</th>
+                <th style="text-align:right; width:160px;">Bedrag (€)</th>
+                <th style="width:70px;">Actie</th>
+              </tr>
+            </thead>
+            <tbody id="regelsBody"></tbody>
+          </table>
         </div>
       </div>
 
@@ -373,6 +460,7 @@
 </body>
 <!-- Service worker registration removed to avoid 404 when file is not present on this path -->
 </html>
+
 
 
 
