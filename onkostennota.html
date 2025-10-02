@@ -6,9 +6,7 @@
   <title>Onkostennota – Chiro Kattenbos</title>
   <link rel="stylesheet" href="style.css?v=20250926" />
   <meta name="theme-color" content="#111827" />
-  <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="icon" href="favicon.ico" sizes="any" />
-  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <!-- PWA links removed here to avoid 404s on GitHub Pages path; can be re-added when assets are present -->
 
   <!-- Firebase SDKs (compat) -->
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
@@ -35,9 +33,16 @@
     const db = firebase.firestore();
 
   // Theme helpers
-  function applyTheme(theme){ document.body.dataset.theme = theme; }
+  function applyTheme(theme){
+    const b = document.body;
+    if (!b) return;
+    if (!b.dataset) b.dataset = {};
+    b.dataset.theme = theme;
+  }
   async function saveThemePreference(theme){ try { localStorage.setItem('theme', theme); } catch {} }
-  applyTheme(localStorage.getItem('theme') || 'dark');
+  // Apply theme immediately if body exists; otherwise set after DOMContentLoaded
+  const __initTheme = localStorage.getItem('theme') || 'dark';
+  if (document.body) applyTheme(__initTheme);
 
   // Helpers
     function parseEuro(str){
@@ -262,6 +267,8 @@
     }
 
     document.addEventListener('DOMContentLoaded', ()=>{
+      // Ensure theme applied when DOM is ready
+      applyTheme(localStorage.getItem('theme') || 'dark');
       // UI handlers
       document.getElementById('genPdf').addEventListener('click', ()=>{ generatePdf(); });
       document.querySelectorAll('input[name="rekeningKeuze"]').forEach(el=> el.addEventListener('change', updateIbanUI));
@@ -364,8 +371,9 @@
     </div>
   </div>
 </body>
-<script src="sw-register.js"></script>
+<!-- Service worker registration removed to avoid 404 when file is not present on this path -->
 </html>
+
 
 
 
