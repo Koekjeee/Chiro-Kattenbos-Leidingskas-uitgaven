@@ -164,6 +164,18 @@ document.addEventListener("DOMContentLoaded", () => {
   async function uploadBewijs(file){
     if (!file) throw new Error("Geen bestand opgegeven voor upload.");
 
+    // Zorg dat user echt ingelogd is voordat we een pad met uid construeren
+    const authUser = firebase.auth().currentUser;
+    if (!authUser) {
+      throw new Error("Niet ingelogd (currentUser is null) op moment van upload.");
+    }
+    try {
+      // Forceer een vers ID token (kan 1e seconden nog ontbreken)
+      await authUser.getIdToken(true);
+    } catch (e) {
+      console.warn("Kon ID token niet vernieuwen", e);
+    }
+
     const cloudinaryConfigured = (
       /^https:\/\/api\.cloudinary\.com\/v1_1\/[^<>\s]+\/upload$/i.test(CLOUDINARY_URL) &&
       CLOUDINARY_PRESET &&
@@ -201,10 +213,11 @@ document.addEventListener("DOMContentLoaded", () => {
       rootRef = needsOverride ? storage.refFromURL(`gs://${projectId}.appspot.com`) : storage.ref();
     } catch(e){ rootRef = storage.ref(); }
 
-    const uid = firebase.auth().currentUser?.uid || 'anon';
+    const uid = authUser.uid;
     const path = `bewijsjes/${uid}/${Date.now()}-${sanitizeFilename(file.name)}`;
     const meta = { contentType: file.type || 'application/octet-stream' };
     try {
+      console.debug('[uploadBewijs] attempt', { bucket: (firebase.app().options||{}).storageBucket, resolvedRoot: !!rootRef, path, contentType: meta.contentType });
       const snap = await rootRef.child(path).put(file, meta);
       return await snap.ref.getDownloadURL();
     } catch(e){
@@ -644,6 +657,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Roep deze functie aan na het tonen van het beheerpaneel:
   // (Laatste dubbele toonBeheerPaneel verwijderd - gebruik geconsolideerde versie)
 });
+
 
 
 
