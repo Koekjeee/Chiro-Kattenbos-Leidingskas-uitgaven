@@ -159,7 +159,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // --- Bewijs upload: Cloudinary (optioneel) of Firebase Storage (fallback) ---
   // Vul deze in als je Cloudinary wilt gebruiken (unsigned upload):
   // Voorbeeld: const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/<cloud-name>/upload";
-CLOUDINARY_URL=cloudinary:<HRSOh967ZGDddEFtz3ZzWoNzQVw>:<898556692854989>@dxizebpwn
+CLOUDINARY_URL = "<HRSOh967ZGDddEFtz3ZzWoNzQVw>:<898556692854989>@dxizebpwn"
 const CLOUDINARY_PRESET = "<chiro_upload_fotos>";
   function sanitizeFilename(name){ return (name||'bestand').replace(/[^a-z0-9._-]/gi,'_'); }
   async function uploadBewijs(file){
@@ -632,6 +632,7 @@ const CLOUDINARY_PRESET = "<chiro_upload_fotos>";
   // Roep deze functie aan na het tonen van het beheerpaneel:
   // (Laatste dubbele toonBeheerPaneel verwijderd - gebruik geconsolideerde versie)
 });
+
 
 
 
