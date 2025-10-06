@@ -157,59 +157,70 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // --- Bewijs upload: Cloudinary (optioneel) of Firebase Storage (fallback) ---
-  // Vul deze in als je Cloudinary wilt gebruiken (unsigned upload):
-  // Voorbeeld: const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/<cloud-name>/upload";
-CLOUDINARY_URL = "<HRSOh967ZGDddEFtz3ZzWoNzQVw>:<898556692854989>@dxizebpwn"
-const CLOUDINARY_PRESET = "<chiro_upload_fotos>";
+  // Zet echte waarden in deze twee constants om Cloudinary te activeren; laat < > placeholders staan om automatisch Storage te gebruiken
+  const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/<dxizebpwn>/upload"; // bv: https://api.cloudinary.com/v1_1/mijncloud/upload
+  const CLOUDINARY_PRESET = "<chiro_upload_fotos>"; // bv: chiro_bewijs_unsigned
   function sanitizeFilename(name){ return (name||'bestand').replace(/[^a-z0-9._-]/gi,'_'); }
   async function uploadBewijs(file){
     if (!file) throw new Error("Geen bestand opgegeven voor upload.");
 
-    // 1) Cloudinary (als correct ingesteld)
-    const looksLikeCloudinary = CLOUDINARY_URL.startsWith('https://api.cloudinary.com/v1_1/');
-    if (looksLikeCloudinary && CLOUDINARY_PRESET){
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("upload_preset", CLOUDINARY_PRESET);
-      const res = await fetch(CLOUDINARY_URL, { method: "POST", body: formData });
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        if (res.status === 401 || res.status === 403) {
-          throw new Error(`Upload geweigerd (HTTP ${res.status}). Controleer CLOUDINARY_URL en preset. Server zegt: ${text}`);
-        }
-        throw new Error(`Upload naar Cloudinary mislukt (HTTP ${res.status}). Response: ${text}`);
-      }
-      const data = await res.json().catch(() => null);
-      if (!data || !data.secure_url) throw new Error("Cloudinary-respons bevat geen secure_url.");
-      return data.secure_url;
-    }
+    const cloudinaryConfigured = (
+      /^https:\/\/api\.cloudinary\.com\/v1_1\/[^<>\s]+\/upload$/i.test(CLOUDINARY_URL) &&
+      CLOUDINARY_PRESET &&
+      !CLOUDINARY_URL.includes('<') &&
+      !CLOUDINARY_PRESET.includes('<')
+    );
 
-    // 2) Firebase Storage fallback
-    try {
-      if (!firebase.storage) throw new Error('Firebase Storage SDK niet geladen.');
-      const app = firebase.app();
-      const storage = firebase.storage();
-      // Probeer default bucket; zo niet, val terug op <projectId>.appspot.com
-      let rootRef;
+    if (cloudinaryConfigured) {
       try {
-        const bucket = app.options && app.options.storageBucket;
-        const projectId = (app.options && app.options.projectId) || 'default-bucket';
-        const needsOverride = !bucket || /firebasestorage\.app$/i.test(bucket) || !/appspot\.com$/i.test(bucket);
-        rootRef = needsOverride ? storage.refFromURL(`gs://${projectId}.appspot.com`) : storage.ref();
-      } catch(e){ rootRef = storage.ref(); }
-
-      const uid = firebase.auth().currentUser?.uid || 'anon';
-      const path = `bewijsjes/${uid}/${Date.now()}-${sanitizeFilename(file.name)}`;
-      const meta = { contentType: file.type || 'application/octet-stream' };
-      const snap = await rootRef.child(path).put(file, meta);
-      const url = await snap.ref.getDownloadURL();
-      return url;
-    } catch (e){
-      const hint = (e && e.message || '').toLowerCase().includes('unauthorized')
-        ? 'Je hebt geen rechten om naar Firebase Storage te schrijven. Controleer Storage-regels en of je bent ingelogd.'
-        : 'Controleer of Firebase Storage is ingeschakeld. Zo niet, zet in config storageBucket op <projectId>.appspot.com of laat de fallback z\'n werk doen.';
-      throw new Error(`Upload naar Firebase Storage mislukt: ${(e && e.message) || e}. ${hint}`);
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('upload_preset', CLOUDINARY_PRESET);
+        const res = await fetch(CLOUDINARY_URL, { method: 'POST', body: fd });
+        if (res.ok) {
+          const data = await res.json().catch(()=>null);
+          if (data && data.secure_url) return data.secure_url;
+          console.warn('Cloudinary zonder secure_url, fallback naar Storage');
+        } else {
+          console.warn('Cloudinary upload status', res.status, 'fallback naar Storage');
+        }
+      } catch (err) {
+        console.warn('Cloudinary uitzondering, fallback naar Storage', err);
+      }
     }
+
+    // Firebase Storage fallback
+    if (!firebase.storage) throw new Error('Firebase Storage SDK niet geladen.');
+    const app = firebase.app();
+    const storage = firebase.storage();
+    let rootRef;
+    try {
+      const bucket = app.options && app.options.storageBucket;
+      const projectId = (app.options && app.options.projectId) || 'default-bucket';
+      const needsOverride = !bucket || /firebasestorage\.app$/i.test(bucket) || !/appspot\.com$/i.test(bucket);
+      rootRef = needsOverride ? storage.refFromURL(`gs://${projectId}.appspot.com`) : storage.ref();
+    } catch(e){ rootRef = storage.ref(); }
+
+    const uid = firebase.auth().currentUser?.uid || 'anon';
+    const path = `bewijsjes/${uid}/${Date.now()}-${sanitizeFilename(file.name)}`;
+    const meta = { contentType: file.type || 'application/octet-stream' };
+    try {
+      const snap = await rootRef.child(path).put(file, meta);
+      return await snap.ref.getDownloadURL();
+    } catch(e){
+      const msg = (e && e.message) || String(e);
+      if (/cors|preflight|network/i.test(msg)) {
+        throw new Error('Upload mislukt door CORS/permissie. Controleer Storage rules & allowed origins. Details: '+msg);
+      }
+      throw new Error('Upload naar Firebase Storage mislukt: '+msg);
+    }
+  }
+
+  function setUploading(state){
+    const btn = document.querySelector('#uitgaveForm button[type="submit"]');
+    if (!btn) return;
+    if (state){ btn.disabled = true; btn.dataset.prevText = btn.textContent; btn.textContent = 'Bezig...'; }
+    else { btn.disabled = false; if (btn.dataset.prevText) btn.textContent = btn.dataset.prevText; }
   }
 
   // --- Uitgaven toevoegen (submit handler) ---
@@ -233,6 +244,7 @@ const CLOUDINARY_PRESET = "<chiro_upload_fotos>";
     // Upload eerst het bewijs en stop bij fout (zodat we geen undefined naar DB schrijven)
     let bewijsUrl = "";
     try {
+      setUploading(true);
       bewijsUrl = await uploadBewijs(file);
     } catch (err) {
       console.error("Upload bewijsstuk mislukt:", err);
@@ -268,7 +280,7 @@ const CLOUDINARY_PRESET = "<chiro_upload_fotos>";
     } catch (err) {
       console.error("Opslaan uitgave mislukt:", err);
       alert("Opslaan mislukt: " + (err && err.message ? err.message : err));
-    }
+    } finally { setUploading(false); }
   });
 
   // --- Rendering / realtime ---
