@@ -159,37 +159,46 @@ document.addEventListener("DOMContentLoaded", () => {
   // --- Bewijs upload: Cloudinary (optioneel) of Firebase Storage (fallback) ---
   // Vul deze in als je Cloudinary wilt gebruiken (unsigned upload):
   // Voorbeeld: const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/<cloud-name>/upload";
-const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/<dxizebpwn>/upload";
-const CLOUDINARY_PRESET = "<chiro_upload_fotos>";
+// Cloudinary configuratie (leeg laten of placeholders => automatisch overslaan en Firebase Storage gebruiken)
+const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/<dxizebpwn>/upload"; // Zet hier je echte cloud name zonder < >, bv: https://api.cloudinary.com/v1_1/mijncloud/upload
+const CLOUDINARY_PRESET = "<chiro_upload_fotos>"; // Vervang door je unsigned upload preset
   function sanitizeFilename(name){ return (name||'bestand').replace(/[^a-z0-9._-]/gi,'_'); }
   async function uploadBewijs(file){
     if (!file) throw new Error("Geen bestand opgegeven voor upload.");
 
-    // 1) Cloudinary (als correct ingesteld)
-    const looksLikeCloudinary = CLOUDINARY_URL.startsWith('https://api.cloudinary.com/v1_1/');
-    if (looksLikeCloudinary && CLOUDINARY_PRESET){
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("upload_preset", CLOUDINARY_PRESET);
-      const res = await fetch(CLOUDINARY_URL, { method: "POST", body: formData });
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        if (res.status === 401 || res.status === 403) {
-          throw new Error(`Upload geweigerd (HTTP ${res.status}). Controleer CLOUDINARY_URL en preset. Server zegt: ${text}`);
+    // 1) Probeer Cloudinary alleen als echt ingesteld (geen < > placeholders en geldige URL + preset)
+    const cloudinaryConfigured = (
+      /^https:\/\/api\.cloudinary\.com\/v1_1\/[^<>\s]+\/upload$/i.test(CLOUDINARY_URL)
+      && CLOUDINARY_PRESET
+      && !CLOUDINARY_URL.includes('<')
+      && !CLOUDINARY_PRESET.includes('<')
+    );
+
+    if (cloudinaryConfigured) {
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("upload_preset", CLOUDINARY_PRESET);
+        const res = await fetch(CLOUDINARY_URL, { method: "POST", body: formData });
+        if (!res.ok) {
+          // Log en val stil terug op Firebase i.p.v. gebruiker direct te laten falen
+          const text = await res.text().catch(()=>"");
+          console.warn(`Cloudinary upload mislukt (${res.status}) – fallback naar Firebase Storage.`, text);
+        } else {
+          const data = await res.json().catch(() => null);
+            if (data && data.secure_url) return data.secure_url;
+          console.warn('Cloudinary respons zonder secure_url – fallback naar Firebase Storage.');
         }
-        throw new Error(`Upload naar Cloudinary mislukt (HTTP ${res.status}). Response: ${text}`);
+      } catch (err) {
+        console.warn('Cloudinary exception – fallback naar Firebase Storage.', err);
       }
-      const data = await res.json().catch(() => null);
-      if (!data || !data.secure_url) throw new Error("Cloudinary-respons bevat geen secure_url.");
-      return data.secure_url;
     }
 
-    // 2) Firebase Storage fallback
+    // 2) Firebase Storage fallback (altijd, indien Cloudinary niet of mislukt)
     try {
       if (!firebase.storage) throw new Error('Firebase Storage SDK niet geladen.');
       const app = firebase.app();
       const storage = firebase.storage();
-      // Probeer default bucket; zo niet, val terug op <projectId>.appspot.com
       let rootRef;
       try {
         const bucket = app.options && app.options.storageBucket;
@@ -207,8 +216,8 @@ const CLOUDINARY_PRESET = "<chiro_upload_fotos>";
     } catch (e){
       const hint = (e && e.message || '').toLowerCase().includes('unauthorized')
         ? 'Je hebt geen rechten om naar Firebase Storage te schrijven. Controleer Storage-regels en of je bent ingelogd.'
-        : 'Controleer of Firebase Storage is ingeschakeld. Zo niet, zet in config storageBucket op <projectId>.appspot.com of laat de fallback z\'n werk doen.';
-      throw new Error(`Upload naar Firebase Storage mislukt: ${(e && e.message) || e}. ${hint}`);
+        : 'Controleer of Firebase Storage is ingeschakeld. Zet storageBucket in config op <projectId>.appspot.com indien nodig.';
+      throw new Error(`Upload mislukt (Cloudinary + Firebase): ${(e && e.message) || e}. ${hint}`);
     }
   }
 
