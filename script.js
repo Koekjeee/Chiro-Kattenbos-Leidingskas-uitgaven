@@ -158,8 +158,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --- Bewijs upload: Cloudinary (optioneel) of Firebase Storage (fallback) ---
   // Zet echte waarden in deze twee constants om Cloudinary te activeren; laat < > placeholders staan om automatisch Storage te gebruiken
-  const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/<dxizebpwn>/upload"; // bv: https://api.cloudinary.com/v1_1/mijncloud/upload
-  const CLOUDINARY_PRESET = "<chiro_upload_fotos>"; // bv: chiro_bewijs_unsigned
+  const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dxizebpwn/upload"; // bv: https://api.cloudinary.com/v1_1/mijncloud/upload
+  const CLOUDINARY_PRESET = "chiro_upload_fotos"; // bv: chiro_bewijs_unsigned
   function sanitizeFilename(name){ return (name||'bestand').replace(/[^a-z0-9._-]/gi,'_'); }
   async function uploadBewijs(file){
     if (!file) throw new Error("Geen bestand opgegeven voor upload.");
@@ -644,7 +644,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // Roep deze functie aan na het tonen van het beheerpaneel:
   // (Laatste dubbele toonBeheerPaneel verwijderd - gebruik geconsolideerde versie)
 });
-
 
 
 
