@@ -103,6 +103,11 @@ const firebaseConfig = {
     <form id="uitgaveForm">
       <label for="groep">Groep:</label>
       <select id="groep" required></select>
+      <div id="overigeGroepenWrap" style="display:none; margin-bottom:0.5rem;">
+        <label for="overigeGroepen" style="margin-top:0.5rem;">Specificeer subgroepen (komma gescheiden):</label>
+        <input type="text" id="overigeGroepen" placeholder="bv. Ribbels, Kwiks, Extra" />
+        <small style="opacity:0.75;">Alleen zichtbaar & te gebruiken door financieel. Wordt opgeslagen bij de uitgave.</small>
+      </div>
   <label for="bedrag">Bedrag (€):</label>
   <input type="text" id="bedrag" inputmode="decimal" pattern="^\d+(?:[\.,]\d{1,2})?$" placeholder="bv. 12,30" required />
       <label for="activiteit">Activiteit/Omschrijving:</label>
@@ -171,6 +176,7 @@ const firebaseConfig = {
   <!-- Inline script voor oude toggleUserTable verwijderd -->
 </body>
 </html>
+
 
 
 
