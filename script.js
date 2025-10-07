@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
   // --- Config ---
-  const alleGroepen = ["Ribbels","Speelclubs","Rakkers","Kwiks","Tippers","Toppers","Aspi","LEIDING"];
+  const alleGroepen = ["Ribbels","Speelclubs","Rakkers","Kwiks","Tippers","Toppers","Aspi","LEIDING"]; // Basale vaste groepen
   const groepKleuren = {
     Ribbels: "rgba(59,130,246,0.18)",
     Speelclubs: "rgba(234,179,8,0.18)",
@@ -9,7 +9,8 @@ document.addEventListener("DOMContentLoaded", () => {
     Tippers: "rgba(99,102,241,0.18)",
     Toppers: "rgba(16,185,129,0.18)",
     Aspi: "rgba(249,115,22,0.18)",
-    LEIDING: "rgba(148,163,184,0.18)"
+    LEIDING: "rgba(148,163,184,0.18)",
+    Overige: "rgba(120,120,120,0.25)" // synthetische groep alleen zichtbaar voor financieel
   };
 
   // --- Globals ---
@@ -38,7 +39,8 @@ document.addEventListener("DOMContentLoaded", () => {
       tippers: groepKleuren.Tippers,
       toppers: groepKleuren.Toppers,
       aspi: groepKleuren.Aspi,
-      leiding: groepKleuren.LEIDING
+      leiding: groepKleuren.LEIDING,
+      overige: groepKleuren.Overige
     };
     return map[key] || "transparent";
   }
@@ -152,7 +154,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const select = $("groep");
     if (!select || !gebruikersData) return;
     select.innerHTML = `<option value="">-- Kies een groep --</option>`;
-    const toegestane = gebruikersData.rol === "financieel" ? alleGroepen : [gebruikersData.groep];
+    // Voeg "Overige" optioneel toe voor financieel
+    const toegestane = gebruikersData.rol === "financieel" ? [...alleGroepen, "Overige"] : [gebruikersData.groep];
     toegestane.forEach(g => { select.innerHTML += `<option value="${g}">${g}</option>`; });
   }
 
@@ -248,6 +251,20 @@ document.addEventListener("DOMContentLoaded", () => {
     const d = $("datum")?.value;
     const rekeningNummer = $("rekeningNummer")?.value.trim();
     const file = $("bewijsUpload")?.files?.[0];
+    const overigeWrap = $("overigeGroepenWrap");
+    const overigeInput = $("overigeGroepen");
+    let overigeGroepenArr = [];
+
+    if (g === "Overige") {
+      if (gebruikersData?.rol !== 'financieel') { alert("Alleen financieel mag 'Overige' gebruiken."); return; }
+      const raw = (overigeInput?.value || "").trim();
+      overigeGroepenArr = raw.split(",").map(s=>s.trim()).filter(Boolean);
+      if (!overigeGroepenArr.length) { alert("Vul minstens één groep in voor Overige (kommagescheiden)."); return; }
+      // Valideer dat alle subgroepen echte bestaande basisgroepen zijn (geen LEIDING / Overige)
+      const basisSet = new Set(alleGroepen.filter(x => x !== 'LEIDING'));
+      const invalid = overigeGroepenArr.filter(x => !basisSet.has(x));
+      if (invalid.length) { alert("Ongeldige subgroep(en): " + invalid.join(", ")); return; }
+    }
 
     if (!g || isNaN(b) || !a || !d) return alert("Gelieve alle velden correct in te vullen.");
     if (!magIndienen(g)) return alert("Je mag geen uitgave indienen voor deze groep.");
@@ -290,14 +307,20 @@ document.addEventListener("DOMContentLoaded", () => {
         bewijsUrl: bewijsUrl || "",
         status: "in_behandeling",
         rekeningNummer: rekeningNummer,
+        aangemaaktDoorUid: firebase.auth().currentUser?.uid || null,
         aangemaaktOp: firebase.firestore.FieldValue.serverTimestamp()
       };
+      if (g === 'Overige' && overigeGroepenArr.length) {
+        entry.overigeGroepen = overigeGroepenArr;
+      }
       console.debug('[DEBUG submit-uitgave] schrijf doc', entry);
       await firebase.firestore().collection("uitgaven").doc(String(nieuwNummer)).set(entry);
       console.debug('[DEBUG submit-uitgave] SUCCES nummer', nieuwNummer);
       logActie("uitgave_toegevoegd", { nummer: nieuwNummer, groep: g, bedrag: b.toFixed(2), activiteit: a, datum: d });
       // reset formulier en herlaad tabel
       $("uitgaveForm")?.reset();
+      if (overigeWrap) overigeWrap.style.display = 'none';
+      if (overigeInput) overigeInput.value = '';
       attachUitgavenListener($("filterGroep")?.value || "", $("filterBetaald")?.value || "");
     } catch (err) {
       console.error("Opslaan uitgave mislukt:", err, 'code=', err && err.code);
@@ -325,7 +348,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const rij = tbody.insertRow();
   rij.style.backgroundColor = kleurVoorGroep(u.groep);
         rij.insertCell(0).textContent = u.nummer || "-";
-        rij.insertCell(1).textContent = u.groep || "-";
+        const groepCell = rij.insertCell(1);
+        if (u.groep === 'Overige' && Array.isArray(u.overigeGroepen) && u.overigeGroepen.length) {
+          groepCell.textContent = `Overige (${u.overigeGroepen.join(', ')})`;
+          groepCell.title = 'Subgroepen: ' + u.overigeGroepen.join(', ');
+        } else {
+          groepCell.textContent = u.groep || '-';
+        }
         rij.insertCell(2).textContent = u.bedrag ? `€${u.bedrag}` : "-";
         rij.insertCell(3).textContent = u.activiteit || "-";
         rij.insertCell(4).textContent = u.datum || "-";
@@ -443,6 +472,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // vul selects / render tabelen
       vulGroepSelectie();
+      // koppel change event voor Overige toggle
+      safeOn($("groep"), 'change', () => {
+        const sel = $("groep")?.value;
+        const wrap = $("overigeGroepenWrap");
+        if (!wrap) return;
+        if (sel === 'Overige' && gebruikersData?.rol === 'financieel') {
+          wrap.style.display = 'block';
+        } else {
+          wrap.style.display = 'none';
+          const input = $("overigeGroepen"); if (input) input.value='';
+        }
+      });
 
       // herstel zichtbaarheidsregels voor financieel
       toonBeheerPaneel();
