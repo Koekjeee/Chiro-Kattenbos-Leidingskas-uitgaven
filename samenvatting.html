@@ -61,7 +61,7 @@
   })();
 
   const db = firebase.firestore();
-  const alleGroepen = ["Ribbels","Speelclubs","Rakkers","Kwiks","Tippers","Toppers","Aspi","LEIDING"];
+  const alleGroepen = ["Ribbels","Speelclubs","Rakkers","Kwiks","Tippers","Toppers","Aspi","Algemeen","LEIDING"]; // Algemeen toegevoegd
   const groepKleuren = {
     Ribbels: "rgba(59,130,246,0.18)",      // blue-500
     Speelclubs: "rgba(234,179,8,0.18)",   // amber-500
@@ -69,8 +69,10 @@
     Kwiks: "rgba(244,114,182,0.18)",      // pink-400
     Tippers: "rgba(99,102,241,0.18)",     // indigo-500
     Toppers: "rgba(16,185,129,0.18)",     // emerald-500
-    Aspi: "rgba(249,115,22,0.18)",        // orange-500
-    LEIDING: "rgba(148,163,184,0.18)"     // slate-400
+  Aspi: "rgba(249,115,22,0.18)",        // orange-500
+  Algemeen: "rgba(0,0,0,0.12)",         // neutrale grijs voor algemene kosten
+  LEIDING: "rgba(148,163,184,0.18)",    // slate-400
+  Overige: "rgba(120,120,120,0.25)"      // synthetisch
   };
 
   function kleurVoorGroep(g){
@@ -83,7 +85,9 @@
       tippers: groepKleuren.Tippers,
       toppers: groepKleuren.Toppers,
       aspi: groepKleuren.Aspi,
-      leiding: groepKleuren.LEIDING
+  leiding: groepKleuren.LEIDING,
+  algemeen: groepKleuren.Algemeen,
+  overige: groepKleuren.Overige
     };
     return map[key] || 'rgba(148,163,184,0.12)';
   }
@@ -131,18 +135,7 @@
       tdGroep.textContent = g; tr.appendChild(tdGroep);
 
       const tdLeden = document.createElement('td');
-      if (magBeheren()){
-        const inp = document.createElement('input');
-        inp.type = 'number'; inp.min = '0';
-        inp.value = String(leden);
-        inp.style.width = '90px';
-        const save = () => slaLedenOp(g, inp.value);
-        inp.addEventListener('change', save);
-        inp.addEventListener('blur', save);
-        tdLeden.appendChild(inp);
-      } else {
-        tdLeden.textContent = String(leden);
-      }
+      tdLeden.textContent = String(leden); // Altijd read-only, sync alleen via Firestore config
       tr.appendChild(tdLeden);
 
       const tdTotaal = document.createElement('td');
@@ -155,19 +148,7 @@
     });
   }
 
-  async function slaLedenOp(groep, value){
-    if (!magBeheren()) return;
-    const n = Math.max(0, parseInt(value, 10) || 0);
-    try {
-      await db.collection('config').doc('ledenPerGroep').set({ [groep]: n }, { merge: true });
-      ledenMap[groep] = n; // directe feedback
-      logActie('leden_aangepast', { groep, leden: n });
-      bouwTabel();
-    } catch (err){
-      console.error('Opslaan leden mislukt:', err);
-      const status = $('samenvattingStatus'); if(status) status.textContent = 'Opslaan mislukt: ' + (err?.message || err);
-    }
-  }
+  // schrijffunctie voor leden verwijderd: leden enkel beheerbaar via Firestore console
 
   function startListeners(){
     if (unsubLeden) { unsubLeden(); unsubLeden = null; }
@@ -239,6 +220,7 @@
 </body>
 </html>
  
+
 
 
 
