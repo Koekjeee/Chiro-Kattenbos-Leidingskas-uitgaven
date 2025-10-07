@@ -387,8 +387,26 @@ document.addEventListener("DOMContentLoaded", () => {
   firebase.auth().onAuthStateChanged(async user => {
     if (user) {
       huidigeGebruiker = user;
-      try { gebruikersData = (await haalGebruikersData(user.uid)) || {}; }
-      catch { gebruikersData = {}; }
+      try {
+        gebruikersData = (await haalGebruikersData(user.uid)) || {};
+        if (!gebruikersData || Object.keys(gebruikersData).length === 0) {
+          console.warn('[auth] Geen gebruikersdoc gevonden – maak standaard doc aan');
+          // Probeer standaard doc aan te maken met rol "leiding" tenzij email lijkt op finance
+          const defaultRol = /fin|boek|kas|treasurer|finance/i.test(user.email||'') ? 'financieel' : 'leiding';
+            const defaultGroep = 'Ribbels';
+          await firebase.firestore().collection('gebruikers').doc(user.uid).set({
+            email: user.email || '',
+            rol: defaultRol,
+            groep: defaultGroep,
+            aangemaaktOp: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+          gebruikersData = (await haalGebruikersData(user.uid)) || { rol: defaultRol, groep: defaultGroep };
+          console.info('[auth] Standaard gebruikersdoc aangemaakt', gebruikersData);
+        }
+      } catch (e) {
+        console.error('[auth] Fout bij ophalen/aanmaken gebruikersdoc', e);
+        gebruikersData = gebruikersData || {};
+      }
 
       if (gebruikersData.rol === "financieel") {
         try { ledenPerGroep = await haalLedenPerGroep(); }
@@ -401,6 +419,7 @@ document.addEventListener("DOMContentLoaded", () => {
       $("loginScherm") && ($("loginScherm").style.display = "none");
       $("appInhoud") && ($("appInhoud").style.display = "block");
       $("gebruikerInfo") && ($("gebruikerInfo").textContent = `Ingelogd als ${gebruikersData.rol || 'onbekend'} (${gebruikersData.groep || 'ALL'})`);
+  console.debug('[auth] Loaded gebruikersData', gebruikersData);
 
   // Navbar tonen + role based links
   const nav = document.getElementById('mainNav');
