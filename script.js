@@ -268,15 +268,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Schrijf uitgave naar Firebase: gebruik veilige waarden (nooit undefined)
     try {
-      // Genereer nummer (uniek) via query op bestaande nummers
-  const uitgavenSnap = await firebase.firestore().collection("uitgaven").get();
-      const bestaandeNummers = uitgavenSnap.docs.map(d => (d.data().nummer)||0);
-      let nieuwNummer;
-      do { nieuwNummer = Math.floor(1000 + Math.random() * 9000); } while (bestaandeNummers.includes(nieuwNummer));
+      console.debug('[DEBUG submit-uitgave] gebruikersData=', gebruikersData, 'authUid=', firebase.auth().currentUser?.uid, 'groepForm=', g);
+      // Probeer bestaand overzicht op te halen om uniek nummer te genereren; bij permissie-fout val terug op random.
+      let bestaandeNummers = [];
+      try {
+        const uitgavenSnap = await firebase.firestore().collection("uitgaven").get();
+        bestaandeNummers = uitgavenSnap.docs.map(d => (d.data().nummer)||0);
+      } catch(readErr){
+        console.warn('[DEBUG submit-uitgave] kon uitgaven niet lezen (val terug op random nummer):', readErr && readErr.code, readErr);
+      }
+      let nieuwNummer; let attempts=0;
+      do { nieuwNummer = Math.floor(1000 + Math.random() * 9000); attempts++; } while (bestaandeNummers.includes(nieuwNummer) && attempts < 25);
+      if (attempts>=25) console.warn('[DEBUG submit-uitgave] veel pogingen voor uniek nummer; accepteer', nieuwNummer);
       const entry = {
         nummer: nieuwNummer,
         groep: g,
-  bedrag: b.toFixed(2),
+        bedrag: b.toFixed(2),
         activiteit: a,
         datum: d,
         betaald: false,
@@ -285,13 +292,15 @@ document.addEventListener("DOMContentLoaded", () => {
         rekeningNummer: rekeningNummer,
         aangemaaktOp: firebase.firestore.FieldValue.serverTimestamp()
       };
-  await firebase.firestore().collection("uitgaven").doc(String(nieuwNummer)).set(entry);
+      console.debug('[DEBUG submit-uitgave] schrijf doc', entry);
+      await firebase.firestore().collection("uitgaven").doc(String(nieuwNummer)).set(entry);
+      console.debug('[DEBUG submit-uitgave] SUCCES nummer', nieuwNummer);
       logActie("uitgave_toegevoegd", { nummer: nieuwNummer, groep: g, bedrag: b.toFixed(2), activiteit: a, datum: d });
       // reset formulier en herlaad tabel
-        $("uitgaveForm")?.reset();
-        attachUitgavenListener($("filterGroep")?.value || "", $("filterBetaald")?.value || "");
+      $("uitgaveForm")?.reset();
+      attachUitgavenListener($("filterGroep")?.value || "", $("filterBetaald")?.value || "");
     } catch (err) {
-      console.error("Opslaan uitgave mislukt:", err);
+      console.error("Opslaan uitgave mislukt:", err, 'code=', err && err.code);
       alert("Opslaan mislukt: " + (err && err.message ? err.message : err));
     } finally { setUploading(false); }
   });
