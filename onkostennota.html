@@ -142,17 +142,14 @@
       catch(err){ fout.textContent = err?.message || 'Login mislukt.'; }
     }
 
+    // Inlined (gecomprimeerd) logo (fallback) – vervang dataUri indien je een scherper beeld wil
+    const INLINE_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAACRUlEQVR4nO2ZMU8UURiGn2xQKZRRAyUSpAiC4kIFgkiJkEoRQQQlJgoKSBEUpCEpGMsHsmXuwzsyc3uzszuzuzs7mXnP2/3PPO93nO+97zn3POd8ztgGLvABHuAMlYB95rQB6YBlwBh4AH0BX+DVgAPgR1t0vQtZb1ZgO5zLugJ7gV7gNfAC9j3Ac90VuNAO8AK8Ah8BP8Bf2wP3ufmOUAR7a0uPvQEXgZOABcBd4Bq4Bq6rpGxAarQzfwIU3gQ2AZuArU0LwGKJjlMBn4BMoCj5trgKOj4gbkQZsYJb5s3wBfMmaCY6AhsB3bRgvbQI3gQeA+8B6W9vb6r6QRa2zEBeAivA+fS1bGXsCO0G5P3mjVtYB24HVptwPQDPqL4ofY7yVmAaeA4cAg8AzYAVaAF2gGzoNPAGzAH3gWxh8yDv15F1gXtKAm9iX0wswEnwIXgIHgFHp9kXr6IeT0Mcx9ZgL2yq4gxVFN8tbQZ2iV1h7v+0F9gXkVlJH4Q4qMJT9lRzZa6LDw0L4aSpH4TH0KsJo+ppG8Kz2KcB51MAp2lFUD3mHQp2lM0Ap+lPUvTgeKo1fA1WqzMiDX6s9frKpJcBPaYqJ7PAbGlAv8C7wEtp+V6MJBJ8k8JgBWin1raAvq7rqvYG1pn40BE8BMeAx2l90CzgklK+UCrDvz/4HUWC1u+tdRJvdKW9U1WVvSBOxxXWJocx6J+WNjbOb8C83J/ExXxNv7CfofF6y2YCe4kJ8D7wT1lHngGh6BHeACfALPABPABPAB3g/B9oslD1CAAAAAElFTkSuQmCC';
     async function addLogo(doc){
       try {
-        const res = await fetch('chiro-logo.png');
-        if (!res.ok) return;
-        const blob = await res.blob();
-        const dataUrl = await new Promise((resolve, reject)=>{
-          const fr = new FileReader(); fr.onload=()=>resolve(fr.result); fr.onerror=reject; fr.readAsDataURL(blob);
-        });
-        doc.addImage(dataUrl, 'PNG', 15, 10, 28, 28);
+        // Probeer inline eerst (geen netwerk)
+        doc.addImage(INLINE_LOGO, 'PNG', 15, 10, 28, 28);
         doc.setFontSize(12); doc.text('Chiro Kattenbos', 48, 20);
-      } catch(e){ console.warn('Logo niet toegevoegd:', e); }
+      } catch(e){ console.warn('Inline logo probleem:', e); }
     }
 
     function formatDateNL(iso){
@@ -238,9 +235,17 @@
         head: [['#','Omschrijving','Bedrag']],
         body: bodyRows,
         theme: 'grid',
-        styles: { font: 'helvetica', fontSize: 11 },
-        headStyles: { fillColor: [40,40,40] },
-        columnStyles: { 0: { cellWidth: 12 }, 1: { cellWidth: 130 }, 2: { halign: 'right' } }
+        styles: { font: 'helvetica', fontSize: 11, cellPadding: 2 },
+        headStyles: { fillColor: [38,38,38] },
+        columnStyles: {
+          0: { cellWidth: 10 },
+          1: { cellWidth: 120 },
+          2: { cellWidth: 40, halign: 'right' }
+        },
+        didDrawPage: (d)=>{
+          // Geen warning laten ontstaan door overflow: verklein indien nodig
+          if (d.pageNumber > 1) doc.setFontSize(9);
+        }
       });
       y = (doc.lastAutoTable && doc.lastAutoTable.finalY) ? doc.lastAutoTable.finalY + 6 : y + 24;
 
@@ -295,6 +300,8 @@
           rootRef = needsOverride ? storage.refFromURL(`gs://${projectId}.appspot.com`) : storage.ref();
         } catch(e){ rootRef = storage.ref(); }
         const fileRef = rootRef.child(`kostennota/${ref}.pdf`);
+        // Forceer token refresh zodat Authorization header zeker aanwezig is
+        try { await firebase.auth().currentUser?.getIdToken(true); } catch(e){ console.warn('Kon ID token niet refreshen (mogelijk nog niet ingelogd?)'); }
         const snap = await fileRef.put(blob, { contentType: 'application/pdf' });
         pdfUrl = await snap.ref.getDownloadURL();
       } catch(uploadErr){
@@ -523,6 +530,7 @@
 </body>
 <!-- Service worker registration removed to avoid 404 when file is not present on this path -->
 </html>
+
 
 
 
