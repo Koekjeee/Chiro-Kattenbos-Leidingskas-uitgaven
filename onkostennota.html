@@ -175,6 +175,19 @@
       return rows;
     }
 
+    function updateTotalsUI(){
+      const rows = collectRows();
+      const totaal = rows.reduce((s,r)=> s + (r.bedrag||0), 0);
+      const badge = document.getElementById('totaalBadge');
+      if (badge) badge.textContent = formatEuro(totaal);
+      const genBtn = document.getElementById('genPdf');
+      const mailBtn = document.getElementById('btnEmail');
+      const naam = document.getElementById('betaler')?.value.trim();
+      const valid = naam && rows.length>0 && totaal>0;
+      if (genBtn) genBtn.disabled = !valid;
+      if (mailBtn) mailBtn.disabled = !valid;
+    }
+
     function addRow(pref={}){
       const body = document.getElementById('regelsBody');
       const tr = document.createElement('tr');
@@ -182,8 +195,11 @@
         <td><input type="text" class="r-oms" placeholder="Omschrijving" value="${pref.omschrijving || ''}" required></td>
         <td><input type="text" class="r-bedrag" inputmode="decimal" pattern="^\\d+(?:[\\.,]\\d{1,2})?$" placeholder="bv. 12,30" value="${pref.bedrag || ''}" required></td>
         <td><button type="button" class="btn sm del">🗑️</button></td>`;
-      tr.querySelector('.del').addEventListener('click', ()=> tr.remove());
+      tr.querySelector('.del').addEventListener('click', ()=> { tr.remove(); updateTotalsUI(); });
+      tr.querySelector('.r-bedrag').addEventListener('input', ()=> updateTotalsUI());
+      tr.querySelector('.r-oms').addEventListener('input', ()=> updateTotalsUI());
       body.appendChild(tr);
+      updateTotalsUI();
     }
 
     async function buildPdfBlob({ref, dnota, iban, email, phone, rows}){
@@ -333,14 +349,26 @@
       applyTheme(localStorage.getItem('theme') || 'dark');
       // UI handlers
       document.getElementById('genPdf').addEventListener('click', async ()=>{
-        try { await saveKostennotaAndUpload({ download: true }); }
-        catch(e){ alert(e.message || String(e)); }
+        const status = document.getElementById('genStatus');
+        if (status) { status.style.color='#60a5fa'; status.textContent='Bezig met genereren...'; }
+        try {
+          await saveKostennotaAndUpload({ download: true });
+          if (status) { status.style.color='#22c55e'; status.textContent='PDF opgeslagen & gedownload.'; }
+        } catch(e){
+          alert(e.message || String(e));
+          if (status) { status.style.color='#ef4444'; status.textContent=e.message || String(e); }
+        } finally { setTimeout(()=>{ const s=document.getElementById('genStatus'); if(s) s.textContent=''; }, 5000); }
       });
       document.querySelectorAll('input[name="rekeningKeuze"]').forEach(el=> el.addEventListener('change', updateIbanUI));
       document.getElementById('navLogout').addEventListener('click', ()=> firebase.auth().signOut().then(()=> location.href='index.html'));
       // Init rekening UI
       updateIbanUI();
-      document.getElementById('btnEmail').addEventListener('click', openEmailDraft);
+      document.getElementById('btnEmail').addEventListener('click', async ()=>{
+        const status = document.getElementById('genStatus');
+        if (status) { status.style.color='#60a5fa'; status.textContent='Upload & e-mail voorbereiden...'; }
+        await openEmailDraft();
+        if (status) { status.style.color='#22c55e'; status.textContent='E-mail geopend in mailprogramma.'; setTimeout(()=>{ status.textContent=''; }, 6000); }
+      });
       // Default datum = vandaag
       const dn = document.getElementById('datumNota');
       if (dn && !dn.value) dn.value = new Date().toISOString().slice(0,10);
@@ -353,8 +381,13 @@
       });
       // Start met één lege regel
       addRow();
-      const btnAdd = document.getElementById('btnAddRow');
-      if (btnAdd) btnAdd.addEventListener('click', ()=> addRow());
+  const btnAdd = document.getElementById('btnAddRow');
+  if (btnAdd) btnAdd.addEventListener('click', ()=> addRow());
+  const btnClear = document.getElementById('btnClearRows');
+  if (btnClear) btnClear.addEventListener('click', ()=> { document.getElementById('regelsBody').innerHTML=''; addRow(); updateTotalsUI(); });
+  const betaler = document.getElementById('betaler');
+  if (betaler) betaler.addEventListener('input', updateTotalsUI);
+  updateTotalsUI();
     });
   </script>
 
@@ -425,9 +458,12 @@
       </div>
 
       <div class="card" style="margin-bottom:1rem;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.5rem;">
-          <h3 style="margin:0;">Kosten</h3>
-          <button class="btn sm" type="button" id="btnAddRow">+ Regel</button>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:.75rem;">
+          <h3 style="margin:0; display:flex; align-items:center; gap:8px;">Kosten <span id="totaalBadge" style="font-size:.8rem; background:rgba(96,165,250,.15); color:#60a5fa; padding:4px 8px; border-radius:20px; letter-spacing:.5px;">€0,00</span></h3>
+          <div style="display:flex; gap:8px;">
+            <button class="btn sm" type="button" id="btnAddRow">+ Regel</button>
+            <button class="btn sm" type="button" id="btnClearRows" style="background:#dc2626;">Leeg</button>
+          </div>
         </div>
         <div class="table-scroll">
           <table style="width:100%;">
@@ -441,6 +477,7 @@
             <tbody id="regelsBody"></tbody>
           </table>
         </div>
+        <p id="kostenHint" style="margin:.6rem 0 0; font-size:.8rem; opacity:.75;">Gebruik komma of punt voor decimalen. Laat leeg of verwijder rij als je ze niet nodig hebt.</p>
       </div>
 
       <div class="card" style="margin-bottom:1rem;">
@@ -449,10 +486,11 @@
           <input type="email" id="contactEmail" placeholder="E-mailadres ontvanger" />
           <input type="tel" id="contactPhone" placeholder="Telefoonnummer ontvanger" />
         </div>
-        <div class="actions" style="margin-top:10px; display:flex; gap:10px;">
-          <button class="btn" id="genPdf">Genereren</button>
-          <button class="btn sm" type="button" id="btnEmail">Maak e-mail</button>
-          <span style="opacity:.8;">E-mail opent in je eigen mailprogramma. Verzenden via een echt noreply-adres kan later via een maildienst.</span>
+        <div class="actions" style="margin-top:14px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+          <button class="btn" id="genPdf" disabled>Genereren PDF</button>
+          <button class="btn sm" type="button" id="btnEmail" disabled>Maak e-mail</button>
+          <span style="opacity:.75; font-size:.8rem; max-width:340px;">De e-mail opent je eigen mailprogramma. Eerst wordt het PDF-bestand veilig opgeslagen.</span>
+          <span id="genStatus" style="font-size:.75rem; letter-spacing:.5px; color:#60a5fa;"></span>
         </div>
       </div>
     </div>
@@ -460,6 +498,7 @@
 </body>
 <!-- Service worker registration removed to avoid 404 when file is not present on this path -->
 </html>
+
 
 
 
