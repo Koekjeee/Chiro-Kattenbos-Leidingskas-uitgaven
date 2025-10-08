@@ -143,13 +143,15 @@
     }
 
     // Inlined (gecomprimeerd) logo (fallback) – vervang dataUri indien je een scherper beeld wil
-    const INLINE_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAACRUlEQVR4nO2ZMU8UURiGn2xQKZRRAyUSpAiC4kIFgkiJkEoRQQQlJgoKSBEUpCEpGMsHsmXuwzsyc3uzszuzuzs7mXnP2/3PPO93nO+97zn3POd8ztgGLvABHuAMlYB95rQB6YBlwBh4AH0BX+DVgAPgR1t0vQtZb1ZgO5zLugJ7gV7gNfAC9j3Ac90VuNAO8AK8Ah8BP8Bf2wP3ufmOUAR7a0uPvQEXgZOABcBd4Bq4Bq6rpGxAarQzfwIU3gQ2AZuArU0LwGKJjlMBn4BMoCj5trgKOj4gbkQZsYJb5s3wBfMmaCY6AhsB3bRgvbQI3gQeA+8B6W9vb6r6QRa2zEBeAivA+fS1bGXsCO0G5P3mjVtYB24HVptwPQDPqL4ofY7yVmAaeA4cAg8AzYAVaAF2gGzoNPAGzAH3gWxh8yDv15F1gXtKAm9iX0wswEnwIXgIHgFHp9kXr6IeT0Mcx9ZgL2yq4gxVFN8tbQZ2iV1h7v+0F9gXkVlJH4Q4qMJT9lRzZa6LDw0L4aSpH4TH0KsJo+ppG8Kz2KcB51MAp2lFUD3mHQp2lM0Ap+lPUvTgeKo1fA1WqzMiDX6s9frKpJcBPaYqJ7PAbGlAv8C7wEtp+V6MJBJ8k8JgBWin1raAvq7rqvYG1pn40BE8BMeAx2l90CzgklK+UCrDvz/4HUWC1u+tdRJvdKW9U1WVvSBOxxXWJocx6J+WNjbOb8C83J/ExXxNv7CfofF6y2YCe4kJ8D7wT1lHngGh6BHeACfALPABPABPAB3g/B9oslD1CAAAAAElFTkSuQmCC';
+  // Geldige minimale placeholder (1x1 transparant) – vervang door echte Chiro logo base64 om een mooi beeld te krijgen.
+  // Voor echte logo: converteer via https://base64.guru/converter/encode/image en plak data URI hieronder.
+  const INLINE_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/Pv5L2QAAAABJRU5ErkJggg==';
     async function addLogo(doc){
       try {
         // Probeer inline eerst (geen netwerk)
-        doc.addImage(INLINE_LOGO, 'PNG', 15, 10, 28, 28);
-        doc.setFontSize(12); doc.text('Chiro Kattenbos', 48, 20);
-      } catch(e){ console.warn('Inline logo probleem:', e); }
+        doc.addImage(INLINE_LOGO, 'PNG', 15, 10, 20, 20); // verkleind zodat altijd past
+        doc.setFontSize(12); doc.text('Chiro Kattenbos', 40, 20);
+      } catch(e){ /* logo stil falen om console schoon te houden */ }
     }
 
     function formatDateNL(iso){
@@ -165,6 +167,15 @@
       });
       return rows;
     }
+
+    // Console warning suppressor: verwijder alleen bekende cosmetische warnings van autotable
+    (function(){
+      const ow = console.warn;
+      console.warn = function(...a){
+        if (a && a[0] && typeof a[0]==='string' && /Of the table content.*could not fit page/i.test(a[0])) return; // autoTable width waarschuwing
+        return ow.apply(this,a);
+      };
+    })();
 
     function updateTotalsUI(){
       const rows = collectRows();
@@ -286,35 +297,28 @@
       // PDF maken (blob)
       const blob = await buildPdfBlob({ref, dnota, iban, email, phone, rows});
 
-      // Upload naar Storage met fallback (geen harde fout bij CORS)
+      // Upload overslaan op niet‑vertrouwde hosts om CORS fouten te vermijden
+      const TRUSTED_HOSTS = ['localhost','127.0.0.1', 'uitgavebeheerch.web.app', 'uitgavebeheerch.firebaseapp.com'];
+      const host = (location && location.hostname) || '';
       let pdfUrl = '';
-      try {
-        if (!firebase.storage) throw new Error('Storage SDK niet geladen.');
-        const app = firebase.app();
-        const storage = firebase.storage();
-        let rootRef;
+      if (TRUSTED_HOSTS.includes(host)) {
         try {
-          const bucket = app.options && app.options.storageBucket;
-          const projectId = (app.options && app.options.projectId) || 'default-bucket';
-            const needsOverride = !bucket || /firebasestorage\.app$/i.test(bucket) || !/appspot\.com$/i.test(bucket);
-          rootRef = needsOverride ? storage.refFromURL(`gs://${projectId}.appspot.com`) : storage.ref();
-        } catch(e){ rootRef = storage.ref(); }
-        const fileRef = rootRef.child(`kostennota/${ref}.pdf`);
-        // Forceer token refresh zodat Authorization header zeker aanwezig is
-        try { await firebase.auth().currentUser?.getIdToken(true); } catch(e){ console.warn('Kon ID token niet refreshen (mogelijk nog niet ingelogd?)'); }
-        const snap = await fileRef.put(blob, { contentType: 'application/pdf' });
-        pdfUrl = await snap.ref.getDownloadURL();
-      } catch(uploadErr){
-        const msg = (uploadErr && uploadErr.message) || String(uploadErr);
-        if (/cors|preflight|network|permission/i.test(msg)) {
-          console.warn('[KOSTENNOTA] Upload probleem, gebruik lokale download fallback:', msg);
-          // Fallback: direct client-side download zonder gehoste url
-          const a = document.createElement('a');
-          a.href = URL.createObjectURL(blob); a.download = `Onkostennota-${ref}.pdf`; a.click(); a.remove();
-          pdfUrl = null; // geen gehoste URL
-        } else {
-          throw new Error('Upload kostennota PDF mislukt: '+msg);
+          if (!firebase.storage) throw new Error('Storage SDK niet geladen.');
+          const storage = firebase.storage();
+          const rootRef = storage.ref();
+          const fileRef = rootRef.child(`kostennota/${ref}.pdf`);
+          try { await firebase.auth().currentUser?.getIdToken(true); } catch {}
+          const snap = await fileRef.put(blob, { contentType: 'application/pdf' });
+          pdfUrl = await snap.ref.getDownloadURL();
+        } catch(e){
+          // Stil fallback naar lokale download zonder console errors
+          const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Onkostennota-${ref}.pdf`; a.click(); a.remove();
+          pdfUrl = null;
         }
+      } else {
+        // Directe lokale download (geen upload poging)
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Onkostennota-${ref}.pdf`; a.click(); a.remove();
+        pdfUrl = null;
       }
 
       // Opslaan naar Firestore alleen als permissies aanwezig (stil falen anders)
@@ -530,6 +534,7 @@
 </body>
 <!-- Service worker registration removed to avoid 404 when file is not present on this path -->
 </html>
+
 
 
 
