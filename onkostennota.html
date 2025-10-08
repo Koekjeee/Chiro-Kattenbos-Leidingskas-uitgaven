@@ -25,7 +25,8 @@
       authDomain: "uitgavebeheerch.firebaseapp.com",
       databaseURL: "https://uitgavebeheerch-default-rtdb.europe-west1.firebasedatabase.app",
       projectId: "uitgavebeheerch",
-      storageBucket: "uitgavebeheerch.firebasestorage.app",
+  // Correcte bucket (voorheen verkeerd domein waardoor CORS / preflight faalde)
+  storageBucket: "uitgavebeheerch.appspot.com",
       messagingSenderId: "461673562296",
       appId: "1:461673562296:web:d90a026cd685400139f44d",
       measurementId: "G-K8NYLSE5EF"
@@ -287,10 +288,29 @@
       // PDF maken (blob)
       const blob = await buildPdfBlob({ref, dnota, iban, email, phone, rows});
 
-      // Uploaden naar Storage
-      const storageRef = firebase.storage().ref().child(`kostennota/${ref}.pdf`);
-      const snap = await storageRef.put(blob, { contentType: 'application/pdf' });
-      const pdfUrl = await snap.ref.getDownloadURL();
+      // Uploaden naar Storage (robuste bucket-resolutie zoals in hoofdapp)
+      if (!firebase.storage) throw new Error('Storage SDK niet geladen.');
+      const app = firebase.app();
+      const storage = firebase.storage();
+      let rootRef;
+      try {
+        const bucket = app.options && app.options.storageBucket;
+        const projectId = (app.options && app.options.projectId) || 'default-bucket';
+        const needsOverride = !bucket || /firebasestorage\.app$/i.test(bucket) || !/appspot\.com$/i.test(bucket);
+        rootRef = needsOverride ? storage.refFromURL(`gs://${projectId}.appspot.com`) : storage.ref();
+      } catch(e){ rootRef = storage.ref(); }
+      const fileRef = rootRef.child(`kostennota/${ref}.pdf`);
+      let pdfUrl = '';
+      try {
+        const snap = await fileRef.put(blob, { contentType: 'application/pdf' });
+        pdfUrl = await snap.ref.getDownloadURL();
+      } catch(uploadErr){
+        const msg = (uploadErr && uploadErr.message) || String(uploadErr);
+        if (/cors|preflight|network/i.test(msg)) {
+          throw new Error('Upload mislukt door CORS/permissie. Controleer Storage bucket configuratie en regels. Details: '+msg);
+        }
+        throw new Error('Upload kostennota PDF mislukt: '+msg);
+      }
 
       // Opslaan naar Firestore
       const uid = firebase.auth().currentUser?.uid || null;
@@ -498,6 +518,7 @@
 </body>
 <!-- Service worker registration removed to avoid 404 when file is not present on this path -->
 </html>
+
 
 
 
