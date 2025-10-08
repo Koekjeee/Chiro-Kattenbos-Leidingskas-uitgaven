@@ -142,17 +142,7 @@
       catch(err){ fout.textContent = err?.message || 'Login mislukt.'; }
     }
 
-    // Inlined (gecomprimeerd) logo (fallback) – vervang dataUri indien je een scherper beeld wil
-  // Geldige minimale placeholder (1x1 transparant) – vervang door echte Chiro logo base64 om een mooi beeld te krijgen.
-  // Voor echte logo: converteer via https://base64.guru/converter/encode/image en plak data URI hieronder.
-  const INLINE_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/Pv5L2QAAAABJRU5ErkJggg==';
-    async function addLogo(doc){
-      try {
-        // Probeer inline eerst (geen netwerk)
-        doc.addImage(INLINE_LOGO, 'PNG', 15, 10, 20, 20); // verkleind zodat altijd past
-        doc.setFontSize(12); doc.text('Chiro Kattenbos', 40, 20);
-      } catch(e){ /* logo stil falen om console schoon te houden */ }
-    }
+    // Logo verwijderd op verzoek – header enkel titel + adreslijn
 
     function formatDateNL(iso){
       try { const d = new Date(iso); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; } catch { return iso; }
@@ -208,9 +198,8 @@
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
 
-      // Header
-      await addLogo(doc);
-      doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.text('Onkostennota', 105, 18, { align:'center' });
+      // Header (zonder logo)
+      doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.text('Onkostennota', 105, 18, { align:'center' });
       doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.text(`${CHIRO_NAAM} — ${CHIRO_ADRES}`, 105, 26, { align:'center' });
 
       // Gegevens (naam wordt onderaan vermeld, items in tabel)
@@ -266,13 +255,22 @@
       doc.text(formatEuro(totaal), 198 - 12, y, { align: 'right' });
       y += 12;
 
-      // Betaalopmerking
-      doc.setFont('helvetica','normal');
-      doc.text(`Gelieve binnen 14 dagen te betalen op ${iban} met vermelding van referentie ${ref}.`, 12, y);
-      y += 10;
-      if (email) { doc.text(`Contact e-mail: ${email}`, 12, y); y += 6; }
-      if (phone) { doc.text(`Contact telefoon: ${phone}`, 12, y); y += 6; }
-      doc.text(`Naam betaler: ${naam}`, 12, y);
+  // Betaalopmerking (duidelijker in grijze box)
+  y += 4; // kleine spatie
+  doc.setFontSize(11); doc.setFont('helvetica','bold');
+  const betaalTxt = `Gelieve binnen 14 dagen te betalen op ${iban} met vermelding van referentie ${ref}.`;
+  const betaalLines = doc.splitTextToSize(betaalTxt, 180);
+  const boxH = betaalLines.length * 6 + 6;
+  const boxY = y;
+  doc.setFillColor(240,240,240); doc.roundedRect(10, boxY, 190-20, boxH, 2,2,'F');
+  doc.setTextColor(0); doc.text(betaalLines, 14, boxY + 10 - 6); // align binnen box
+  y = boxY + boxH + 8; // extra ruimte erna
+
+  // Contactinfo iets lager
+  doc.setFont('helvetica','normal'); doc.setFontSize(10);
+  if (email) { doc.text(`Contact e-mail: ${email}`, 12, y); y += 6; }
+  if (phone) { doc.text(`Contact telefoon: ${phone}`, 12, y); y += 6; }
+  doc.text(`Naam betaler: ${naam}`, 12, y);
 
       const blob = doc.output('blob');
       return blob;
@@ -534,6 +532,7 @@
 </body>
 <!-- Service worker registration removed to avoid 404 when file is not present on this path -->
 </html>
+
 
 
 
