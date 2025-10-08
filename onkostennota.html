@@ -60,19 +60,12 @@
     const CHIRO_NAAM = 'Chiro Kattenbos';
     const CHIRO_ADRES = 'Oude Diestersebaan 1A, 3920 Lommel';
 
-    async function allocateReference(){
+    function generateLocalReference(){
       const jaar = new Date().getFullYear();
-      const docRef = db.collection('refs').doc(String(jaar));
-      let refStr = `${jaar}-${Math.floor(1000 + Math.random()*9000)}`; // fallback: JJJJ-####
-      try {
-        await db.runTransaction(async (tx)=>{
-          const snap = await tx.get(docRef);
-          let next = 1;
-          if (snap.exists && typeof snap.data().last === 'number') next = snap.data().last + 1;
-          tx.set(docRef, { last: next }, { merge: true });
-          refStr = `${jaar}-${String(next).padStart(4,'0')}`;
-        });
-      } catch(e){ console.warn('Kon referentie niet alloceren, gebruik random fallback', e); }
+      // Timestamp + random om botsingen te vermijden zonder server
+      const rand = Math.floor(100 + Math.random()*900);
+      const ts = Date.now().toString().slice(-4); // laatste 4 cijfers
+      const refStr = `${jaar}-${ts}${rand}`; // bv 2025-5823123
       const el = document.getElementById('referentie');
       if (el) el.value = refStr;
       return refStr;
@@ -113,8 +106,8 @@
         // Activeer standaard Leidingskas rekening
         const r = document.querySelector('input[name="rekeningKeuze"][value="leidingskas"]');
         if (r) r.checked = true; updateIbanUI();
-        // Allocatie referentie (readonly)
-        await allocateReference();
+  // Lokale referentie (geen Firestore permissies nodig)
+  generateLocalReference();
         // Navbar tonen + role-based links consistent met index
         const nav = document.getElementById('mainNav');
         if (nav) nav.style.display = 'flex';
@@ -270,7 +263,7 @@
     }
 
     async function saveKostennotaAndUpload({download=false}={}){
-      const ref = document.getElementById('referentie').value || await allocateReference();
+  const ref = document.getElementById('referentie').value || generateLocalReference();
       const naam = document.getElementById('betaler').value.trim();
       const dnota = document.getElementById('datumNota').value || new Date().toISOString().slice(0,10);
       const email = document.getElementById('contactEmail').value.trim();
@@ -288,46 +281,55 @@
       // PDF maken (blob)
       const blob = await buildPdfBlob({ref, dnota, iban, email, phone, rows});
 
-      // Uploaden naar Storage (robuste bucket-resolutie zoals in hoofdapp)
-      if (!firebase.storage) throw new Error('Storage SDK niet geladen.');
-      const app = firebase.app();
-      const storage = firebase.storage();
-      let rootRef;
-      try {
-        const bucket = app.options && app.options.storageBucket;
-        const projectId = (app.options && app.options.projectId) || 'default-bucket';
-        const needsOverride = !bucket || /firebasestorage\.app$/i.test(bucket) || !/appspot\.com$/i.test(bucket);
-        rootRef = needsOverride ? storage.refFromURL(`gs://${projectId}.appspot.com`) : storage.ref();
-      } catch(e){ rootRef = storage.ref(); }
-      const fileRef = rootRef.child(`kostennota/${ref}.pdf`);
+      // Upload naar Storage met fallback (geen harde fout bij CORS)
       let pdfUrl = '';
       try {
+        if (!firebase.storage) throw new Error('Storage SDK niet geladen.');
+        const app = firebase.app();
+        const storage = firebase.storage();
+        let rootRef;
+        try {
+          const bucket = app.options && app.options.storageBucket;
+          const projectId = (app.options && app.options.projectId) || 'default-bucket';
+            const needsOverride = !bucket || /firebasestorage\.app$/i.test(bucket) || !/appspot\.com$/i.test(bucket);
+          rootRef = needsOverride ? storage.refFromURL(`gs://${projectId}.appspot.com`) : storage.ref();
+        } catch(e){ rootRef = storage.ref(); }
+        const fileRef = rootRef.child(`kostennota/${ref}.pdf`);
         const snap = await fileRef.put(blob, { contentType: 'application/pdf' });
         pdfUrl = await snap.ref.getDownloadURL();
       } catch(uploadErr){
         const msg = (uploadErr && uploadErr.message) || String(uploadErr);
-        if (/cors|preflight|network/i.test(msg)) {
-          throw new Error('Upload mislukt door CORS/permissie. Controleer Storage bucket configuratie en regels. Details: '+msg);
+        if (/cors|preflight|network|permission/i.test(msg)) {
+          console.warn('[KOSTENNOTA] Upload probleem, gebruik lokale download fallback:', msg);
+          // Fallback: direct client-side download zonder gehoste url
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob); a.download = `Onkostennota-${ref}.pdf`; a.click(); a.remove();
+          pdfUrl = null; // geen gehoste URL
+        } else {
+          throw new Error('Upload kostennota PDF mislukt: '+msg);
         }
-        throw new Error('Upload kostennota PDF mislukt: '+msg);
       }
 
-      // Opslaan naar Firestore
+      // Opslaan naar Firestore alleen als permissies aanwezig (stil falen anders)
       const uid = firebase.auth().currentUser?.uid || null;
-      const data = {
-        ref, naam, dnota, iban,
-        email: email || null,
-        phone: phone || null,
-        rows,
-        totaal: Number(totaal.toFixed(2)),
-        createdBy: uid,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        pdfUrl
-      };
-      await firebase.firestore().collection('kostennota').doc(ref).set(data, { merge: true });
+      try {
+        const data = {
+          ref, naam, dnota, iban,
+          email: email || null,
+          phone: phone || null,
+          rows,
+          totaal: Number(totaal.toFixed(2)),
+          createdBy: uid,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          pdfUrl: pdfUrl || null,
+          localOnly: !pdfUrl
+        };
+        await firebase.firestore().collection('kostennota').doc(ref).set(data, { merge: true });
+      } catch(writeErr){
+        console.warn('[KOSTENNOTA] Kon Firestore record niet schrijven (permissies?):', writeErr);
+      }
 
-      if (download){
-        // download client-side ook
+      if (download && pdfUrl){
         const a = document.createElement('a');
         a.href = pdfUrl; a.download = `Onkostennota-${ref}.pdf`; a.target = '_blank';
         document.body.appendChild(a); a.click(); a.remove();
@@ -372,8 +374,11 @@
         const status = document.getElementById('genStatus');
         if (status) { status.style.color='#60a5fa'; status.textContent='Bezig met genereren...'; }
         try {
-          await saveKostennotaAndUpload({ download: true });
-          if (status) { status.style.color='#22c55e'; status.textContent='PDF opgeslagen & gedownload.'; }
+          const result = await saveKostennotaAndUpload({ download: true });
+          if (status) {
+            status.style.color = '#22c55e';
+            status.textContent = result.pdfUrl ? 'PDF opgeslagen & gedownload.' : 'PDF lokaal gedownload (upload niet gelukt).';
+          }
         } catch(e){
           alert(e.message || String(e));
           if (status) { status.style.color='#ef4444'; status.textContent=e.message || String(e); }
@@ -386,8 +391,8 @@
       document.getElementById('btnEmail').addEventListener('click', async ()=>{
         const status = document.getElementById('genStatus');
         if (status) { status.style.color='#60a5fa'; status.textContent='Upload & e-mail voorbereiden...'; }
-        await openEmailDraft();
-        if (status) { status.style.color='#22c55e'; status.textContent='E-mail geopend in mailprogramma.'; setTimeout(()=>{ status.textContent=''; }, 6000); }
+  await openEmailDraft();
+  if (status) { status.style.color='#22c55e'; status.textContent='E-mail geopend (let op: PDF mogelijk lokaal).'; setTimeout(()=>{ status.textContent=''; }, 6000); }
       });
       // Default datum = vandaag
       const dn = document.getElementById('datumNota');
@@ -518,6 +523,7 @@
 </body>
 <!-- Service worker registration removed to avoid 404 when file is not present on this path -->
 </html>
+
 
 
 
