@@ -61,7 +61,7 @@
   })();
 
   const db = firebase.firestore();
-  const alleGroepen = ["Ribbels","Speelclubs","Rakkers","Kwiks","Tippers","Toppers","Aspi","Keti's","Algemeen","LEIDING"]; // Keti's + Algemeen toegevoegd
+  const alleGroepen = ["Ribbels","Speelclubs","Rakkers","Kwiks","Tippers","Toppers","Aspi","Keti's","4uurtje","Algemeen","LEIDING"]; // Keti's + 4uurtje + Algemeen toegevoegd
   const groepKleuren = {
     Ribbels: "rgba(59,130,246,0.18)",      // blue-500
     Speelclubs: "rgba(234,179,8,0.18)",   // amber-500
@@ -71,6 +71,7 @@
     Toppers: "rgba(16,185,129,0.18)",     // emerald-500
   Aspi: "rgba(249,115,22,0.18)",        // orange-500
   "Keti's": "rgba(56,189,248,0.18)",   // sky-400
+  "4uurtje": "rgba(168,85,247,0.18)",  // violet-500
   Algemeen: "rgba(0,0,0,0.12)",         // neutrale grijs voor algemene kosten
   LEIDING: "rgba(148,163,184,0.18)",    // slate-400
   Overige: "rgba(120,120,120,0.25)"      // synthetisch
@@ -87,6 +88,7 @@
       toppers: groepKleuren.Toppers,
       aspi: groepKleuren.Aspi,
       "keti's": groepKleuren["Keti's"],
+      "4uurtje": groepKleuren["4uurtje"],
   leiding: groepKleuren.LEIDING,
   algemeen: groepKleuren.Algemeen,
   overige: groepKleuren.Overige
@@ -222,6 +224,7 @@
 </body>
 </html>
  
+
 
 
 
