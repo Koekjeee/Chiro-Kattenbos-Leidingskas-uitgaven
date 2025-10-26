@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
   // --- Config ---
-  const alleGroepen = ["Ribbels","Speelclubs","Rakkers","Kwiks","Tippers","Toppers","Aspi","Keti's","Algemeen","LEIDING"]; // Basale vaste groepen + Keti's + Algemeen
+  const alleGroepen = ["Ribbels","Speelclubs","Rakkers","Kwiks","Tippers","Toppers","Aspi","Keti's","4uurtje","Algemeen","LEIDING"]; // Basale vaste groepen + Keti's + 4uurtje + Algemeen
   const groepKleuren = {
     Ribbels: "rgba(59,130,246,0.18)",
     Speelclubs: "rgba(234,179,8,0.18)",
@@ -10,6 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
     Toppers: "rgba(16,185,129,0.18)",
     Aspi: "rgba(249,115,22,0.18)",
     "Keti's": "rgba(56,189,248,0.18)",
+    "4uurtje": "rgba(168,85,247,0.18)",
     Algemeen: "rgba(0,0,0,0.12)", // neutrale lichte grijstint voor algemene kosten
     LEIDING: "rgba(148,163,184,0.18)",
     Overige: "rgba(120,120,120,0.25)" // synthetische groep alleen zichtbaar voor financieel
@@ -42,6 +43,7 @@ document.addEventListener("DOMContentLoaded", () => {
       toppers: groepKleuren.Toppers,
       aspi: groepKleuren.Aspi,
       "keti's": groepKleuren["Keti's"],
+      "4uurtje": groepKleuren["4uurtje"],
       algemeen: groepKleuren.Algemeen,
       leiding: groepKleuren.LEIDING,
       overige: groepKleuren.Overige
