@@ -615,48 +615,93 @@ document.addEventListener("DOMContentLoaded", () => {
   // (Dubbele definitie van setupSummaryToggle verwijderd)
 
   safeOn($("navExportPdf"), "click", async () => {
-    const doc = new window.jspdf.jsPDF();
-    doc.setFontSize(14);
-    doc.text("Uitgavenoverzicht per groep", 10, 10);
+    try {
+      const jspdfNS = window.jspdf || window.jspdf_default || {};
+      const jsPDF = jspdfNS.jsPDF || (window.jspdf && window.jspdf.jsPDF);
+      if (!jsPDF || !('autoTable' in (jsPDF.API || {}))) {
+        alert('PDF bibliotheek niet geladen. Controleer je internetverbinding.');
+        return;
+      }
 
-    // Haal alle uitgaven op
-  const uitgavenSnap = await firebase.firestore().collection("uitgaven").get();
-  const uitgaven = uitgavenSnap.docs.map(d => d.data());
+      // Haal alle uitgaven op (zichtbaar voor financieel)
+      const uitgavenSnap = await firebase.firestore().collection("uitgaven").get();
+      const rowsRaw = uitgavenSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-    // Groepeer per groep
-    const groepen = {};
-    uitgaven.forEach(u => {
-      if (!groepen[u.groep]) groepen[u.groep] = [];
-      groepen[u.groep].push(u);
-    });
+      // Verrijk en sorteer: Groep ASC, Datum ASC, Nummer ASC
+      const normDate = (s) => (s || '').toString();
+      const toEuro = (v) => `€${(Number(v)||0).toFixed(2)}`;
+      const niceGroep = (u) => {
+        if (u.groep === 'Overige' && Array.isArray(u.overigeGroepen) && u.overigeGroepen.length) {
+          return `Overige (${u.overigeGroepen.join(', ')})`;
+        }
+        return u.groep || '-';
+      };
+      const rows = rowsRaw
+        .sort((a,b)=>{
+          const g = (a.groep||'').localeCompare(b.groep||'');
+          if (g !== 0) return g;
+          const d = normDate(a.datum).localeCompare(normDate(b.datum));
+          if (d !== 0) return d;
+          return (a.nummer||0) - (b.nummer||0);
+        })
+        .map(u => ([
+          niceGroep(u),
+          String(u.nummer || '-'),
+          normDate(u.datum) || '-',
+          u.activiteit || '-',
+          toEuro(u.bedrag),
+          u.betaald ? '✓' : '✗'
+        ]));
 
-    let y = 20;
-    Object.keys(groepen).forEach(groep => {
-      doc.setFont(undefined, "bold");
-      doc.text(groep, 10, y);
-      y += 8;
-      doc.setFont(undefined, "normal");
-      // Sorteer op datum
-      groepen[groep].sort((a, b) => (a.datum || "").localeCompare(b.datum || ""));
-      groepen[groep].forEach(u => {
-        doc.text(
-          `${u.nummer || "-"} | `,
-          10, y
-        );
-        doc.setFont(undefined, "bold");
-        doc.text(`€${u.bedrag || "-"}`, 35, y);
-        doc.setFont(undefined, "normal");
-        doc.text(
-          `| ${u.datum || "-"} | ${u.activiteit || "-"} | ${u.betaald ? "Betaald" : "Niet betaald"}`,
-          70, y
-        );
-        y += 8;
-        if (y > 280) { doc.addPage(); y = 10; }
+      const doc = new jsPDF({ orientation:'portrait', unit:'pt', format:'a4' });
+      const margin = 36;
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const title = 'Uitgavenoverzicht';
+      const now = new Date();
+      const datum = now.toLocaleString('nl-BE', { dateStyle:'medium', timeStyle:'short' });
+
+      // Header
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
+      doc.text(title, margin, margin + 4);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(100);
+      doc.text(`Gegenereerd op ${datum}`, margin, margin + 20);
+      doc.setTextColor(0);
+
+      // AutoTable
+      const head = [[ 'Groep', '#', 'Datum', 'Activiteit', 'Bedrag', 'Betaald' ]];
+      doc.autoTable({
+        head,
+        body: rows,
+        startY: margin + 36,
+        margin: { left: margin, right: margin },
+        styles: { font: 'helvetica', fontSize: 10, cellPadding: 6, overflow: 'linebreak' },
+        headStyles: { fillColor: [44,62,80], textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [245,247,250] },
+        columnStyles: {
+          0: { cellWidth: 120 },        // Groep
+          1: { cellWidth: 36, halign:'right' }, // #
+          2: { cellWidth: 70 },         // Datum
+          3: { cellWidth: 'auto' },     // Activiteit (flex)
+          4: { cellWidth: 70, halign:'right' }, // Bedrag
+          5: { cellWidth: 50, halign:'center' } // Betaald
+        },
+        didDrawPage: function(data){
+          // Footer met paginanummers
+          const pageCount = doc.internal.getNumberOfPages();
+          const footerY = doc.internal.pageSize.getHeight() - 16;
+          doc.setFontSize(9); doc.setTextColor(120);
+          doc.text(`Pagina ${data.pageNumber} van ${pageCount}`, pageWidth - margin, footerY, { align:'right' });
+          doc.setTextColor(0);
+        }
       });
-      y += 4;
-    });
 
-    doc.save("uitgaven_per_groep.pdf");
+      // Opslaan
+      const filename = `uitgaven_overzicht_${now.toISOString().slice(0,10)}.pdf`;
+      doc.save(filename);
+    } catch (err) {
+      console.error('Export PDF fout:', err);
+      alert('Exporteren mislukt. Zie console voor details.');
+    }
   });
   safeOn($("rolForm"), "submit", async e => {
     e.preventDefault();
