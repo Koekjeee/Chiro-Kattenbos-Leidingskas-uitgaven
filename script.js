@@ -650,7 +650,7 @@ document.addEventListener("DOMContentLoaded", () => {
           normDate(u.datum) || '-',
           u.activiteit || '-',
           toEuro(u.bedrag),
-          u.betaald ? '✓' : '✗'
+          (u.betaald ? 'Ja' : 'Nee')
         ]));
 
       const doc = new jsPDF({ orientation:'portrait', unit:'pt', format:'a4' });
