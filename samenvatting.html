@@ -8,6 +8,9 @@
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-firestore-compat.js"></script>
+  <!-- jsPDF + AutoTable for PDF export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha512-+g7gkZ1yH9n1yI3o6v8oXKjM4FqkzsfQqk0A5I7mG0o1Lx8CqX8v6d0oLKOuJgP5w9g6GXrJtscXoQkqT3ZxYQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.0/jspdf.plugin.autotable.min.js" integrity="sha512-9X2Zt9iV6t2o0y5JvDq7Yh9/0Q2Gct0r9u3t0jOQzHn1h2cL3rjE0q9nQ8Gm3YQe9y8xW9vJ9N0mJz9Qf7b4mw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script>
   const firebaseConfig = {
     apiKey: "AIzaSyC-UaXhh5juhV4raXWnzku9fSZZD75-y9w",
@@ -50,6 +53,9 @@
       </thead>
       <tbody></tbody>
     </table>
+    <div style="margin-top:12px; display:flex; gap:8px;">
+      <button id="exportPdfBtn">Exporteer naar PDF</button>
+    </div>
     <p id="samenvattingStatus" style="font-style:italic; color:#555; margin-top:8px;"></p>
   </div>
   </div>
@@ -220,10 +226,106 @@
   });
   const navLogoutBtn = $('navLogout'); if (navLogoutBtn) navLogoutBtn.addEventListener('click', async ()=> { await logActie('logout',{}); firebase.auth().signOut(); });
   const navThemeBtn = $('navTheme'); if(navThemeBtn) navThemeBtn.addEventListener('click', async ()=>{ const current=document.body.dataset.theme||localStorage.getItem('theme')||'dark'; const next = current==='dark'?'light':'dark'; applyTheme(next); navThemeBtn.textContent = next==='light'? '🌞':'🌙'; const uid=firebase.auth().currentUser?.uid; await saveThemePreference(next, uid); logActie('theme_changed',{ theme: next }); });
+
+  // PDF export: generate a clear, paginated table so all rows are included
+  function exportSamenvattingPdf(){
+    try{
+      const jspdfNS = window.jspdf || window.jspdf_default || {};
+      const jsPDF = jspdfNS.jsPDF || (window.jspdf && window.jspdf.jsPDF);
+      if(!jsPDF || !('autoTable' in (jsPDF.API||{}))){
+        alert('PDF bibliotheek niet geladen. Controleer je internetverbinding.');
+        return;
+      }
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+      const margin = 36; // 0.5 inch
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      // Header
+      const title = 'Samenvatting per groep';
+      const now = new Date();
+      const datum = now.toLocaleString('nl-BE', { dateStyle:'medium', timeStyle:'short' });
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
+      doc.text(title, margin, margin + 4);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+      doc.setTextColor(100);
+      doc.text(`Gegenereerd op ${datum}`, margin, margin + 20);
+      doc.setTextColor(0);
+
+      // Build rows from current data
+      const rows = [];
+      let totaalLeden = 0;
+      let totaalBedrag = 0;
+      alleGroepen.forEach(g => {
+        const leden = Number(ledenMap[g] || 0);
+        const bedrag = Number(totalenPerGroep[g] || 0);
+        totaalLeden += leden;
+        totaalBedrag += bedrag;
+        const perKind = leden > 0 ? bedrag / leden : null;
+        rows.push([
+          g,
+          String(leden),
+          `€${bedrag.toFixed(2)}`,
+          perKind != null ? `€${perKind.toFixed(2)}` : '-'
+        ]);
+      });
+
+      const head = [['Groep','Leden','Totaal (€)','€ per kind']];
+      const foot = [[
+        'TOTAAL',
+        String(totaalLeden),
+        `€${totaalBedrag.toFixed(2)}`,
+        '-'
+      ]];
+
+      // Table
+      const startY = margin + 36;
+      doc.autoTable({
+        head,
+        body: rows,
+        foot,
+        startY,
+        margin: { left: margin, right: margin },
+        styles: { font: 'helvetica', fontSize: 10, cellPadding: 6, overflow: 'linebreak' },
+        headStyles: { fillColor: [44,62,80], textColor: 255, fontStyle: 'bold' },
+        footStyles: { fillColor: [226,232,240], textColor: [15,23,42], fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [245,247,250] },
+        columnStyles: {
+          0: { cellWidth: 220 },
+          1: { halign: 'right', cellWidth: 80 },
+          2: { halign: 'right', cellWidth: 120 },
+          3: { halign: 'right', cellWidth: 120 }
+        },
+        didDrawPage: function(data){
+          // Footer with page numbers
+          const pageCount = doc.internal.getNumberOfPages();
+          const pageSize = doc.internal.pageSize;
+          const footerY = pageSize.getHeight() - 16;
+          doc.setFontSize(9); doc.setTextColor(120);
+          doc.text(`Pagina ${data.pageNumber} van ${pageCount}`,
+            pageWidth - margin,
+            footerY,
+            { align: 'right' }
+          );
+          doc.setTextColor(0);
+        }
+      });
+
+      // Save
+      const filename = `samenvatting_${now.toISOString().slice(0,10)}.pdf`;
+      doc.save(filename);
+    }catch(err){
+      console.error('PDF export fout:', err);
+      alert('Exporteren naar PDF is mislukt. Zie console voor details.');
+    }
+  }
+
+  const exportBtn = document.getElementById('exportPdfBtn');
+  if(exportBtn){ exportBtn.addEventListener('click', exportSamenvattingPdf); }
   </script>
 </body>
 </html>
  
+
 
 
 
