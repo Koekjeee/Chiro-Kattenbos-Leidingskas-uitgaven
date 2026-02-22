@@ -116,7 +116,6 @@ const firebaseConfig = {
           <th>Bedrag</th>
           <th>Activiteit</th>
           <th>Datum</th>
-          <th>Betaald</th>
           <th>Actie</th>
           <th>Terug betaald?</th>
           <th>Rekeningnummer</th>
@@ -343,25 +342,9 @@ const firebaseConfig = {
           row.insertCell(2).textContent = `€${(u.bedrag||0).toFixed(2)}`;
           row.insertCell(3).textContent = u.activiteit || '-';
           row.insertCell(4).textContent = u.datum || '-';
-          row.insertCell(5).textContent = u.betaald ? 'Ja' : 'Nee';
 
-          const actieCell = row.insertCell(6);
+          const actieCell = row.insertCell(5);
           if (isFin) {
-            const btn = document.createElement("button");
-            btn.textContent = u.betaald ? "Ongedaan maken" : "Als betaald markeren";
-            btn.addEventListener("click", async () => {
-              try {
-                await db.collection("kampuitgaven").doc(doc.id).update({ betaald: !u.betaald });
-              } catch(err) { alert("Update mislukt: " + err.message); }
-            });
-            actieCell.appendChild(btn);
-            
-            // Voeg scheidingslijn toe
-            const sep = document.createElement("span");
-            sep.textContent = " | ";
-            sep.style.margin = "0 5px";
-            actieCell.appendChild(sep);
-            
             // Voeg verwijder-knop toe
             const deleteBtn = document.createElement("button");
             deleteBtn.textContent = "Verwijderen";
@@ -384,7 +367,7 @@ const firebaseConfig = {
             actieCell.style.display = "none";
           }
 
-          const betaaldCell = row.insertCell(7);
+          const betaaldCell = row.insertCell(6);
           if (isFin) {
             const check = document.createElement("input");
             check.type = "checkbox";
@@ -400,9 +383,9 @@ const firebaseConfig = {
             betaaldCell.style.display = "none";
           }
 
-          row.insertCell(8).textContent = u.rekeningNummer || '-';
+          row.insertCell(7).textContent = u.rekeningNummer || '-';
 
-          const bewijsCell = row.insertCell(9);
+          const bewijsCell = row.insertCell(8);
           if (u.bewijsUrl) {
             const link = document.createElement("a");
             link.href = u.bewijsUrl;
@@ -589,41 +572,7 @@ const firebaseConfig = {
   </script>
 </body>
 </html>
-   case "auth/too-many-requests": msg = "Te veel pogingen, probeer later opnieuw"; break;
-          case "auth/invalid-login-credentials": msg = "Combinatie e-mail/wachtwoord ongeldig"; break;
-        }
-        if (fout) fout.textContent = "Login mislukt: " + msg;
-      }
-    });
 
-    safeOn($("filterBetaald"), "change", e => attachUitgavenListener(e.target.value));
-
-    // Toggle beheer panel
-    safeOn($("toggleBeheerPaneel"), "click", () => {
-      const content = document.getElementById("beheerPaneelContent");
-      const btn = document.getElementById("toggleBeheerPaneel");
-      if (!content || !btn) return;
-      if (content.style.display === "none" || content.style.display === "") {
-        content.style.display = "block";
-        btn.textContent = "▲ Gebruikerstoegang beheren";
-      } else {
-        content.style.display = "none";
-        btn.textContent = "▼ Gebruikerstoegang beheren";
-      }
-    });
-
-    safeOn($("navLogout"), "click", async () => { await logActie("logout", {}); firebase.auth().signOut(); });
-    safeOn($("navTheme"), "click", async () => {
-      const current = document.body.dataset.theme || localStorage.getItem('theme') || 'dark';
-      const next = current === 'dark' ? 'light' : 'dark';
-      applyTheme(next);
-      if (document.getElementById('navTheme')) document.getElementById('navTheme').textContent = next==='light' ? '🌞' : '🌙';
-      await saveThemePreference(next);
-      logActie("theme_changed", { theme: next });
-    });
-  </script>
-</body>
-</html>
 
 
 
