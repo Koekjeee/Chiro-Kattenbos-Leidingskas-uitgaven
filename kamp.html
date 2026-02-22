@@ -70,6 +70,20 @@ const firebaseConfig = {
     </div>
 
     <form id="uitgaveForm">
+      <label for="groep">Groep:</label>
+      <select id="groep" required>
+        <option value="">-- Kies een groep --</option>
+        <option value="Ribbels">Ribbels</option>
+        <option value="Speelclubs">Speelclubs</option>
+        <option value="Rakkers">Rakkers</option>
+        <option value="Kwiks">Kwiks</option>
+        <option value="Tippers">Tippers</option>
+        <option value="Toppers">Toppers</option>
+        <option value="Aspi">Aspi</option>
+        <option value="Keti's">Keti's</option>
+        <option value="4uurtje">4uurtje</option>
+        <option value="LEIDING">LEIDING</option>
+      </select>
       <label for="bedrag">Bedrag (€):</label>
       <input type="text" id="bedrag" inputmode="decimal" pattern="^\d+(?:[\.,]\d{1,2})?$" placeholder="bv. 12,30" required />
       <label for="activiteit">Activiteit/Omschrijving:</label>
@@ -96,6 +110,7 @@ const firebaseConfig = {
       <thead>
         <tr>
           <th>#</th>
+          <th>Groep</th>
           <th>Bedrag</th>
           <th>Activiteit</th>
           <th>Datum</th>
@@ -104,6 +119,7 @@ const firebaseConfig = {
           <th>Terug betaald?</th>
           <th>Rekeningnummer</th>
           <th>Bewijs</th>
+          <th>Verwijderen</th>
         </tr>
       </thead>
       <tbody></tbody>
@@ -244,6 +260,7 @@ const firebaseConfig = {
 
     safeOn($("uitgaveForm"), "submit", async e => {
       e.preventDefault();
+      const g = $("groep")?.value;
       const bRaw = $("bedrag")?.value;
       const b = parseEuro(bRaw);
       const a = $("activiteit")?.value;
@@ -251,6 +268,7 @@ const firebaseConfig = {
       const rekeningNummer = $("rekeningNummer")?.value.trim();
       const file = $("bewijsUpload")?.files?.[0];
 
+      if (!g) return alert("Kies een groep.");
       if (isNaN(b) || !a || !d) return alert("Gelieve alle velden correct in te vullen.");
       if (!rekeningNummer) return alert("Vul je rekeningnummer in.");
       if (!file) return alert("Upload een bewijsstuk.");
@@ -268,15 +286,15 @@ const firebaseConfig = {
       try {
         let bestaandeNummers = [];
         try {
-          const uitgavenSnap = await db.collection("uitgaven").get();
+          const uitgavenSnap = await db.collection("kampuitgaven").get();
           bestaandeNummers = uitgavenSnap.docs.map(d => (d.data().nummer)||0);
-        } catch(readErr){ console.warn("Kon uitgaven niet lezen", readErr); }
+        } catch(readErr){ console.warn("Kon kampuitgaven niet lezen", readErr); }
 
         let nieuwNummer = 1 + Math.max(0, ...bestaandeNummers);
         const nu = firebase.firestore.FieldValue.serverTimestamp();
-        const docRef = await db.collection("uitgaven").add({
+        const docRef = await db.collection("kampuitgaven").add({
           nummer: nieuwNummer,
-          groep: "Kamp",
+          groep: g,
           bedrag: b,
           activiteit: a,
           datum: d,
@@ -291,7 +309,7 @@ const firebaseConfig = {
         alert("Uitgave succesvol toegevoegd!");
         $("uitgaveForm").reset();
         attachUitgavenListener($("filterBetaald")?.value || "");
-        await logActie("kamp_uitgave_added", { bedrag: b, activiteit: a });
+        await logActie("kamp_uitgave_added", { groep: g, bedrag: b, activiteit: a });
       } catch (err) {
         console.error("Opslaan mislukt:", err);
         alert("Opslaan mislukt: " + (err && err.message ? err.message : err));
@@ -304,7 +322,7 @@ const firebaseConfig = {
       const tbody = $("overzicht")?.querySelector("tbody");
       if (!tbody) return;
 
-      return db.collection("uitgaven").where("groep", "==", "Kamp").onSnapshot(snap => {
+      return db.collection("kampuitgaven").onSnapshot(snap => {
         tbody.innerHTML = '';
         const filter = filterBetaaldVal?.toString();
         const isFin = magBeheren();
@@ -316,32 +334,33 @@ const firebaseConfig = {
 
           const row = tbody.insertRow();
           row.insertCell(0).textContent = u.nummer || '-';
-          row.insertCell(1).textContent = `€${(u.bedrag||0).toFixed(2)}`;
-          row.insertCell(2).textContent = u.activiteit || '-';
-          row.insertCell(3).textContent = u.datum || '-';
-          row.insertCell(4).textContent = u.betaald ? 'Ja' : 'Nee';
+          row.insertCell(1).textContent = u.groep || '-';
+          row.insertCell(2).textContent = `€${(u.bedrag||0).toFixed(2)}`;
+          row.insertCell(3).textContent = u.activiteit || '-';
+          row.insertCell(4).textContent = u.datum || '-';
+          row.insertCell(5).textContent = u.betaald ? 'Ja' : 'Nee';
 
-          const actieCell = row.insertCell(5);
+          const actieCell = row.insertCell(6);
           if (isFin) {
             const btn = document.createElement("button");
             btn.textContent = u.betaald ? "Ongedaan maken" : "Als betaald markeren";
             btn.addEventListener("click", async () => {
               try {
-                await db.collection("uitgaven").doc(doc.id).update({ betaald: !u.betaald });
+                await db.collection("kampuitgaven").doc(doc.id).update({ betaald: !u.betaald });
               } catch(err) { alert("Update mislukt: " + err.message); }
             });
             btn.style.display = isFin ? "inline" : "none";
             actieCell.appendChild(btn);
           }
 
-          const betaaldCell = row.insertCell(6);
+          const betaaldCell = row.insertCell(7);
           if (isFin) {
             const check = document.createElement("input");
             check.type = "checkbox";
             check.checked = u.terugBetaald || false;
             check.addEventListener("change", async () => {
               try {
-                await db.collection("uitgaven").doc(doc.id).update({ terugBetaald: check.checked });
+                await db.collection("kampuitgaven").doc(doc.id).update({ terugBetaald: check.checked });
               } catch(err) { alert("Update mislukt: " + err.message); }
             });
             betaaldCell.appendChild(check);
@@ -350,9 +369,9 @@ const firebaseConfig = {
             betaaldCell.style.display = "none";
           }
 
-          row.insertCell(7).textContent = u.rekeningNummer || '-';
+          row.insertCell(8).textContent = u.rekeningNummer || '-';
 
-          const bewijsCell = row.insertCell(8);
+          const bewijsCell = row.insertCell(9);
           if (u.bewijsUrl) {
             const link = document.createElement("a");
             link.href = u.bewijsUrl;
@@ -371,8 +390,31 @@ const firebaseConfig = {
             }
             bewijsCell.appendChild(link);
           }
+
+          const deleteCell = row.insertCell(10);
+          if (isFin) {
+            const deleteBtn = document.createElement("button");
+            deleteBtn.textContent = "Verwijderen";
+            deleteBtn.style.background = "#e74c3c";
+            deleteBtn.style.color = "white";
+            deleteBtn.style.border = "none";
+            deleteBtn.style.padding = "4px 8px";
+            deleteBtn.style.cursor = "pointer";
+            deleteBtn.style.borderRadius = "4px";
+            deleteBtn.addEventListener("click", async () => {
+              if (confirm("Weet je zeker dat je deze uitgave wilt verwijderen?")) {
+                try {
+                  await db.collection("kampuitgaven").doc(doc.id).delete();
+                  await logActie("kamp_uitgave_deleted", { nummer: u.nummer, activiteit: u.activiteit });
+                } catch(err) { alert("Verwijderen mislukt: " + err.message); }
+              }
+            });
+            deleteCell.appendChild(deleteBtn);
+          } else {
+            deleteCell.style.display = "none";
+          }
         });
-      }, err => console.error("Realtime uitgaven mislukt:", err));
+      }, err => console.error("Realtime kampuitgaven mislukt:", err));
     }
 
     async function renderKampAccessUsers() {
@@ -506,6 +548,7 @@ const firebaseConfig = {
   </script>
 </body>
 </html>
+
 
 
 
