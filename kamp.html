@@ -50,22 +50,24 @@ const firebaseConfig = {
     <p id="gebruikerInfo"></p>
 
     <!-- Beheer panel: alleen voor financieel -->
-    <div id="beheerPaneel" style="display:none; margin-bottom: 2rem; padding: 1rem; background: #f5f5f5; border-radius: 8px;">
-      <h3>Gebruikerstoegang beheren (alleen financieel)</h3>
-      <p style="font-size: 0.9rem; color: #666;">Vink de gebruikers aan die toegang hebben tot deze kamp-pagina.</p>
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>E-mail</th>
-              <th>UID</th>
-              <th>Rol</th>
-              <th>Groep</th>
-              <th>Kamp-toegang</th>
-            </tr>
-          </thead>
-          <tbody id="kampAccessBody"></tbody>
-        </table>
+    <div id="beheerPaneel" style="display:none; margin-bottom: 2rem; padding: 1rem; background: transparent; border-radius: 8px;">
+      <button id="toggleBeheerPaneel" style="background: #2c3e50; color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 4px; font-weight: bold;">▼ Gebruikerstoegang beheren</button>
+      <div id="beheerPaneelContent" style="display:none; margin-top: 1rem; padding: 1rem; background: #f5f5f5; border-radius: 8px;">
+        <p style="font-size: 0.9rem; color: #666;">Vink de gebruikers aan die toegang hebben tot deze kamp-pagina.</p>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>E-mail</th>
+                <th>UID</th>
+                <th>Rol</th>
+                <th>Groep</th>
+                <th>Kamp-toegang</th>
+              </tr>
+            </thead>
+            <tbody id="kampAccessBody"></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -200,6 +202,10 @@ const firebaseConfig = {
 
     function magBeheren(){
       return gebruikersData && gebruikersData.rol === "financieel";
+    }
+
+    function magKampAccessen(){
+      return gebruikersData && (gebruikersData.rol === "financieel" || gebruikersData.kampAccess === true);
     }
 
     async function haalGebruikersData(uid){
@@ -492,8 +498,22 @@ const firebaseConfig = {
         const navBeh = document.getElementById('navBeheer');
         const navTheme = document.getElementById('navTheme');
         const navLogout = document.getElementById('navLogout');
+        const navSam = document.getElementById('navSamenvatting');
+        const navEven = document.getElementById('navEvenementen');
         const isFin = gebruikersData.rol === 'financieel';
+        const hasKampAccess = magKampAccessen();
+
+        // Controleer of gebruiker dus kamp-toegang heeft
+        if (!hasKampAccess) {
+          alert('Je hebt geen toegang tot deze pagina. Je wordt teruggestuurd.');
+          window.location.href = 'index.html';
+          return;
+        }
+
+        // Verberg navigatie-items die niet beschikbaar zijn
         if (navBeh) navBeh.style.display = isFin ? 'inline' : 'none';
+        if (navSam) navSam.style.display = isFin ? 'inline' : 'none';
+        if (navEven) navEven.style.display = 'none'; // Events niet zichtbaar op kamp-pagina
         if (navLogout) navLogout.style.display = 'inline';
         if (navTheme) { navTheme.style.display = 'inline'; navTheme.textContent = document.body.dataset.theme === 'light' ? '🌞' : '🌙'; }
 
@@ -541,6 +561,20 @@ const firebaseConfig = {
 
     safeOn($("filterBetaald"), "change", e => attachUitgavenListener(e.target.value));
 
+    // Toggle beheer panel
+    safeOn($("toggleBeheerPaneel"), "click", () => {
+      const content = document.getElementById("beheerPaneelContent");
+      const btn = document.getElementById("toggleBeheerPaneel");
+      if (!content || !btn) return;
+      if (content.style.display === "none" || content.style.display === "") {
+        content.style.display = "block";
+        btn.textContent = "▲ Gebruikerstoegang beheren";
+      } else {
+        content.style.display = "none";
+        btn.textContent = "▼ Gebruikerstoegang beheren";
+      }
+    });
+
     safeOn($("navLogout"), "click", async () => { await logActie("logout", {}); firebase.auth().signOut(); });
     safeOn($("navTheme"), "click", async () => {
       const current = document.body.dataset.theme || localStorage.getItem('theme') || 'dark';
@@ -553,6 +587,7 @@ const firebaseConfig = {
   </script>
 </body>
 </html>
+
 
 
 
