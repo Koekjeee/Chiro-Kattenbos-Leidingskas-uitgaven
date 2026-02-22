@@ -121,7 +121,6 @@ const firebaseConfig = {
           <th>Terug betaald?</th>
           <th>Rekeningnummer</th>
           <th>Bewijs</th>
-          <th>Verwijderen</th>
         </tr>
       </thead>
       <tbody></tbody>
@@ -355,8 +354,34 @@ const firebaseConfig = {
                 await db.collection("kampuitgaven").doc(doc.id).update({ betaald: !u.betaald });
               } catch(err) { alert("Update mislukt: " + err.message); }
             });
-            btn.style.display = isFin ? "inline" : "none";
             actieCell.appendChild(btn);
+            
+            // Voeg scheidingslijn toe
+            const sep = document.createElement("span");
+            sep.textContent = " | ";
+            sep.style.margin = "0 5px";
+            actieCell.appendChild(sep);
+            
+            // Voeg verwijder-knop toe
+            const deleteBtn = document.createElement("button");
+            deleteBtn.textContent = "Verwijderen";
+            deleteBtn.style.background = "#e74c3c";
+            deleteBtn.style.color = "white";
+            deleteBtn.style.border = "none";
+            deleteBtn.style.padding = "4px 8px";
+            deleteBtn.style.cursor = "pointer";
+            deleteBtn.style.borderRadius = "4px";
+            deleteBtn.addEventListener("click", async () => {
+              if (confirm("Weet je zeker dat je deze uitgave wilt verwijderen?")) {
+                try {
+                  await db.collection("kampuitgaven").doc(doc.id).delete();
+                  await logActie("kamp_uitgave_deleted", { nummer: u.nummer, activiteit: u.activiteit });
+                } catch(err) { alert("Verwijderen mislukt: " + err.message); }
+              }
+            });
+            actieCell.appendChild(deleteBtn);
+          } else {
+            actieCell.style.display = "none";
           }
 
           const betaaldCell = row.insertCell(7);
@@ -395,29 +420,6 @@ const firebaseConfig = {
               link.textContent = "📄";
             }
             bewijsCell.appendChild(link);
-          }
-
-          const deleteCell = row.insertCell(10);
-          if (isFin) {
-            const deleteBtn = document.createElement("button");
-            deleteBtn.textContent = "Verwijderen";
-            deleteBtn.style.background = "#e74c3c";
-            deleteBtn.style.color = "white";
-            deleteBtn.style.border = "none";
-            deleteBtn.style.padding = "4px 8px";
-            deleteBtn.style.cursor = "pointer";
-            deleteBtn.style.borderRadius = "4px";
-            deleteBtn.addEventListener("click", async () => {
-              if (confirm("Weet je zeker dat je deze uitgave wilt verwijderen?")) {
-                try {
-                  await db.collection("kampuitgaven").doc(doc.id).delete();
-                  await logActie("kamp_uitgave_deleted", { nummer: u.nummer, activiteit: u.activiteit });
-                } catch(err) { alert("Verwijderen mislukt: " + err.message); }
-              }
-            });
-            deleteCell.appendChild(deleteBtn);
-          } else {
-            deleteCell.style.display = "none";
           }
         });
       }, err => console.error("Realtime kampuitgaven mislukt:", err));
@@ -553,6 +555,41 @@ const firebaseConfig = {
           case "auth/user-not-found": msg = "Geen account met dit e-mailadres"; break;
           case "auth/wrong-password": msg = "Onjuist wachtwoord"; break;
           case "auth/too-many-requests": msg = "Te veel pogingen, probeer later opnieuw"; break;
+          case "auth/invalid-login-credentials": msg = "Combinatie e-mail/wachtwoord ongeldig"; break;
+        }
+        if (fout) fout.textContent = "Login mislukt: " + msg;
+      }
+    });
+
+    safeOn($("filterBetaald"), "change", e => attachUitgavenListener(e.target.value));
+
+    // Toggle beheer panel
+    safeOn($("toggleBeheerPaneel"), "click", () => {
+      const content = document.getElementById("beheerPaneelContent");
+      const btn = document.getElementById("toggleBeheerPaneel");
+      if (!content || !btn) return;
+      if (content.style.display === "none" || content.style.display === "") {
+        content.style.display = "block";
+        btn.textContent = "▲ Gebruikerstoegang beheren";
+      } else {
+        content.style.display = "none";
+        btn.textContent = "▼ Gebruikerstoegang beheren";
+      }
+    });
+
+    safeOn($("navLogout"), "click", async () => { await logActie("logout", {}); firebase.auth().signOut(); });
+    safeOn($("navTheme"), "click", async () => {
+      const current = document.body.dataset.theme || localStorage.getItem('theme') || 'dark';
+      const next = current === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+      if (document.getElementById('navTheme')) document.getElementById('navTheme').textContent = next==='light' ? '🌞' : '🌙';
+      await saveThemePreference(next);
+      logActie("theme_changed", { theme: next });
+    });
+  </script>
+</body>
+</html>
+   case "auth/too-many-requests": msg = "Te veel pogingen, probeer later opnieuw"; break;
           case "auth/invalid-login-credentials": msg = "Combinatie e-mail/wachtwoord ongeldig"; break;
         }
         if (fout) fout.textContent = "Login mislukt: " + msg;
