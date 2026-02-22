@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kamp</title>
+  <link rel="stylesheet" href="style.css?v=20250926" />
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-firestore-compat.js"></script>
+  <script>
+    // Reuse same Firebase config as index.html
+    const firebaseConfig = {
+      apiKey: "AIzaSyC-UaXhh5juhV4raXWnzku9fSZZD75-y9w",
+      authDomain: "uitgavebeheerch.firebaseapp.com",
+      databaseURL: "https://uitgavebeheerch-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "uitgavebeheerch",
+      storageBucket: "uitgavebeheerch.firebasestorage.app",
+      messagingSenderId: "461673562296",
+      appId: "1:461673562296:web:d90a026cd685400139f44d",
+      measurementId: "G-K8NYLSE5EF"
+    };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  </script>
+</head>
+<body>
+  <nav id="mainNav">
+    <span>Chiro Kattenbos</span>
+    <a href="index.html">Home</a>
+    <a id="navEvenementen" href="evenementen.html">Evenementen</a>
+    <a id="navKamp" href="kamp.html" class="active">Kamp</a>
+    <a id="navBeheer" href="gebruikersbeheer.html">Gebruikersbeheer</a>
+    <button id="navTheme" title="Schakel thema" style="display:none;">🌙</button>
+    <button id="navLogout">Uitloggen</button>
+  </nav>
+  <div class="container">
+    <h1>Kamp</h1>
+    <p>Selecteer een kampactiviteit om kosten en verdiensten te beheren.</p>
+
+    <div class="card-grid">
+      <a class="card" href="zomerbar.html">
+        <h3>Zomerbar</h3>
+        <p>Beheer kosten en verdiensten</p>
+      </a>
+      <a class="card" href="winterbar.html">
+        <h3>Winterbar</h3>
+        <p>Beheer kosten en verdiensten</p>
+      </a>
+      <a class="card" href="school's in quiz.html">
+        <h3>School's in quiz</h3>
+        <p>Beheer kosten en verdiensten</p>
+      </a>
+    </div>
+
+    <!-- Alleen zichtbaar voor financieel: kamp-rollen beheren -->
+    <div id="eventRolesPanel" class="card" style="display:none; margin-top: 24px;">
+      <h3>Kamp-rollen beheren (alleen financieel)</h3>
+      <p>Vink aan welke gebruikers toegang hebben tot een specifieke kampactiviteit.</p>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>E-mail</th>
+              <th>UID</th>
+              <th>Zomerbar</th>
+              <th>Winterbar</th>
+              <th>School's in quiz</th>
+            </tr>
+          </thead>
+          <tbody id="eventRolesBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Basic theme + auth nav handling (reuse from other pages in a minimal way)
+    function applyTheme(theme){ document.body.dataset.theme = theme; }
+    applyTheme(localStorage.getItem('theme') || 'dark');
+    const navTheme = document.getElementById('navTheme');
+    if (navTheme) { navTheme.style.display = 'inline'; navTheme.textContent = (document.body.dataset.theme==='light') ? '🌞' : '🌙';
+      navTheme.addEventListener('click', ()=>{
+        const next = (document.body.dataset.theme==='dark')?'light':'dark';
+        document.body.dataset.theme = next; localStorage.setItem('theme', next);
+        navTheme.textContent = next==='light'?'🌞':'🌙';
+      });
+    }
+    const nav = document.getElementById('mainNav');
+    const navLogout = document.getElementById('navLogout');
+    firebase.auth().onAuthStateChanged(async (user)=>{
+      if (!user) {
+        if (nav) nav.style.display = 'none';
+        window.location.href = 'index.html';
+        return;
+      }
+      // Load user profile to show/hide beheer link if needed
+      const snap = await firebase.firestore().collection('gebruikers').doc(user.uid).get().catch(()=>null);
+      const data = snap && snap.exists ? snap.data() : {};
+      const isFin = data && data.rol === 'financieel';
+      const navBeheer = document.getElementById('navBeheer');
+      if (navBeheer) navBeheer.style.display = isFin ? 'inline' : 'none';
+      // Show financieel-only event roles panel
+      const eventRolesPanel = document.getElementById('eventRolesPanel');
+      if (eventRolesPanel) eventRolesPanel.style.display = isFin ? 'block' : 'none';
+      if (nav) nav.style.display = 'flex';
+      if (navLogout) navLogout.onclick = ()=> firebase.auth().signOut();
+    });
+  </script>
+  <script src="kamp.js?v=20250927"></script>
+</body>
+</html>
