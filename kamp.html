@@ -49,6 +49,26 @@ const firebaseConfig = {
     <h1>Chiro Kattenbos – Kamp Uitgavenbeheer</h1>
     <p id="gebruikerInfo"></p>
 
+    <!-- Beheer panel: alleen voor financieel -->
+    <div id="beheerPaneel" style="display:none; margin-bottom: 2rem; padding: 1rem; background: #f5f5f5; border-radius: 8px;">
+      <h3>Gebruikerstoegang beheren (alleen financieel)</h3>
+      <p style="font-size: 0.9rem; color: #666;">Vink de gebruikers aan die toegang hebben tot deze kamp-pagina.</p>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>E-mail</th>
+              <th>UID</th>
+              <th>Rol</th>
+              <th>Groep</th>
+              <th>Kamp-toegang</th>
+            </tr>
+          </thead>
+          <tbody id="kampAccessBody"></tbody>
+        </table>
+      </div>
+    </div>
+
     <form id="uitgaveForm">
       <label for="bedrag">Bedrag (€):</label>
       <input type="text" id="bedrag" inputmode="decimal" pattern="^\d+(?:[\.,]\d{1,2})?$" placeholder="bv. 12,30" required />
@@ -355,6 +375,51 @@ const firebaseConfig = {
       }, err => console.error("Realtime uitgaven mislukt:", err));
     }
 
+    async function renderKampAccessUsers() {
+      const tbody = $("kampAccessBody");
+      if (!tbody) return;
+      if (!magBeheren()) { tbody.innerHTML = ""; return; }
+      
+      tbody.innerHTML = "";
+      const gebruikersSnap = await db.collection("gebruikers").get();
+      const allUsers = gebruikersSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
+
+      allUsers.forEach(user => {
+        const tr = document.createElement("tr");
+        
+        const emailTd = document.createElement("td");
+        emailTd.textContent = user.email || "-";
+        tr.appendChild(emailTd);
+
+        const uidTd = document.createElement("td");
+        uidTd.textContent = user.uid;
+        tr.appendChild(uidTd);
+
+        const rolTd = document.createElement("td");
+        rolTd.textContent = user.rol || "-";
+        tr.appendChild(rolTd);
+
+        const groepTd = document.createElement("td");
+        groepTd.textContent = user.groep || "-";
+        tr.appendChild(groepTd);
+
+        const accessTd = document.createElement("td");
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = user.kampAccess || false;
+        checkbox.addEventListener("change", async () => {
+          try {
+            await db.collection("gebruikers").doc(user.uid).update({ kampAccess: checkbox.checked });
+            await logActie("kamp_access_updated", { email: user.email, kampAccess: checkbox.checked });
+          } catch(err) { alert("Update mislukt: " + err.message); }
+        });
+        accessTd.appendChild(checkbox);
+        tr.appendChild(accessTd);
+
+        tbody.appendChild(tr);
+      });
+    }
+
     firebase.auth().onAuthStateChanged(async user => {
       if (user) {
         huidigeGebruiker = user;
@@ -441,5 +506,6 @@ const firebaseConfig = {
   </script>
 </body>
 </html>
+
 
 
