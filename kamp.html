@@ -497,6 +497,11 @@ const firebaseConfig = {
         if (navLogout) navLogout.style.display = 'inline';
         if (navTheme) { navTheme.style.display = 'inline'; navTheme.textContent = document.body.dataset.theme === 'light' ? '🌞' : '🌙'; }
 
+        // Toon beheer panel voor financieel
+        const beheerPanel = $("beheerPaneel");
+        if (beheerPanel) beheerPanel.style.display = isFin ? 'block' : 'none';
+        if (isFin) renderKampAccessUsers();
+
         attachUitgavenListener($("filterBetaald")?.value || "");
       } else {
         $("appInhoud") && ($("appInhoud").style.display = "none");
@@ -548,6 +553,7 @@ const firebaseConfig = {
   </script>
 </body>
 </html>
+
 
 
 
