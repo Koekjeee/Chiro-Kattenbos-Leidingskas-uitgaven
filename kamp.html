@@ -3,30 +3,33 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Kamp</title>
+  <title>Chiro Kattenbos – Kamp Uitgavenbeheer</title>
   <link rel="stylesheet" href="style.css?v=20250926" />
+
+  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-storage-compat.js"></script>
   <script>
-    // Reuse same Firebase config as index.html
-    const firebaseConfig = {
-      apiKey: "AIzaSyC-UaXhh5juhV4raXWnzku9fSZZD75-y9w",
-      authDomain: "uitgavebeheerch.firebaseapp.com",
-      databaseURL: "https://uitgavebeheerch-default-rtdb.europe-west1.firebasedatabase.app",
-      projectId: "uitgavebeheerch",
-      storageBucket: "uitgavebeheerch.firebasestorage.app",
-      messagingSenderId: "461673562296",
-      appId: "1:461673562296:web:d90a026cd685400139f44d",
-      measurementId: "G-K8NYLSE5EF"
-    };
-    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const firebaseConfig = {
+  apiKey: "AIzaSyC-UaXhh5juhV4raXWnzku9fSZZD75-y9w",
+  authDomain: "uitgavebeheerch.firebaseapp.com",
+  databaseURL: "https://uitgavebeheerch-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "uitgavebeheerch",
+  storageBucket: "uitgavebeheerch.appspot.com",
+  messagingSenderId: "461673562296",
+  appId: "1:461673562296:web:d90a026cd685400139f44d",
+  measurementId: "G-K8NYLSE5EF"
+};
+    firebase.initializeApp(firebaseConfig);
   </script>
 </head>
 <body>
   <nav id="mainNav">
     <span>Chiro Kattenbos</span>
     <a href="index.html">Home</a>
+    <a id="navSamenvatting" href="samenvatting.html" target="_blank">Samenvatting</a>
     <a id="navEvenementen" href="evenementen.html">Evenementen</a>
     <a id="navKamp" href="kamp.html" class="active">Kamp</a>
     <a id="navBeheer" href="gebruikersbeheer.html">Gebruikersbeheer</a>
@@ -34,78 +37,408 @@
     <button id="navLogout">Uitloggen</button>
   </nav>
   <div class="container">
-    <h1>Kamp</h1>
-    <p>Selecteer een kampactiviteit om kosten en verdiensten te beheren.</p>
+  <div id="loginScherm">
+    <h2>Inloggen</h2>
+    <input type="email" id="loginEmail" placeholder="E-mailadres" required />
+    <input type="password" id="loginWachtwoord" placeholder="Wachtwoord" required />
+    <button id="loginKnop">Inloggen</button>
+    <p id="loginFout" style="color: red;"></p>
+  </div>
 
-    <div class="card-grid">
-      <a class="card" href="zomerbar.html">
-        <h3>Zomerbar</h3>
-        <p>Beheer kosten en verdiensten</p>
-      </a>
-      <a class="card" href="winterbar.html">
-        <h3>Winterbar</h3>
-        <p>Beheer kosten en verdiensten</p>
-      </a>
-      <a class="card" href="school's in quiz.html">
-        <h3>School's in quiz</h3>
-        <p>Beheer kosten en verdiensten</p>
-      </a>
-    </div>
+  <div id="appInhoud" style="display: none;">
+    <h1>Chiro Kattenbos – Kamp Uitgavenbeheer</h1>
+    <p id="gebruikerInfo"></p>
 
-    <!-- Alleen zichtbaar voor financieel: kamp-rollen beheren -->
-    <div id="eventRolesPanel" class="card" style="display:none; margin-top: 24px;">
-      <h3>Kamp-rollen beheren (alleen financieel)</h3>
-      <p>Vink aan welke gebruikers toegang hebben tot een specifieke kampactiviteit.</p>
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>E-mail</th>
-              <th>UID</th>
-              <th>Zomerbar</th>
-              <th>Winterbar</th>
-              <th>School's in quiz</th>
-            </tr>
-          </thead>
-          <tbody id="eventRolesBody"></tbody>
-        </table>
-      </div>
+    <form id="uitgaveForm">
+      <label for="bedrag">Bedrag (€):</label>
+      <input type="text" id="bedrag" inputmode="decimal" pattern="^\d+(?:[\.,]\d{1,2})?$" placeholder="bv. 12,30" required />
+      <label for="activiteit">Activiteit/Omschrijving:</label>
+      <input type="text" id="activiteit" required />
+      <label for="datum">Datum:</label>
+      <input type="date" id="datum" required />
+      <label for="rekeningNummer">Rekeningnummer:</label>
+      <input type="text" id="rekeningNummer" required placeholder="BE00 0000 0000 0000" />
+      <label for="bewijsUpload">Upload bewijsstuk (verplicht):</label>
+      <input type="file" id="bewijsUpload" accept="image/*,application/pdf" required />
+      <button type="submit">Toevoegen</button>
+    </form>
+
+    <div class="filter">
+      <label for="filterBetaald">Filter op betaald:</label>
+      <select id="filterBetaald">
+        <option value="">Alles</option>
+        <option value="true">Betaald</option>
+        <option value="false">Niet betaald</option>
+      </select>
     </div>
+    <div class="table-scroll">
+    <table id="overzicht">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Bedrag</th>
+          <th>Activiteit</th>
+          <th>Datum</th>
+          <th>Betaald</th>
+          <th>Actie</th>
+          <th>Terug betaald?</th>
+          <th>Rekeningnummer</th>
+          <th>Bewijs</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    </div>
+  </div>
   </div>
 
   <script>
-    // Basic theme + auth nav handling (reuse from other pages in a minimal way)
-    function applyTheme(theme){ document.body.dataset.theme = theme; }
-    applyTheme(localStorage.getItem('theme') || 'dark');
-    const navTheme = document.getElementById('navTheme');
-    if (navTheme) { navTheme.style.display = 'inline'; navTheme.textContent = (document.body.dataset.theme==='light') ? '🌞' : '🌙';
-      navTheme.addEventListener('click', ()=>{
-        const next = (document.body.dataset.theme==='dark')?'light':'dark';
-        document.body.dataset.theme = next; localStorage.setItem('theme', next);
-        navTheme.textContent = next==='light'?'🌞':'🌙';
-      });
+    const db = firebase.firestore();
+    let huidigeGebruiker = null;
+    let gebruikersData = null;
+    let clientIP = null;
+    const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dxizebpwn/upload";
+    const CLOUDINARY_PRESET = "chiro_upload_fotos";
+
+    // Utility
+    const $ = (id) => document.getElementById(id);
+    const safeOn = (el, ev, fn) => { if (el) el.addEventListener(ev, fn); };
+
+    function nameFromEmail(email){
+      if (!email) return "-";
+      const [left] = email.split("@");
+      return left ? left.replace(/[._-]+/g, " ").replace(/\b\w/g, c=>c.toUpperCase()) : email;
     }
-    const nav = document.getElementById('mainNav');
-    const navLogout = document.getElementById('navLogout');
-    firebase.auth().onAuthStateChanged(async (user)=>{
-      if (!user) {
-        if (nav) nav.style.display = 'none';
-        window.location.href = 'index.html';
+
+    function parseEuro(input){
+      if (typeof input === 'number') return input;
+      const s = String(input || '').trim().replace(/\s/g,'');
+      if (!s) return NaN;
+      const norm = s.replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.');
+      const v = Number(norm);
+      return isNaN(v) ? NaN : v;
+    }
+
+    function applyTheme(theme){
+      document.body.dataset.theme = theme;
+    }
+
+    async function saveThemePreference(theme){
+      try {
+        localStorage.setItem("theme", theme);
+        if (huidigeGebruiker) {
+          await db.collection("gebruikers").doc(huidigeGebruiker.uid).set({ theme }, { merge: true });
+        }
+      } catch {}
+    }
+
+    applyTheme(localStorage.getItem("theme") || "dark");
+
+    async function resolveClientIP(){
+      try {
+        const cached = localStorage.getItem("clientIP");
+        if (cached) { clientIP = cached; return cached; }
+        const r = await fetch("https://api.ipify.org?format=json");
+        const j = await r.json();
+        clientIP = j && j.ip ? j.ip : null;
+        if (clientIP) localStorage.setItem("clientIP", clientIP);
+        return clientIP;
+      } catch { return null; }
+    }
+
+    async function logActie(action, details){
+      try {
+        const user = firebase.auth().currentUser;
+        const email = user?.email || gebruikersData?.email || "-";
+        const rol = gebruikersData?.rol || "-";
+        const naam = nameFromEmail(email);
+        const isAdmin = (rol === "financieel");
+        const emoji = isAdmin ? "🛡️" : "👤";
+        const ip = clientIP || await resolveClientIP();
+        await db.collection("auditLogs").add({
+          action, details: details || {}, uid: user?.uid || null, email, naam, rol, isAdmin, emoji,
+          ip: ip || null, ua: navigator.userAgent, at: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+      } catch(err){ console.warn("audit log faalde", err); }
+    }
+
+    function magBeheren(){
+      return gebruikersData && gebruikersData.rol === "financieel";
+    }
+
+    async function haalGebruikersData(uid){
+      const d = await db.collection("gebruikers").doc(uid).get();
+      return d.exists ? d.data() : null;
+    }
+
+    function sanitizeFilename(name){ return (name||'bestand').replace(/[^a-z0-9._-]/gi,'_'); }
+
+    async function uploadBewijs(file){
+      if (!file) throw new Error("Geen bestand opgegeven voor upload.");
+      const authUser = firebase.auth().currentUser;
+      if (!authUser) throw new Error("Niet ingelogd.");
+      try { await authUser.getIdToken(true); } catch (e) { console.warn("Kon ID token niet vernieuwen", e); }
+
+      const cloudinaryConfigured = (
+        /^https:\/\/api\.cloudinary\.com\/v1_1\/[^<>\s]+\/upload$/i.test(CLOUDINARY_URL) &&
+        CLOUDINARY_PRESET && !CLOUDINARY_URL.includes('<') && !CLOUDINARY_PRESET.includes('<')
+      );
+
+      if (cloudinaryConfigured) {
+        try {
+          const fd = new FormData();
+          fd.append('file', file);
+          fd.append('upload_preset', CLOUDINARY_PRESET);
+          const res = await fetch(CLOUDINARY_URL, { method: 'POST', body: fd });
+          if (res.ok) {
+            const data = await res.json().catch(()=>null);
+            if (data && data.secure_url) return data.secure_url;
+          }
+        } catch (err) { console.warn('Cloudinary uitzondering, fallback naar Storage', err); }
+      }
+
+      if (!firebase.storage) throw new Error('Firebase Storage SDK niet geladen.');
+      const app = firebase.app();
+      const storage = firebase.storage();
+      let rootRef;
+      try {
+        const bucket = app.options && app.options.storageBucket;
+        const projectId = (app.options && app.options.projectId) || 'default-bucket';
+        const needsOverride = !bucket || /firebasestorage\.app$/i.test(bucket) || !/appspot\.com$/i.test(bucket);
+        rootRef = needsOverride ? storage.refFromURL(`gs://${projectId}.appspot.com`) : storage.ref();
+      } catch(e){ rootRef = storage.ref(); }
+
+      const uid = authUser.uid;
+      const path = `bewijsjes/${uid}/${Date.now()}-${sanitizeFilename(file.name)}`;
+      const meta = { contentType: file.type || 'application/octet-stream' };
+      const snap = await rootRef.child(path).put(file, meta);
+      return await snap.ref.getDownloadURL();
+    }
+
+    function setUploading(state){
+      const btn = document.querySelector('#uitgaveForm button[type="submit"]');
+      if (!btn) return;
+      if (state){ btn.disabled = true; btn.dataset.prevText = btn.textContent; btn.textContent = 'Bezig...'; }
+      else { btn.disabled = false; if (btn.dataset.prevText) btn.textContent = btn.dataset.prevText; }
+    }
+
+    safeOn($("uitgaveForm"), "submit", async e => {
+      e.preventDefault();
+      const bRaw = $("bedrag")?.value;
+      const b = parseEuro(bRaw);
+      const a = $("activiteit")?.value;
+      const d = $("datum")?.value;
+      const rekeningNummer = $("rekeningNummer")?.value.trim();
+      const file = $("bewijsUpload")?.files?.[0];
+
+      if (isNaN(b) || !a || !d) return alert("Gelieve alle velden correct in te vullen.");
+      if (!rekeningNummer) return alert("Vul je rekeningnummer in.");
+      if (!file) return alert("Upload een bewijsstuk.");
+
+      let bewijsUrl = "";
+      try {
+        setUploading(true);
+        bewijsUrl = await uploadBewijs(file);
+      } catch (err) {
+        console.error("Upload bewijsstuk mislukt:", err);
+        alert("Upload bewijsstuk mislukt:\n" + (err && err.message ? err.message : err));
         return;
       }
-      // Load user profile to show/hide beheer link if needed
-      const snap = await firebase.firestore().collection('gebruikers').doc(user.uid).get().catch(()=>null);
-      const data = snap && snap.exists ? snap.data() : {};
-      const isFin = data && data.rol === 'financieel';
-      const navBeheer = document.getElementById('navBeheer');
-      if (navBeheer) navBeheer.style.display = isFin ? 'inline' : 'none';
-      // Show financieel-only event roles panel
-      const eventRolesPanel = document.getElementById('eventRolesPanel');
-      if (eventRolesPanel) eventRolesPanel.style.display = isFin ? 'block' : 'none';
-      if (nav) nav.style.display = 'flex';
-      if (navLogout) navLogout.onclick = ()=> firebase.auth().signOut();
+
+      try {
+        let bestaandeNummers = [];
+        try {
+          const uitgavenSnap = await db.collection("uitgaven").get();
+          bestaandeNummers = uitgavenSnap.docs.map(d => (d.data().nummer)||0);
+        } catch(readErr){ console.warn("Kon uitgaven niet lezen", readErr); }
+
+        let nieuwNummer = 1 + Math.max(0, ...bestaandeNummers);
+        const nu = firebase.firestore.FieldValue.serverTimestamp();
+        const docRef = await db.collection("uitgaven").add({
+          nummer: nieuwNummer,
+          groep: "Kamp",
+          bedrag: b,
+          activiteit: a,
+          datum: d,
+          rekeningNummer: rekeningNummer,
+          bewijsUrl: bewijsUrl,
+          email: huidigeGebruiker?.email || '-',
+          ingediendOp: nu,
+          betaald: false,
+          terugBetaald: false
+        });
+
+        alert("Uitgave succesvol toegevoegd!");
+        $("uitgaveForm").reset();
+        attachUitgavenListener($("filterBetaald")?.value || "");
+        await logActie("kamp_uitgave_added", { bedrag: b, activiteit: a });
+      } catch (err) {
+        console.error("Opslaan mislukt:", err);
+        alert("Opslaan mislukt: " + (err && err.message ? err.message : err));
+      } finally {
+        setUploading(false);
+      }
+    });
+
+    function attachUitgavenListener(filterBetaaldVal){
+      const tbody = $("overzicht")?.querySelector("tbody");
+      if (!tbody) return;
+
+      return db.collection("uitgaven").where("groep", "==", "Kamp").onSnapshot(snap => {
+        tbody.innerHTML = '';
+        const filter = filterBetaaldVal?.toString();
+        const isFin = magBeheren();
+
+        snap.docs.forEach(doc => {
+          const u = doc.data();
+          if (filter === 'true' && !u.betaald) return;
+          if (filter === 'false' && u.betaald) return;
+
+          const row = tbody.insertRow();
+          row.insertCell(0).textContent = u.nummer || '-';
+          row.insertCell(1).textContent = `€${(u.bedrag||0).toFixed(2)}`;
+          row.insertCell(2).textContent = u.activiteit || '-';
+          row.insertCell(3).textContent = u.datum || '-';
+          row.insertCell(4).textContent = u.betaald ? 'Ja' : 'Nee';
+
+          const actieCell = row.insertCell(5);
+          if (isFin) {
+            const btn = document.createElement("button");
+            btn.textContent = u.betaald ? "Ongedaan maken" : "Als betaald markeren";
+            btn.addEventListener("click", async () => {
+              try {
+                await db.collection("uitgaven").doc(doc.id).update({ betaald: !u.betaald });
+              } catch(err) { alert("Update mislukt: " + err.message); }
+            });
+            btn.style.display = isFin ? "inline" : "none";
+            actieCell.appendChild(btn);
+          }
+
+          const betaaldCell = row.insertCell(6);
+          if (isFin) {
+            const check = document.createElement("input");
+            check.type = "checkbox";
+            check.checked = u.terugBetaald || false;
+            check.addEventListener("change", async () => {
+              try {
+                await db.collection("uitgaven").doc(doc.id).update({ terugBetaald: check.checked });
+              } catch(err) { alert("Update mislukt: " + err.message); }
+            });
+            betaaldCell.appendChild(check);
+            betaaldCell.style.display = isFin ? "table-cell" : "none";
+          } else {
+            betaaldCell.style.display = "none";
+          }
+
+          row.insertCell(7).textContent = u.rekeningNummer || '-';
+
+          const bewijsCell = row.insertCell(8);
+          if (u.bewijsUrl) {
+            const link = document.createElement("a");
+            link.href = u.bewijsUrl;
+            link.target = "_blank";
+            link.rel = "noopener";
+            link.title = "Bekijk bewijsstuk";
+            if (u.bewijsUrl.match(/\.(jpg|jpeg|png|gif)$/i)) {
+              const img = document.createElement("img");
+              img.src = u.bewijsUrl;
+              img.alt = "Bewijs";
+              img.style.maxWidth = "40px";
+              img.style.maxHeight = "40px";
+              link.appendChild(img);
+            } else {
+              link.textContent = "📄";
+            }
+            bewijsCell.appendChild(link);
+          }
+        });
+      }, err => console.error("Realtime uitgaven mislukt:", err));
+    }
+
+    firebase.auth().onAuthStateChanged(async user => {
+      if (user) {
+        huidigeGebruiker = user;
+        try {
+          gebruikersData = (await haalGebruikersData(user.uid)) || {};
+          if (!gebruikersData || Object.keys(gebruikersData).length === 0) {
+            const defaultRol = /fin|boek|kas|treasurer|finance/i.test(user.email||'') ? 'financieel' : 'leiding';
+            const defaultGroep = 'Ribbels';
+            await db.collection('gebruikers').doc(user.uid).set({
+              email: user.email || '',
+              rol: defaultRol,
+              groep: defaultGroep,
+              aangemaaktOp: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+            gebruikersData = (await haalGebruikersData(user.uid)) || { rol: defaultRol, groep: defaultGroep };
+          }
+        } catch (e) {
+          console.error('[auth] Fout bij ophalen/aanmaken gebruikersdoc', e);
+          gebruikersData = gebruikersData || {};
+        }
+
+        $("loginScherm") && ($("loginScherm").style.display = "none");
+        $("appInhoud") && ($("appInhoud").style.display = "block");
+        $("gebruikerInfo") && ($("gebruikerInfo").textContent = `Ingelogd als ${gebruikersData.rol || 'onbekend'}`);
+
+        const nav = document.getElementById('mainNav');
+        if (nav) nav.style.display = 'flex';
+        const navBeh = document.getElementById('navBeheer');
+        const navTheme = document.getElementById('navTheme');
+        const navLogout = document.getElementById('navLogout');
+        const isFin = gebruikersData.rol === 'financieel';
+        if (navBeh) navBeh.style.display = isFin ? 'inline' : 'none';
+        if (navLogout) navLogout.style.display = 'inline';
+        if (navTheme) { navTheme.style.display = 'inline'; navTheme.textContent = document.body.dataset.theme === 'light' ? '🌞' : '🌙'; }
+
+        attachUitgavenListener($("filterBetaald")?.value || "");
+      } else {
+        $("appInhoud") && ($("appInhoud").style.display = "none");
+        $("loginScherm") && ($("loginScherm").style.display = "block");
+        $("loginFout") && ($("loginFout").textContent = "");
+        huidigeGebruiker = null;
+        gebruikersData = null;
+        const nav = document.getElementById('mainNav');
+        if (nav) nav.style.display = 'none';
+      }
+    });
+
+    safeOn($("loginKnop"), "click", async () => {
+      const emailInput = $("loginEmail");
+      const passInput = $("loginWachtwoord");
+      const fout = $("loginFout");
+      const email = (emailInput?.value || "").trim();
+      const wachtwoord = (passInput?.value || "").trim();
+      if (!email || !wachtwoord) { if (fout) fout.textContent = "Vul e-mail en wachtwoord in."; return; }
+      try {
+        await firebase.auth().signInWithEmailAndPassword(email, wachtwoord);
+        logActie("login", {});
+        if (fout) fout.textContent = "";
+      } catch (err) {
+        let msg = (err && err.message) ? err.message : String(err);
+        const code = err && err.code ? err.code : "";
+        switch (code) {
+          case "auth/invalid-email": msg = "Ongeldig e-mailadres"; break;
+          case "auth/user-not-found": msg = "Geen account met dit e-mailadres"; break;
+          case "auth/wrong-password": msg = "Onjuist wachtwoord"; break;
+          case "auth/too-many-requests": msg = "Te veel pogingen, probeer later opnieuw"; break;
+          case "auth/invalid-login-credentials": msg = "Combinatie e-mail/wachtwoord ongeldig"; break;
+        }
+        if (fout) fout.textContent = "Login mislukt: " + msg;
+      }
+    });
+
+    safeOn($("filterBetaald"), "change", e => attachUitgavenListener(e.target.value));
+
+    safeOn($("navLogout"), "click", async () => { await logActie("logout", {}); firebase.auth().signOut(); });
+    safeOn($("navTheme"), "click", async () => {
+      const current = document.body.dataset.theme || localStorage.getItem('theme') || 'dark';
+      const next = current === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+      if (document.getElementById('navTheme')) document.getElementById('navTheme').textContent = next==='light' ? '🌞' : '🌙';
+      await saveThemePreference(next);
+      logActie("theme_changed", { theme: next });
     });
   </script>
-  <script src="kamp.js?v=20250927"></script>
 </body>
 </html>
+
