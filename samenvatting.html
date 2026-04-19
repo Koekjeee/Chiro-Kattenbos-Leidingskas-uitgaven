@@ -9,8 +9,8 @@
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-firestore-compat.js"></script>
   <!-- jsPDF + AutoTable for PDF export -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha512-+g7gkZ1yH9n1yI3o6v8oXKjM4FqkzsfQqk0A5I7mG0o1Lx8CqX8v6d0oLKOuJgP5w9g6GXrJtscXoQkqT3ZxYQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.0/jspdf.plugin.autotable.min.js" integrity="sha512-9X2Zt9iV6t2o0y5JvDq7Yh9/0Q2Gct0r9u3t0jOQzHn1h2cL3rjE0q9nQ8Gm3YQe9y8xW9vJ9N0mJz9Qf7b4mw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.0/jspdf.plugin.autotable.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script>
   const firebaseConfig = {
     apiKey: "AIzaSyC-UaXhh5juhV4raXWnzku9fSZZD75-y9w",
@@ -93,11 +93,11 @@
       tippers: groepKleuren.Tippers,
       toppers: groepKleuren.Toppers,
       aspi: groepKleuren.Aspi,
-    "keti": groepKleuren.Keti,
-      "4uurtje": groepKleuren["4uurtje"],
-  leiding: groepKleuren.LEIDING,
-  algemeen: groepKleuren.Algemeen,
-  overige: groepKleuren.Overige
+      keti: groepKleuren.Keti,
+      4uurtje: groepKleuren.4uurtje,
+      leiding: groepKleuren.LEIDING,
+      algemeen: groepKleuren.Algemeen,
+      overige: groepKleuren.Overige
     };
     return map[key] || 'rgba(148,163,184,0.12)';
   }
