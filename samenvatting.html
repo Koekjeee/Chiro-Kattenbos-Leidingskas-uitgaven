@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Samenvatting – Chiro Kattenbos</title>
+
   <link rel="stylesheet" href="style.css?v=20250926" />
 
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
@@ -31,7 +32,7 @@
   <a href="index.html">Home</a>
   <a id="navBeheer" href="gebruikersbeheer.html">Gebruikersbeheer</a>
   <button id="navTheme" style="display:none;">🌙</button>
-  <button id="navLogout" class="push-right">Uitloggen</button>
+  <button id="navLogout" class="push-right" style="display:none;">Uitloggen</button>
 </nav>
 
 <div class="container">
@@ -83,8 +84,8 @@
     "Tippers",
     "Toppers",
     "Aspi",
-    "Keti",
-    "4 uurtje",
+    "Keti's",
+    "4uurtje",
     "Algemeen",
     "LEIDING"
   ];
@@ -97,8 +98,8 @@
     Tippers: "rgba(99,102,241,0.18)",
     Toppers: "rgba(16,185,129,0.18)",
     Aspi: "rgba(249,115,22,0.18)",
-    Keti: "rgba(56,189,248,0.18)",
-    "4 uurtje": "rgba(168,85,247,0.18)",
+    "Keti's": "rgba(56,189,248,0.18)",
+    "4uurtje": "rgba(168,85,247,0.18)",
     Algemeen: "rgba(0,0,0,0.12)",
     LEIDING: "rgba(148,163,184,0.18)"
   };
@@ -119,7 +120,7 @@
   function parseEuro(input) {
     if (typeof input === "number") return input;
 
-    const s = String(input || "").replace(",", ".").trim();
+    const s = String(input || "").trim().replace(",", ".");
     const v = Number(s);
 
     return isNaN(v) ? 0 : v;
@@ -130,7 +131,9 @@
   }
 
   function bouwTabel() {
-    const tbody = $("#groepSamenvattingTabel tbody");
+    const tbody = document.querySelector("#groepSamenvattingTabel tbody");
+    if (!tbody) return;
+
     tbody.innerHTML = "";
 
     alleGroepen.forEach(groep => {
@@ -169,7 +172,6 @@
       .onSnapshot(snapshot => {
 
         const map = {};
-
         alleGroepen.forEach(g => map[g] = 0);
 
         snapshot.forEach(doc => {
@@ -192,6 +194,9 @@
     if (!user) {
       $("#loginScherm").style.display = "block";
       $("#appInhoud").style.display = "none";
+      $("#navLogout").style.display = "none";
+      $("#navTheme").style.display = "none";
+      $("#navBeheer").style.display = "none";
       return;
     }
 
@@ -217,37 +222,49 @@
     startListeners();
   });
 
-  $("#loginKnop").addEventListener("click", async () => {
+  const loginBtn = $("#loginKnop");
+  if (loginBtn) {
+    loginBtn.addEventListener("click", async () => {
 
-    const email = $("#loginEmail").value.trim();
-    const wachtwoord = $("#loginWachtwoord").value.trim();
+      const email = $("#loginEmail").value.trim();
+      const wachtwoord = $("#loginWachtwoord").value.trim();
 
-    try {
-      await firebase.auth().signInWithEmailAndPassword(email, wachtwoord);
-      $("#loginFout").textContent = "";
-    } catch (err) {
-      $("#loginFout").textContent = "Login mislukt.";
-    }
-  });
+      try {
+        await firebase.auth().signInWithEmailAndPassword(email, wachtwoord);
+        $("#loginFout").textContent = "";
+      } catch (err) {
+        $("#loginFout").textContent = "Login mislukt.";
+      }
+    });
+  }
 
-  $("#navLogout").addEventListener("click", async () => {
-    await firebase.auth().signOut();
-  });
+  const logoutBtn = $("#navLogout");
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", async () => {
+      await firebase.auth().signOut();
+    });
+  }
 
-  $("#navTheme").addEventListener("click", () => {
-    const huidig = document.body.dataset.theme || "dark";
-    const nieuw = huidig === "dark" ? "light" : "dark";
+  const themeBtn = $("#navTheme");
+  if (themeBtn) {
+    themeBtn.addEventListener("click", () => {
 
-    document.body.dataset.theme = nieuw;
-    localStorage.setItem("theme", nieuw);
+      const huidig = document.body.dataset.theme || "dark";
+      const nieuw = huidig === "dark" ? "light" : "dark";
 
-    $("#navTheme").textContent = nieuw === "light" ? "🌞" : "🌙";
-  });
+      document.body.dataset.theme = nieuw;
+      localStorage.setItem("theme", nieuw);
+
+      themeBtn.textContent = nieuw === "light" ? "🌞" : "🌙";
+    });
+  }
 
   function exportSamenvattingPdf() {
 
     const jspdfNS = window.jspdf || {};
     const jsPDF = jspdfNS.jsPDF;
+
+    if (!jsPDF) return;
 
     const doc = new jsPDF();
 
@@ -278,7 +295,10 @@
     doc.save("samenvatting.pdf");
   }
 
-  $("#exportPdfBtn").addEventListener("click", exportSamenvattingPdf);
+  const exportBtn = $("#exportPdfBtn");
+  if (exportBtn) {
+    exportBtn.addEventListener("click", exportSamenvattingPdf);
+  }
 
 })();
 </script>
