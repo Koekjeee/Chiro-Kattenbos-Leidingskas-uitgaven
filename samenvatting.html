@@ -4,325 +4,351 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Samenvatting – Chiro Kattenbos</title>
-
   <link rel="stylesheet" href="style.css?v=20250926" />
-
-  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-firestore-compat.js"></script>
-
-  <!-- jsPDF -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.0/jspdf.plugin.autotable.min.js"></script>
-
+  <!-- jsPDF + AutoTable for PDF export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha512-+g7gkZ1yH9n1yI3o6v8oXKjM4FqkzsfQqk0A5I7mG0o1Lx8CqX8v6d0oLKOuJgP5w9g6GXrJtscXoQkqT3ZxYQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.0/jspdf.plugin.autotable.min.js" integrity="sha512-9X2Zt9iV6t2o0y5JvDq7Yh9/0Q2Gct0r9u3t0jOQzHn1h2cL3rjE0q9nQ8Gm3YQe9y8xW9vJ9N0mJz9Qf7b4mw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyC-UaXhh5juhV4raXWnzku9fSZZD75-y9w",
-      authDomain: "uitgavebeheerch.firebaseapp.com",
-      projectId: "uitgavebeheerch",
-      storageBucket: "uitgavebeheerch.firebasestorage.app"
-    };
-
-    firebase.initializeApp(firebaseConfig);
+  const firebaseConfig = {
+    apiKey: "AIzaSyC-UaXhh5juhV4raXWnzku9fSZZD75-y9w",
+    authDomain: "uitgavebeheerch.firebaseapp.com",
+    projectId: "uitgavebeheerch",
+    storageBucket: "uitgavebeheerch.firebasestorage.app"
+  };
+  firebase.initializeApp(firebaseConfig);
   </script>
 </head>
-
 <body>
   <nav id="mainNav">
     <span>Chiro Kattenbos</span>
     <a href="index.html">Home</a>
     <a id="navBeheer" href="gebruikersbeheer.html">Gebruikersbeheer</a>
-
-    <button id="navTheme" style="display:none;">🌙</button>
-    <button id="navLogout" class="push-right" style="display:none;">Uitloggen</button>
+    <button id="navTheme" title="Schakel thema" style="display:none;">🌙</button>
+    <button id="navLogout" class="push-right">Uitloggen</button>
   </nav>
 
   <div class="container">
-
-    <!-- LOGIN -->
-    <div id="loginScherm">
-      <h2>Inloggen</h2>
-
-      <input type="email" id="loginEmail" placeholder="E-mailadres" />
-      <input type="password" id="loginWachtwoord" placeholder="Wachtwoord" />
-
-      <button id="loginKnop">Inloggen</button>
-      <p id="loginFout" style="color:red;"></p>
-    </div>
-
-    <!-- APP -->
-    <div id="appInhoud" style="display:none;">
-      <h1>Samenvatting per groep</h1>
-
-      <p id="gebruikerInfo"></p>
-
-      <table id="groepSamenvattingTabel">
-        <thead>
-          <tr>
-            <th>Groep</th>
-            <th>Leden</th>
-            <th>Totaal (€)</th>
-            <th>€ per kind</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-
-      <div style="margin-top:15px;">
-        <button id="exportPdfBtn">Exporteer naar PDF</button>
-      </div>
-
-      <p id="samenvattingStatus"></p>
-    </div>
-
+  <div id="loginScherm">
+    <h2>Inloggen</h2>
+    <input type="email" id="loginEmail" placeholder="E-mailadres" required />
+    <input type="password" id="loginWachtwoord" placeholder="Wachtwoord" required />
+    <button id="loginKnop">Inloggen</button>
+    <p id="loginFout" style="color:red;"></p>
   </div>
 
-<script>
-document.addEventListener("DOMContentLoaded", () => {
+  <div id="appInhoud" style="display:none;">
+    <h1>Samenvatting per groep</h1>
+    <p id="gebruikerInfo"></p>
+    <table id="groepSamenvattingTabel">
+      <thead>
+        <tr>
+          <th>Groep</th>
+          <th>Leden</th>
+          <th>Totaal (€)</th>
+          <th>€ per kind</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div style="margin-top:12px; display:flex; gap:8px;">
+      <button id="exportPdfBtn">Exporteer naar PDF</button>
+    </div>
+    <p id="samenvattingStatus" style="font-style:italic; color:#555; margin-top:8px;"></p>
+  </div>
+  </div>
+
+  <script>
+  // Early theme from localStorage
+  (function initThemeEarly(){
+    try { const t = localStorage.getItem('theme'); if(t) document.body.dataset.theme = t; } catch {}
+  })();
 
   const db = firebase.firestore();
-
-  const $ = (id) => document.getElementById(id);
-
-  const alleGroepen = [
-    "Ribbels",
-    "Speelclubs",
-    "Rakkers",
-    "Kwiks",
-    "Tippers",
-    "Toppers",
-    "Aspi",
-    "Keti's",
-    "4uurtje",
-    "Algemeen",
-    "LEIDING"
-  ];
-
+  const alleGroepen = ["Ribbels","Speelclubs","Rakkers","Kwiks","Tippers","Toppers","Aspi","Keti's","4uurtje","Algemeen","LEIDING"]; // Keti's + 4uurtje + Algemeen toegevoegd
   const groepKleuren = {
-    Ribbels: "rgba(59,130,246,0.18)",
-    Speelclubs: "rgba(234,179,8,0.18)",
-    Rakkers: "rgba(34,197,94,0.18)",
-    Kwiks: "rgba(244,114,182,0.18)",
-    Tippers: "rgba(99,102,241,0.18)",
-    Toppers: "rgba(16,185,129,0.18)",
-    Aspi: "rgba(249,115,22,0.18)",
-    "Keti's": "rgba(56,189,248,0.18)",
-    "4uurtje": "rgba(168,85,247,0.18)",
-    Algemeen: "rgba(0,0,0,0.12)",
-    LEIDING: "rgba(148,163,184,0.18)"
+    Ribbels: "rgba(59,130,246,0.18)",      // blue-500
+    Speelclubs: "rgba(234,179,8,0.18)",   // amber-500
+    Rakkers: "rgba(34,197,94,0.18)",      // green-500
+    Kwiks: "rgba(244,114,182,0.18)",      // pink-400
+    Tippers: "rgba(99,102,241,0.18)",     // indigo-500
+    Toppers: "rgba(16,185,129,0.18)",     // emerald-500
+  Aspi: "rgba(249,115,22,0.18)",        // orange-500
+  "Keti's": "rgba(56,189,248,0.18)",   // sky-400
+  "4uurtje": "rgba(168,85,247,0.18)",  // violet-500
+  Algemeen: "rgba(0,0,0,0.12)",         // neutrale grijs voor algemene kosten
+  LEIDING: "rgba(148,163,184,0.18)",    // slate-400
+  Overige: "rgba(120,120,120,0.25)"      // synthetisch
   };
 
+  function kleurVoorGroep(g){
+    const key=(g||'').toString().trim().toLowerCase();
+    const map={
+      ribbels: groepKleuren.Ribbels,
+      speelclubs: groepKleuren.Speelclubs,
+      rakkers: groepKleuren.Rakkers,
+      kwiks: groepKleuren.Kwiks,
+      tippers: groepKleuren.Tippers,
+      toppers: groepKleuren.Toppers,
+      aspi: groepKleuren.Aspi,
+      "keti's": groepKleuren["Keti's"],
+      "4uurtje": groepKleuren["4uurtje"],
+  leiding: groepKleuren.LEIDING,
+  algemeen: groepKleuren.Algemeen,
+  overige: groepKleuren.Overige
+    };
+    return map[key] || 'rgba(148,163,184,0.12)';
+  }
+
+  // Helpers: name/email, theme, IP, audit
+  function nameFromEmail(email){ const i=(email||'').indexOf('@'); return (i>0? email.slice(0,i): (email||'-')).trim(); }
+  function applyTheme(theme){ document.body.dataset.theme = theme; }
+  async function saveThemePreference(theme, uid){ try { localStorage.setItem('theme', theme); if(uid){ await db.collection('gebruikers').doc(uid).set({ theme }, { merge:true }); } } catch {}
+  }
+  let clientIP=null; async function resolveClientIP(){ try { const c=localStorage.getItem('clientIP'); if(c){ clientIP=c; return c; } const r=await fetch('https://api.ipify.org?format=json'); const j=await r.json(); clientIP=j&&j.ip? j.ip:null; if(clientIP) localStorage.setItem('clientIP', clientIP); return clientIP; } catch { return null; } }
+  async function logActie(action, details){ try { const user=firebase.auth().currentUser; const email=user?.email||'-'; const d=await db.collection('gebruikers').doc(user?.uid||'__none__').get().catch(()=>null); const rol=d && d.exists? (d.data().rol||'-') : '-'; const naam=nameFromEmail(email); const emoji= rol==='financieel'? '🛡️':'👤'; const ip = clientIP || await resolveClientIP(); await db.collection('auditLogs').add({ action, details: details||{}, uid:user?.uid||null, email, naam, rol, isAdmin: rol==='financieel', emoji, ip: ip||null, ua: navigator.userAgent, at: firebase.firestore.FieldValue.serverTimestamp() }); } catch(e) { console.warn('audit log faalde', e);} }
+
   let gebruikersData = null;
-  let ledenMap = {};
-  let totalenPerGroep = {};
+  let ledenMap = {};        // { groep: aantal }
+  let totalenPerGroep = {}; // { groep: somBedragen }
+  let unsubUitgaven = null, unsubLeden = null;
 
-  let unsubLeden = null;
-  let unsubUitgaven = null;
+  const $ = (id) => document.getElementById(id);
+  const euro = (n) => `€${(Number(n)||0).toFixed(2)}`;
+  const magBeheren = () => gebruikersData && gebruikersData.rol === 'financieel';
 
-  function euro(n) {
-    return "€" + (Number(n) || 0).toFixed(2);
+  // Locale-aware parse: supports 12,30 and 12.30
+  function parseEuro(input){
+    if (typeof input === 'number') return input;
+    const s = String(input||'').trim().replace(/\s/g,'');
+    if (!s) return NaN;
+    const norm = s.replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.');
+    const v = Number(norm);
+    return isNaN(v) ? NaN : v;
   }
 
-  function parseEuro(value) {
-    if (typeof value === "number") return value;
-
-    const s = String(value || "")
-      .trim()
-      .replace(/\s/g, "")
-      .replace(",", ".");
-
-    const n = Number(s);
-    return isNaN(n) ? 0 : n;
-  }
-
-  function kleurVoorGroep(groep) {
-    return groepKleuren[groep] || "rgba(148,163,184,0.12)";
-  }
-
-  function bouwTabel() {
-    const tbody = document.querySelector("#groepSamenvattingTabel tbody");
+  function bouwTabel(){
+    const tbody = document.querySelector('#groepSamenvattingTabel tbody');
     if (!tbody) return;
+    tbody.innerHTML = '';
+    alleGroepen.forEach(g => {
+      const leden = Number(ledenMap[g] || 0);
+      const totaal = Number(totalenPerGroep[g] || 0);
+      const perKind = leden > 0 ? (totaal / leden) : null;
 
-    tbody.innerHTML = "";
+      const tr = document.createElement('tr');
+  tr.style.backgroundColor = kleurVoorGroep(g);
 
-    alleGroepen.forEach((groep) => {
-      const leden = Number(ledenMap[groep] || 0);
-      const totaal = Number(totalenPerGroep[groep] || 0);
-      const perKind = leden > 0 ? totaal / leden : null;
+      const tdGroep = document.createElement('td');
+      tdGroep.textContent = g; tr.appendChild(tdGroep);
 
-      const tr = document.createElement("tr");
-      tr.style.backgroundColor = kleurVoorGroep(groep);
+      const tdLeden = document.createElement('td');
+      tdLeden.textContent = String(leden); // Altijd read-only, sync alleen via Firestore config
+      tr.appendChild(tdLeden);
 
-      tr.innerHTML = `
-        <td>${groep}</td>
-        <td>${leden}</td>
-        <td>${euro(totaal)}</td>
-        <td>${perKind !== null ? euro(perKind) : "-"}</td>
-      `;
+      const tdTotaal = document.createElement('td');
+      tdTotaal.textContent = euro(totaal); tr.appendChild(tdTotaal);
+
+      const tdPerKind = document.createElement('td');
+      tdPerKind.textContent = perKind != null ? euro(perKind) : '-'; tr.appendChild(tdPerKind);
 
       tbody.appendChild(tr);
     });
   }
 
-  function startListeners() {
-    if (unsubLeden) unsubLeden();
-    if (unsubUitgaven) unsubUitgaven();
+  // schrijffunctie voor leden verwijderd: leden enkel beheerbaar via Firestore console
 
-    unsubLeden = db
-      .collection("config")
-      .doc("ledenPerGroep")
-      .onSnapshot((doc) => {
-        ledenMap = doc.exists ? doc.data() : {};
-        bouwTabel();
+  function startListeners(){
+    if (unsubLeden) { unsubLeden(); unsubLeden = null; }
+    if (unsubUitgaven) { unsubUitgaven(); unsubUitgaven = null; }
+
+    unsubLeden = db.collection('config').doc('ledenPerGroep').onSnapshot(doc => {
+      ledenMap = doc.exists ? (doc.data() || {}) : {};
+      bouwTabel();
+    }, err => console.warn('ledenPerGroep listener fout:', err));
+
+    unsubUitgaven = db.collection('uitgaven').onSnapshot(snap => {
+      const map = {};
+      snap.docs.forEach(d => {
+        const u = d.data() || {};
+        const g = u.groep || 'UNKNOWN';
+        const bedrag = parseEuro(u.bedrag) || 0;
+        map[g] = (map[g] || 0) + bedrag;
       });
-
-    unsubUitgaven = db
-      .collection("uitgaven")
-      .onSnapshot((snapshot) => {
-
-        const map = {};
-
-        alleGroepen.forEach((g) => map[g] = 0);
-
-        snapshot.forEach((doc) => {
-          const data = doc.data();
-          const groep = data.groep;
-          const bedrag = parseEuro(data.bedrag);
-
-          if (map[groep] !== undefined) {
-            map[groep] += bedrag;
-          }
-        });
-
-        totalenPerGroep = map;
-        bouwTabel();
-      });
+      totalenPerGroep = map;
+      bouwTabel();
+    }, err => console.error('uitgaven listener fout:', err));
   }
 
-  function applyTheme(theme) {
-    document.body.dataset.theme = theme;
-    localStorage.setItem("theme", theme);
+  firebase.auth().onAuthStateChanged(async user => {
+    const nav = document.getElementById('mainNav');
+    if (nav) nav.style.display = 'none';
+    if (user){
+      try {
+        const d = await db.collection('gebruikers').doc(user.uid).get();
+        gebruikersData = d.exists ? d.data() : {};
+        // Apply persisted theme if present
+        if(gebruikersData && gebruikersData.theme){ applyTheme(gebruikersData.theme); try{localStorage.setItem('theme', gebruikersData.theme);}catch{} }
+      } catch { gebruikersData = {}; }
 
-    const btn = $("navTheme");
-    if (btn) {
-      btn.textContent = theme === "light" ? "🌞" : "🌙";
+      const login = $('loginScherm'); if(login) login.style.display='none';
+      const app = $('appInhoud'); if(app) app.style.display='block';
+      if (nav) nav.style.display='flex';
+      const navBeh = $('navBeheer'); const navLogout=$('navLogout'); const navTheme=$('navTheme');
+      if (navBeh) navBeh.style.display = (gebruikersData.rol === 'financieel') ? 'inline' : 'none';
+      if (navLogout) navLogout.style.display = 'inline';
+      if (navTheme) { navTheme.style.display='inline'; navTheme.textContent = (document.body.dataset.theme||'dark')==='light'? '🌞':'🌙'; }
+      const info = $('gebruikerInfo'); if(info) info.textContent = `Ingelogd als ${gebruikersData.rol||'-'} (${gebruikersData.groep||'-'})`;
+
+      startListeners();
+      bouwTabel();
+      logActie('login', {});
+    } else {
+      if (unsubLeden) { unsubLeden(); unsubLeden=null; }
+      if (unsubUitgaven) { unsubUitgaven(); unsubUitgaven=null; }
+      gebruikersData=null; ledenMap={}; totalenPerGroep={};
+      const app=$('appInhoud'); if(app) app.style.display='none';
+      const login=$('loginScherm'); if(login) login.style.display='block';
     }
-  }
-
-  firebase.auth().onAuthStateChanged(async (user) => {
-
-    if (!user) {
-      $("loginScherm").style.display = "block";
-      $("appInhoud").style.display = "none";
-
-      $("navLogout").style.display = "none";
-      $("navTheme").style.display = "none";
-      $("navBeheer").style.display = "none";
-
-      return;
-    }
-
-    const snap = await db.collection("gebruikers").doc(user.uid).get();
-    gebruikersData = snap.exists ? snap.data() : {};
-
-    $("loginScherm").style.display = "none";
-    $("appInhoud").style.display = "block";
-
-    $("navLogout").style.display = "inline";
-    $("navTheme").style.display = "inline";
-
-    $("navBeheer").style.display =
-      gebruikersData.rol === "financieel" ? "inline" : "none";
-
-    $("gebruikerInfo").textContent =
-      "Ingelogd als " +
-      (gebruikersData.rol || "-") +
-      " (" +
-      (gebruikersData.groep || "-") +
-      ")";
-
-    const theme =
-      gebruikersData.theme ||
-      localStorage.getItem("theme") ||
-      "dark";
-
-    applyTheme(theme);
-
-    startListeners();
   });
 
-  $("loginKnop").addEventListener("click", async () => {
-
-    const email = $("loginEmail").value.trim();
-    const wachtwoord = $("loginWachtwoord").value.trim();
-
+  const loginBtn = $('loginKnop'); if (loginBtn) loginBtn.addEventListener('click', async () => {
+    const email = ($('loginEmail')?.value||'').trim();
+    const pass = ($('loginWachtwoord')?.value||'').trim();
+    const fout = $('loginFout');
+    if(!email || !pass){ if(fout) fout.textContent='Vul e-mail en wachtwoord in.'; return; }
     try {
-      await firebase.auth().signInWithEmailAndPassword(email, wachtwoord);
-      $("loginFout").textContent = "";
-    } catch (err) {
-      $("loginFout").textContent = "Login mislukt.";
+      await firebase.auth().signInWithEmailAndPassword(email, pass);
+      if (fout) fout.textContent='';
+    } catch(err){ if(fout) fout.textContent = 'Login mislukt: ' + (err?.message || err); }
+  });
+  const navLogoutBtn = $('navLogout'); if (navLogoutBtn) navLogoutBtn.addEventListener('click', async ()=> { await logActie('logout',{}); firebase.auth().signOut(); });
+  const navThemeBtn = $('navTheme'); if(navThemeBtn) navThemeBtn.addEventListener('click', async ()=>{ const current=document.body.dataset.theme||localStorage.getItem('theme')||'dark'; const next = current==='dark'?'light':'dark'; applyTheme(next); navThemeBtn.textContent = next==='light'? '🌞':'🌙'; const uid=firebase.auth().currentUser?.uid; await saveThemePreference(next, uid); logActie('theme_changed',{ theme: next }); });
+
+  // PDF export: generate a clear, paginated table so all rows are included
+  function exportSamenvattingPdf(){
+    try{
+      const jspdfNS = window.jspdf || window.jspdf_default || {};
+      const jsPDF = jspdfNS.jsPDF || (window.jspdf && window.jspdf.jsPDF);
+      if(!jsPDF || !('autoTable' in (jsPDF.API||{}))){
+        alert('PDF bibliotheek niet geladen. Controleer je internetverbinding.');
+        return;
+      }
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+      const margin = 36; // 0.5 inch
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      // Header
+      const title = 'Samenvatting per groep';
+      const now = new Date();
+      const datum = now.toLocaleString('nl-BE', { dateStyle:'medium', timeStyle:'short' });
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
+      doc.text(title, margin, margin + 4);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+      doc.setTextColor(100);
+      doc.text(`Gegenereerd op ${datum}`, margin, margin + 20);
+      doc.setTextColor(0);
+
+      // Build rows from current data
+      const rows = [];
+      let totaalLeden = 0;
+      let totaalBedrag = 0;
+      alleGroepen.forEach(g => {
+        const leden = Number(ledenMap[g] || 0);
+        const bedrag = Number(totalenPerGroep[g] || 0);
+        totaalLeden += leden;
+        totaalBedrag += bedrag;
+        const perKind = leden > 0 ? bedrag / leden : null;
+        rows.push([
+          g,
+          String(leden),
+          `€${bedrag.toFixed(2)}`,
+          perKind != null ? `€${perKind.toFixed(2)}` : '-'
+        ]);
+      });
+
+      const head = [['Groep','Leden','Totaal (€)','€ per kind']];
+      const foot = [[
+        'TOTAAL',
+        String(totaalLeden),
+        `€${totaalBedrag.toFixed(2)}`,
+        '-'
+      ]];
+
+      // Table
+      const startY = margin + 36;
+      doc.autoTable({
+        head,
+        body: rows,
+        foot,
+        startY,
+        margin: { left: margin, right: margin },
+        styles: { font: 'helvetica', fontSize: 10, cellPadding: 6, overflow: 'linebreak' },
+        headStyles: { fillColor: [44,62,80], textColor: 255, fontStyle: 'bold' },
+        footStyles: { fillColor: [226,232,240], textColor: [15,23,42], fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [245,247,250] },
+        columnStyles: {
+          0: { cellWidth: 220 },
+          1: { halign: 'right', cellWidth: 80 },
+          2: { halign: 'right', cellWidth: 120 },
+          3: { halign: 'right', cellWidth: 120 }
+        },
+        didDrawPage: function(data){
+          // Footer with page numbers
+          const pageCount = doc.internal.getNumberOfPages();
+          const pageSize = doc.internal.pageSize;
+          const footerY = pageSize.getHeight() - 16;
+          doc.setFontSize(9); doc.setTextColor(120);
+          doc.text(`Pagina ${data.pageNumber} van ${pageCount}`,
+            pageWidth - margin,
+            footerY,
+            { align: 'right' }
+          );
+          doc.setTextColor(0);
+        }
+      });
+
+      // Save
+      const filename = `samenvatting_${now.toISOString().slice(0,10)}.pdf`;
+      doc.save(filename);
+    }catch(err){
+      console.error('PDF export fout:', err);
+      alert('Exporteren naar PDF is mislukt. Zie console voor details.');
     }
-  });
-
-  $("navLogout").addEventListener("click", async () => {
-    await firebase.auth().signOut();
-  });
-
-  $("navTheme").addEventListener("click", () => {
-    const huidig = document.body.dataset.theme || "dark";
-    const nieuw = huidig === "dark" ? "light" : "dark";
-    applyTheme(nieuw);
-  });
-
-  function exportPdf() {
-
-    const jsPDF = window.jspdf.jsPDF;
-    const doc = new jsPDF();
-
-    const rows = [];
-    let totaalLeden = 0;
-    let totaalBedrag = 0;
-
-    alleGroepen.forEach((groep) => {
-
-      const leden = Number(ledenMap[groep] || 0);
-      const bedrag = Number(totalenPerGroep[groep] || 0);
-      const perKind = leden > 0 ? bedrag / leden : null;
-
-      totaalLeden += leden;
-      totaalBedrag += bedrag;
-
-      rows.push([
-        groep,
-        leden,
-        euro(bedrag),
-        perKind !== null ? euro(perKind) : "-"
-      ]);
-    });
-
-    doc.setFontSize(16);
-    doc.text("Samenvatting per groep", 14, 15);
-
-    doc.autoTable({
-      head: [["Groep", "Leden", "Totaal (€)", "€ per kind"]],
-      body: rows,
-      foot: [[
-        "TOTAAL",
-        totaalLeden,
-        euro(totaalBedrag),
-        "-"
-      ]],
-      startY: 25
-    });
-
-    doc.save("samenvatting.pdf");
   }
 
-  $("exportPdfBtn").addEventListener("click", exportPdf);
-
-});
-</script>
-
+  const exportBtn = document.getElementById('exportPdfBtn');
+  if(exportBtn){ exportBtn.addEventListener('click', exportSamenvattingPdf); }
+  </script>
 </body>
 </html>
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
