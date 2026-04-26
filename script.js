@@ -1,21 +1,9 @@
 document.addEventListener("DOMContentLoaded", () => {
 
-  // =====================================================
-  // CONFIG
-  // =====================================================
-
+  // --- Config ---
   const alleGroepen = [
-    "Ribbels",
-    "Speelclubs",
-    "Rakkers",
-    "Kwiks",
-    "Tippers",
-    "Toppers",
-    "Aspi",
-    "Keti's",
-    "4uurtje",
-    "Algemeen",
-    "LEIDING"
+    "Ribbels","Speelclubs","Rakkers","Kwiks","Tippers",
+    "Toppers","Aspi","Keti's","4uurtje","Algemeen","LEIDING"
   ];
 
   const groepKleuren = {
@@ -33,280 +21,286 @@ document.addEventListener("DOMContentLoaded", () => {
     Overige: "rgba(120,120,120,0.25)"
   };
 
-  // =====================================================
-  // GLOBALS
-  // =====================================================
-
+  // --- Globals ---
   let huidigeGebruiker = null;
   let gebruikersData = null;
   let ledenPerGroep = {};
   let clientIP = null;
+  let uitgavenUnsub = null;
 
-  // =====================================================
-  // HELPERS
-  // =====================================================
-
+  // --- DOM Helpers ---
   const $ = (id) => document.getElementById(id);
 
   const safeOn = (el, ev, fn) => {
     if (el) el.addEventListener(ev, fn);
   };
 
-  function nameFromEmail(email) {
+  // --- Helpers ---
+  function nameFromEmail(email){
     if (!email) return "-";
-
     const [left] = email.split("@");
-
     return left
-      .replace(/[._-]+/g, " ")
-      .replace(/\b\w/g, c => c.toUpperCase());
+      ? left.replace(/[._-]+/g, " ").replace(/\b\w/g, c => c.toUpperCase())
+      : email;
   }
 
-  function kleurVoorGroep(groep) {
-    return groepKleuren[groep] || "transparent";
+  function kleurVoorGroep(g){
+    const key = (g || "").toString().trim().toLowerCase();
+
+    const map = {
+      ribbels: groepKleuren.Ribbels,
+      speelclubs: groepKleuren.Speelclubs,
+      rakkers: groepKleuren.Rakkers,
+      kwiks: groepKleuren.Kwiks,
+      tippers: groepKleuren.Tippers,
+      toppers: groepKleuren.Toppers,
+      aspi: groepKleuren.Aspi,
+      "keti's": groepKleuren["Keti's"],
+      "4uurtje": groepKleuren["4uurtje"],
+      algemeen: groepKleuren.Algemeen,
+      leiding: groepKleuren.LEIDING,
+      overige: groepKleuren.Overige
+    };
+
+    return map[key] || "transparent";
   }
 
-  function parseEuro(input) {
+  function parseEuro(input){
     if (typeof input === "number") return input;
 
-    const s = String(input || "")
-      .trim()
-      .replace(/\s/g, "")
+    const s = String(input || "").trim().replace(/\s/g, "");
+    if (!s) return NaN;
+
+    const norm = s
+      .replace(/\.(?=\d{3}(\D|$))/g, "")
       .replace(",", ".");
 
-    const v = Number(s);
-
+    const v = Number(norm);
     return isNaN(v) ? NaN : v;
   }
 
-  function euro(v) {
-    return "€" + (Number(v) || 0).toFixed(2);
-  }
-
-  // =====================================================
-  // THEME
-  // =====================================================
-
-  function applyTheme(theme) {
+  // --- Theme ---
+  function applyTheme(theme){
     document.body.dataset.theme = theme;
   }
 
-  async function saveThemePreference(theme) {
-    localStorage.setItem("theme", theme);
+  async function saveThemePreference(theme){
+    try {
+      localStorage.setItem("theme", theme);
 
-    if (huidigeGebruiker) {
-      await firebase.firestore()
-        .collection("gebruikers")
-        .doc(huidigeGebruiker.uid)
-        .set({ theme }, { merge: true });
-    }
+      if (huidigeGebruiker) {
+        await firebase.firestore()
+          .collection("gebruikers")
+          .doc(huidigeGebruiker.uid)
+          .set({ theme }, { merge: true });
+      }
+    } catch {}
   }
 
   applyTheme(localStorage.getItem("theme") || "dark");
 
-  // =====================================================
-  // PERMISSIONS
-  // =====================================================
+  // --- IP / Audit ---
+  async function resolveClientIP(){
+    try {
+      const cached = localStorage.getItem("clientIP");
 
-  function magBeheren() {
-    return gebruikersData?.rol === "financieel";
+      if (cached) {
+        clientIP = cached;
+        return cached;
+      }
+
+      const r = await fetch("https://api.ipify.org?format=json");
+      const j = await r.json();
+
+      clientIP = j && j.ip ? j.ip : null;
+
+      if (clientIP) localStorage.setItem("clientIP", clientIP);
+
+      return clientIP;
+    } catch {
+      return null;
+    }
   }
 
-  function magIndienen(groep) {
-    return magBeheren() || gebruikersData?.groep === groep;
+  const ALLOW_CLIENT_DISCORD = false;
+  const DISCORD_WEBHOOK_URL = "";
+
+  async function logActie(action, details){
+    try {
+      const user = firebase.auth().currentUser;
+      const email = user?.email || gebruikersData?.email || "-";
+      const rol = gebruikersData?.rol || "-";
+      const naam = nameFromEmail(email);
+      const isAdmin = rol === "financieel";
+      const emoji = isAdmin ? "🛡️" : "👤";
+      const ip = clientIP || await resolveClientIP();
+
+      const entry = {
+        action,
+        details: details || {},
+        uid: user?.uid || null,
+        email,
+        naam,
+        rol,
+        isAdmin,
+        emoji,
+        ip: ip || null,
+        ua: navigator.userAgent,
+        at: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      await firebase.firestore()
+        .collection("auditLogs")
+        .add(entry);
+
+    } catch(err){
+      console.warn("audit log faalde", err);
+    }
   }
 
-  // =====================================================
-  // FIREBASE HELPERS
-  // =====================================================
+  // --- Permissions ---
+  function magZien(groep){
+    return gebruikersData &&
+      (gebruikersData.rol === "financieel" ||
+       gebruikersData.groep === groep);
+  }
 
-  async function haalGebruikersData(uid) {
-    const snap = await firebase.firestore()
+  function magIndienen(groep){
+    return gebruikersData &&
+      (gebruikersData.rol === "financieel" ||
+       gebruikersData.groep === groep);
+  }
+
+  function magBeheren(){
+    return gebruikersData &&
+      gebruikersData.rol === "financieel";
+  }
+
+  // --- Firebase Data ---
+  async function haalGebruikersData(uid){
+    const d = await firebase.firestore()
       .collection("gebruikers")
       .doc(uid)
       .get();
 
-    return snap.exists ? snap.data() : {};
+    return d.exists ? d.data() : null;
   }
 
-  async function haalLedenPerGroep() {
-    const snap = await firebase.firestore()
+  async function haalLedenPerGroep(){
+    const d = await firebase.firestore()
       .collection("config")
       .doc("ledenPerGroep")
       .get();
 
-    return snap.exists ? snap.data() : {};
+    return d.exists ? d.data() : {};
   }
 
-  // =====================================================
-  // UI
-  // =====================================================
-
-  function vulGroepSelectie() {
+  // --- UI ---
+  function vulGroepSelectie(){
     const select = $("groep");
     if (!select || !gebruikersData) return;
 
     select.innerHTML = `<option value="">-- Kies een groep --</option>`;
 
-    const groepen = magBeheren()
-      ? [...alleGroepen, "Overige"]
-      : [gebruikersData.groep];
+    const toegestane =
+      gebruikersData.rol === "financieel"
+        ? [...alleGroepen, "Overige"]
+        : [gebruikersData.groep];
 
-    groepen.forEach(g => {
+    toegestane.forEach(g => {
       select.innerHTML += `<option value="${g}">${g}</option>`;
     });
   }
 
-  function toonLogin() {
-    if ($("loginScherm")) $("loginScherm").style.display = "block";
-    if ($("appInhoud")) $("appInhoud").style.display = "none";
+  function toonBeheerPaneel(){
+    const paneel = $("beheerPaneel");
+    const toggleBtn = $("toggleBeheerPaneel");
+
+    if (!paneel || !toggleBtn) return;
+
+    const show = magBeheren();
+
+    toggleBtn.style.display = show ? "block" : "none";
+
+    if (!show) {
+      paneel.style.display = "none";
+      return;
+    }
+
+    if (paneel.style.display === "") {
+      paneel.style.display = "none";
+    }
+
+    renderGebruikersLijst();
   }
 
-  function toonApp() {
-    if ($("loginScherm")) $("loginScherm").style.display = "none";
-    if ($("appInhoud")) $("appInhoud").style.display = "block";
+  function toonFinancieelFeatures(){
+    const summaryBtn = $("toggleSummary");
+    const show = magBeheren();
+
+    if (summaryBtn) {
+      summaryBtn.style.display = show ? "block" : "none";
+    }
   }
 
-  // =====================================================
-  // UITGAVEN TABEL
-  // =====================================================
+  function toonFinancieelKolommen(){
+    const betaaldTh = document.querySelector("#overzicht th:nth-child(6)");
+    const actieTh = document.querySelector("#overzicht th:nth-child(7)");
 
-  let unsubUitgaven = null;
+    const betaaldTds = document.querySelectorAll("#overzicht td:nth-child(6)");
+    const actieTds = document.querySelectorAll("#overzicht td:nth-child(7)");
 
-  function attachUitgavenListener() {
+    const show = magBeheren();
 
-    const tbody = document.querySelector("#overzicht tbody");
+    if (betaaldTh) betaaldTh.style.display = show ? "table-cell" : "none";
+    if (actieTh) actieTh.style.display = show ? "table-cell" : "none";
+
+    betaaldTds.forEach(td => td.style.display = show ? "table-cell" : "none");
+    actieTds.forEach(td => td.style.display = show ? "table-cell" : "none");
+  }
+
+  // --- Users list ---
+  async function renderGebruikersLijst(){
+    const tbody = $("gebruikersLijstBody");
     if (!tbody) return;
 
-    if (unsubUitgaven) unsubUitgaven();
+    if (!magBeheren()) {
+      tbody.innerHTML = "";
+      return;
+    }
 
-    unsubUitgaven = firebase.firestore()
-      .collection("uitgaven")
-      .onSnapshot(snapshot => {
+    tbody.innerHTML = "";
 
-        tbody.innerHTML = "";
+    const gebruikersSnap = await firebase.firestore()
+      .collection("gebruikers")
+      .get();
 
-        const docs = snapshot.docs
-          .map(d => d.data())
-          .sort((a, b) => (a.nummer || 0) - (b.nummer || 0));
+    const allUsers = gebruikersSnap.docs.map(d => ({
+      uid: d.id,
+      ...d.data()
+    }));
 
-        docs.forEach(u => {
+    allUsers.forEach(user => {
+      const tr = document.createElement("tr");
 
-          const tr = document.createElement("tr");
-          tr.style.backgroundColor = kleurVoorGroep(u.groep);
+      const emailTd = document.createElement("td");
+      emailTd.textContent = user.email || "-";
+      tr.appendChild(emailTd);
 
-          tr.innerHTML = `
-            <td>${u.nummer || "-"}</td>
-            <td>${u.groep || "-"}</td>
-            <td>${euro(u.bedrag)}</td>
-            <td>${u.activiteit || "-"}</td>
-            <td>${u.datum || "-"}</td>
-            <td>${u.betaald ? "✓" : "✗"}</td>
-            <td>${u.rekeningNummer || "-"}</td>
-          `;
+      const uidTd = document.createElement("td");
+      uidTd.textContent = user.uid;
+      tr.appendChild(uidTd);
 
-          tbody.appendChild(tr);
-        });
-      });
+      const rolTd = document.createElement("td");
+      rolTd.textContent = user.rol || "-";
+      tr.appendChild(rolTd);
+
+      const groepTd = document.createElement("td");
+      groepTd.textContent = user.groep || "-";
+      tr.appendChild(groepTd);
+
+      tbody.appendChild(tr);
+    });
   }
-
-  // =====================================================
-  // LOGIN
-  // =====================================================
-
-  safeOn($("loginKnop"), "click", async () => {
-
-    const email = $("loginEmail")?.value.trim();
-    const wachtwoord = $("loginWachtwoord")?.value.trim();
-
-    if (!email || !wachtwoord) {
-      $("loginFout").textContent = "Vul alles in.";
-      return;
-    }
-
-    try {
-      await firebase.auth()
-        .signInWithEmailAndPassword(email, wachtwoord);
-
-      $("loginFout").textContent = "";
-
-    } catch (err) {
-      $("loginFout").textContent = "Login mislukt.";
-      console.error(err);
-    }
-  });
-
-  // =====================================================
-  // AUTH STATE
-  // =====================================================
-
-  firebase.auth().onAuthStateChanged(async user => {
-
-    if (!user) {
-      huidigeGebruiker = null;
-      gebruikersData = null;
-      toonLogin();
-      return;
-    }
-
-    huidigeGebruiker = user;
-    gebruikersData = await haalGebruikersData(user.uid);
-
-    if (magBeheren()) {
-      ledenPerGroep = await haalLedenPerGroep();
-    }
-
-    toonApp();
-
-    if ($("gebruikerInfo")) {
-      $("gebruikerInfo").textContent =
-        `Ingelogd als ${gebruikersData.rol || "-"} (${gebruikersData.groep || "-"})`;
-    }
-
-    if ($("navBeheer")) {
-      $("navBeheer").style.display =
-        magBeheren() ? "inline" : "none";
-    }
-
-    if ($("navLogout")) {
-      $("navLogout").style.display = "inline";
-    }
-
-    if ($("navTheme")) {
-      $("navTheme").style.display = "inline";
-      $("navTheme").textContent =
-        document.body.dataset.theme === "light" ? "🌞" : "🌙";
-    }
-
-    vulGroepSelectie();
-    attachUitgavenListener();
-  });
-
-  // =====================================================
-  // LOGOUT
-  // =====================================================
-
-  safeOn($("navLogout"), "click", async () => {
-    await firebase.auth().signOut();
-  });
-
-  // =====================================================
-  // THEME TOGGLE
-  // =====================================================
-
-  safeOn($("navTheme"), "click", async () => {
-
-    const huidig =
-      document.body.dataset.theme || "dark";
-
-    const nieuw =
-      huidig === "dark" ? "light" : "dark";
-
-    applyTheme(nieuw);
-    await saveThemePreference(nieuw);
-
-    $("navTheme").textContent =
-      nieuw === "light" ? "🌞" : "🌙";
-  });
 
 });
