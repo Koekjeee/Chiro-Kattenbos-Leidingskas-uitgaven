@@ -1,10 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
 
   // --- Config ---
-  const alleGroepen = [
-    "Ribbels","Speelclubs","Rakkers","Kwiks","Tippers",
-    "Toppers","Aspi","Keti's","4uurtje","Algemeen","LEIDING"
-  ];
+  const alleGroepen = ["Ribbels","Speelclubs","Rakkers","Kwiks","Tippers","Toppers","Aspi","Keti's","4uurtje","Algemeen","LEIDING"];
 
   const groepKleuren = {
     Ribbels: "rgba(59,130,246,0.18)",
@@ -26,56 +23,33 @@ document.addEventListener("DOMContentLoaded", () => {
   let gebruikersData = null;
   let ledenPerGroep = {};
   let clientIP = null;
-  let uitgavenUnsub = null;
 
-  // --- DOM Helpers ---
+  // --- Utility DOM helpers ---
   const $ = (id) => document.getElementById(id);
-
   const safeOn = (el, ev, fn) => {
     if (el) el.addEventListener(ev, fn);
   };
 
   // --- Helpers ---
+  function kleurVoorGroep(groep) {
+    return groepKleuren[groep] || "transparent";
+  }
+
   function nameFromEmail(email){
     if (!email) return "-";
     const [left] = email.split("@");
-    return left
-      ? left.replace(/[._-]+/g, " ").replace(/\b\w/g, c => c.toUpperCase())
-      : email;
-  }
-
-  function kleurVoorGroep(g){
-    const key = (g || "").toString().trim().toLowerCase();
-
-    const map = {
-      ribbels: groepKleuren.Ribbels,
-      speelclubs: groepKleuren.Speelclubs,
-      rakkers: groepKleuren.Rakkers,
-      kwiks: groepKleuren.Kwiks,
-      tippers: groepKleuren.Tippers,
-      toppers: groepKleuren.Toppers,
-      aspi: groepKleuren.Aspi,
-      "keti's": groepKleuren["Keti's"],
-      "4uurtje": groepKleuren["4uurtje"],
-      algemeen: groepKleuren.Algemeen,
-      leiding: groepKleuren.LEIDING,
-      overige: groepKleuren.Overige
-    };
-
-    return map[key] || "transparent";
+    return left ? left.replace(/[._-]+/g, " ").replace(/\b\w/g, c => c.toUpperCase()) : email;
   }
 
   function parseEuro(input){
     if (typeof input === "number") return input;
 
-    const s = String(input || "").trim().replace(/\s/g, "");
+    const s = String(input || "").trim().replace(/\s/g,"");
     if (!s) return NaN;
 
-    const norm = s
-      .replace(/\.(?=\d{3}(\D|$))/g, "")
-      .replace(",", ".");
-
+    const norm = s.replace(/\.(?=\d{3}(\D|$))/g,"").replace(",",".");
     const v = Number(norm);
+
     return isNaN(v) ? NaN : v;
   }
 
@@ -99,79 +73,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
   applyTheme(localStorage.getItem("theme") || "dark");
 
-  // --- IP / Audit ---
-  async function resolveClientIP(){
-    try {
-      const cached = localStorage.getItem("clientIP");
-
-      if (cached) {
-        clientIP = cached;
-        return cached;
-      }
-
-      const r = await fetch("https://api.ipify.org?format=json");
-      const j = await r.json();
-
-      clientIP = j && j.ip ? j.ip : null;
-
-      if (clientIP) localStorage.setItem("clientIP", clientIP);
-
-      return clientIP;
-    } catch {
-      return null;
-    }
-  }
-
-  const ALLOW_CLIENT_DISCORD = false;
-  const DISCORD_WEBHOOK_URL = "";
-
-  async function logActie(action, details){
-    try {
-      const user = firebase.auth().currentUser;
-      const email = user?.email || gebruikersData?.email || "-";
-      const rol = gebruikersData?.rol || "-";
-      const naam = nameFromEmail(email);
-      const isAdmin = rol === "financieel";
-      const emoji = isAdmin ? "🛡️" : "👤";
-      const ip = clientIP || await resolveClientIP();
-
-      const entry = {
-        action,
-        details: details || {},
-        uid: user?.uid || null,
-        email,
-        naam,
-        rol,
-        isAdmin,
-        emoji,
-        ip: ip || null,
-        ua: navigator.userAgent,
-        at: firebase.firestore.FieldValue.serverTimestamp()
-      };
-
-      await firebase.firestore()
-        .collection("auditLogs")
-        .add(entry);
-
-    } catch(err){
-      console.warn("audit log faalde", err);
-    }
-  }
-
   // --- Permissions ---
-  function magZien(groep){
+  function magZien(groep) {
     return gebruikersData &&
       (gebruikersData.rol === "financieel" ||
        gebruikersData.groep === groep);
   }
 
-  function magIndienen(groep){
+  function magIndienen(groep) {
     return gebruikersData &&
       (gebruikersData.rol === "financieel" ||
        gebruikersData.groep === groep);
   }
 
-  function magBeheren(){
+  function magBeheren() {
     return gebruikersData &&
       gebruikersData.rol === "financieel";
   }
@@ -186,17 +101,43 @@ document.addEventListener("DOMContentLoaded", () => {
     return d.exists ? d.data() : null;
   }
 
-  async function haalLedenPerGroep(){
-    const d = await firebase.firestore()
+  async function haalLedenPerGroep() {
+    const ref = firebase.firestore()
       .collection("config")
-      .doc("ledenPerGroep")
-      .get();
+      .doc("ledenPerGroep");
 
-    return d.exists ? d.data() : {};
+    const snap = await ref.get();
+
+    if (!snap.exists) {
+      const basis = {};
+
+      alleGroepen.forEach((groep) => {
+        basis[groep] = 0;
+      });
+
+      await ref.set(basis);
+      return basis;
+    }
+
+    const data = snap.data();
+    let gewijzigd = false;
+
+    alleGroepen.forEach((groep) => {
+      if (data[groep] === undefined) {
+        data[groep] = 0;
+        gewijzigd = true;
+      }
+    });
+
+    if (gewijzigd) {
+      await ref.set(data, { merge: true });
+    }
+
+    return data;
   }
 
   // --- UI ---
-  function vulGroepSelectie(){
+  function vulGroepSelectie() {
     const select = $("groep");
     if (!select || !gebruikersData) return;
 
@@ -207,12 +148,12 @@ document.addEventListener("DOMContentLoaded", () => {
         ? [...alleGroepen, "Overige"]
         : [gebruikersData.groep];
 
-    toegestane.forEach(g => {
-      select.innerHTML += `<option value="${g}">${g}</option>`;
+    toegestane.forEach((groep) => {
+      select.innerHTML += `<option value="${groep}">${groep}</option>`;
     });
   }
 
-  function toonBeheerPaneel(){
+  function toonBeheerPaneel() {
     const paneel = $("beheerPaneel");
     const toggleBtn = $("toggleBeheerPaneel");
 
@@ -234,7 +175,7 @@ document.addEventListener("DOMContentLoaded", () => {
     renderGebruikersLijst();
   }
 
-  function toonFinancieelFeatures(){
+  function toonFinancieelFeatures() {
     const summaryBtn = $("toggleSummary");
     const show = magBeheren();
 
@@ -243,7 +184,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  function toonFinancieelKolommen(){
+  function toonFinancieelKolommen() {
     const betaaldTh = document.querySelector("#overzicht th:nth-child(6)");
     const actieTh = document.querySelector("#overzicht th:nth-child(7)");
 
@@ -260,7 +201,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // --- Users list ---
-  async function renderGebruikersLijst(){
+  async function renderGebruikersLijst() {
     const tbody = $("gebruikersLijstBody");
     if (!tbody) return;
 
