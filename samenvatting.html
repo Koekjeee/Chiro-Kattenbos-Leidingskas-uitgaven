@@ -27,10 +27,11 @@
 </head>
 
 <body>
+
 <nav id="mainNav">
   <span>Chiro Kattenbos</span>
   <a href="index.html">Home</a>
-  <a id="navBeheer" href="gebruikersbeheer.html">Gebruikersbeheer</a>
+  <a id="navBeheer" href="gebruikersbeheer.html" style="display:none;">Gebruikersbeheer</a>
   <button id="navTheme" style="display:none;">🌙</button>
   <button id="navLogout" class="push-right" style="display:none;">Uitloggen</button>
 </nav>
@@ -40,14 +41,16 @@
   <div id="loginScherm">
     <h2>Inloggen</h2>
 
-    <input type="email" id="loginEmail" placeholder="E-mailadres">
-    <input type="password" id="loginWachtwoord" placeholder="Wachtwoord">
+    <input type="email" id="loginEmail" placeholder="E-mailadres" />
+    <input type="password" id="loginWachtwoord" placeholder="Wachtwoord" />
 
     <button id="loginKnop">Inloggen</button>
+
     <p id="loginFout" style="color:red;"></p>
   </div>
 
   <div id="appInhoud" style="display:none;">
+
     <h1>Samenvatting per groep</h1>
 
     <p id="gebruikerInfo"></p>
@@ -67,14 +70,17 @@
     <div style="margin-top:12px;">
       <button id="exportPdfBtn">Exporteer naar PDF</button>
     </div>
+
   </div>
 
 </div>
 
 <script>
-(function () {
+document.addEventListener("DOMContentLoaded", function () {
 
   const db = firebase.firestore();
+
+  const $ = (id) => document.getElementById(id);
 
   const alleGroepen = [
     "Ribbels",
@@ -91,27 +97,24 @@
   ];
 
   const groepKleuren = {
-    Ribbels: "rgba(59,130,246,0.18)",
-    Speelclubs: "rgba(234,179,8,0.18)",
-    Rakkers: "rgba(34,197,94,0.18)",
-    Kwiks: "rgba(244,114,182,0.18)",
-    Tippers: "rgba(99,102,241,0.18)",
-    Toppers: "rgba(16,185,129,0.18)",
-    Aspi: "rgba(249,115,22,0.18)",
+    "Ribbels": "rgba(59,130,246,0.18)",
+    "Speelclubs": "rgba(234,179,8,0.18)",
+    "Rakkers": "rgba(34,197,94,0.18)",
+    "Kwiks": "rgba(244,114,182,0.18)",
+    "Tippers": "rgba(99,102,241,0.18)",
+    "Toppers": "rgba(16,185,129,0.18)",
+    "Aspi": "rgba(249,115,22,0.18)",
     "Keti's": "rgba(56,189,248,0.18)",
     "4uurtje": "rgba(168,85,247,0.18)",
-    Algemeen: "rgba(0,0,0,0.12)",
-    LEIDING: "rgba(148,163,184,0.18)"
+    "Algemeen": "rgba(0,0,0,0.12)",
+    "LEIDING": "rgba(148,163,184,0.18)"
   };
 
-  let gebruikersData = null;
+  let gebruikersData = {};
   let ledenMap = {};
   let totalenPerGroep = {};
-
   let unsubLeden = null;
   let unsubUitgaven = null;
-
-  const $ = (id) => document.getElementById(id);
 
   function euro(n) {
     return "€" + (Number(n) || 0).toFixed(2);
@@ -120,9 +123,12 @@
   function parseEuro(input) {
     if (typeof input === "number") return input;
 
-    const s = String(input || "").trim().replace(",", ".");
-    const v = Number(s);
+    const s = String(input || "")
+      .replace(/\./g, "")
+      .replace(",", ".")
+      .trim();
 
+    const v = Number(s);
     return isNaN(v) ? 0 : v;
   }
 
@@ -172,11 +178,12 @@
       .onSnapshot(snapshot => {
 
         const map = {};
+
         alleGroepen.forEach(g => map[g] = 0);
 
         snapshot.forEach(doc => {
           const data = doc.data();
-          const groep = data.groep;
+          const groep = data.groep || "";
           const bedrag = parseEuro(data.bedrag);
 
           if (map[groep] !== undefined) {
@@ -189,65 +196,73 @@
       });
   }
 
-  firebase.auth().onAuthStateChanged(async (user) => {
+  firebase.auth().onAuthStateChanged(async function(user) {
 
     if (!user) {
-      $("#loginScherm").style.display = "block";
-      $("#appInhoud").style.display = "none";
-      $("#navLogout").style.display = "none";
-      $("#navTheme").style.display = "none";
-      $("#navBeheer").style.display = "none";
+      $("loginScherm").style.display = "block";
+      $("appInhoud").style.display = "none";
+      $("navLogout").style.display = "none";
+      $("navTheme").style.display = "none";
+      $("navBeheer").style.display = "none";
       return;
     }
 
-    const snap = await db.collection("gebruikers").doc(user.uid).get();
-    gebruikersData = snap.exists ? snap.data() : {};
+    try {
+      const snap = await db.collection("gebruikers").doc(user.uid).get();
+      gebruikersData = snap.exists ? snap.data() : {};
+    } catch (e) {
+      gebruikersData = {};
+    }
 
-    $("#loginScherm").style.display = "none";
-    $("#appInhoud").style.display = "block";
+    $("loginScherm").style.display = "none";
+    $("appInhoud").style.display = "block";
 
-    $("#gebruikerInfo").textContent =
+    $("gebruikerInfo").textContent =
       "Ingelogd als " +
       (gebruikersData.rol || "-") +
       " (" +
       (gebruikersData.groep || "-") +
       ")";
 
-    $("#navBeheer").style.display =
-      gebruikersData.rol === "financieel" ? "inline" : "none";
+    $("navLogout").style.display = "inline-block";
+    $("navTheme").style.display = "inline-block";
 
-    $("#navTheme").style.display = "inline";
-    $("#navLogout").style.display = "inline";
+    if (gebruikersData.rol === "financieel") {
+      $("navBeheer").style.display = "inline-block";
+    } else {
+      $("navBeheer").style.display = "none";
+    }
 
     startListeners();
   });
 
-  const loginBtn = $("#loginKnop");
+  const loginBtn = $("loginKnop");
   if (loginBtn) {
-    loginBtn.addEventListener("click", async () => {
+    loginBtn.addEventListener("click", async function() {
 
-      const email = $("#loginEmail").value.trim();
-      const wachtwoord = $("#loginWachtwoord").value.trim();
+      const email = $("loginEmail").value.trim();
+      const wachtwoord = $("loginWachtwoord").value.trim();
+
+      $("loginFout").textContent = "";
 
       try {
         await firebase.auth().signInWithEmailAndPassword(email, wachtwoord);
-        $("#loginFout").textContent = "";
       } catch (err) {
-        $("#loginFout").textContent = "Login mislukt.";
+        $("loginFout").textContent = "Login mislukt.";
       }
     });
   }
 
-  const logoutBtn = $("#navLogout");
+  const logoutBtn = $("navLogout");
   if (logoutBtn) {
-    logoutBtn.addEventListener("click", async () => {
+    logoutBtn.addEventListener("click", async function() {
       await firebase.auth().signOut();
     });
   }
 
-  const themeBtn = $("#navTheme");
+  const themeBtn = $("navTheme");
   if (themeBtn) {
-    themeBtn.addEventListener("click", () => {
+    themeBtn.addEventListener("click", function() {
 
       const huidig = document.body.dataset.theme || "dark";
       const nieuw = huidig === "dark" ? "light" : "dark";
@@ -259,48 +274,49 @@
     });
   }
 
-  function exportSamenvattingPdf() {
-
-    const jspdfNS = window.jspdf || {};
-    const jsPDF = jspdfNS.jsPDF;
-
-    if (!jsPDF) return;
-
-    const doc = new jsPDF();
-
-    const rows = [];
-
-    alleGroepen.forEach(groep => {
-
-      const leden = Number(ledenMap[groep] || 0);
-      const totaal = Number(totalenPerGroep[groep] || 0);
-      const perKind = leden > 0 ? totaal / leden : 0;
-
-      rows.push([
-        groep,
-        leden,
-        euro(totaal),
-        leden > 0 ? euro(perKind) : "-"
-      ]);
-    });
-
-    doc.text("Samenvatting per groep", 14, 15);
-
-    doc.autoTable({
-      head: [["Groep", "Leden", "Totaal (€)", "€ per kind"]],
-      body: rows,
-      startY: 25
-    });
-
-    doc.save("samenvatting.pdf");
-  }
-
-  const exportBtn = $("#exportPdfBtn");
+  const exportBtn = $("exportPdfBtn");
   if (exportBtn) {
-    exportBtn.addEventListener("click", exportSamenvattingPdf);
+    exportBtn.addEventListener("click", function () {
+
+      const jspdfNS = window.jspdf || {};
+      const jsPDF = jspdfNS.jsPDF;
+
+      if (!jsPDF) {
+        alert("PDF library niet geladen.");
+        return;
+      }
+
+      const doc = new jsPDF();
+
+      const rows = [];
+
+      alleGroepen.forEach(groep => {
+
+        const leden = Number(ledenMap[groep] || 0);
+        const totaal = Number(totalenPerGroep[groep] || 0);
+        const perKind = leden > 0 ? totaal / leden : 0;
+
+        rows.push([
+          groep,
+          leden,
+          euro(totaal),
+          leden > 0 ? euro(perKind) : "-"
+        ]);
+      });
+
+      doc.text("Samenvatting per groep", 14, 15);
+
+      doc.autoTable({
+        head: [["Groep", "Leden", "Totaal (€)", "€ per kind"]],
+        body: rows,
+        startY: 25
+      });
+
+      doc.save("samenvatting.pdf");
+    });
   }
 
-})();
+});
 </script>
 
 </body>
